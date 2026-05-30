@@ -1,6 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
-import { getAnalytics, isSupported } from 'firebase/analytics';
 
 export interface FirebaseConfig {
   apiKey: string;
@@ -9,7 +8,6 @@ export interface FirebaseConfig {
   storageBucket: string;
   messagingSenderId: string;
   appId: string;
-  measurementId?: string;
 }
 
 let app: FirebaseApp | null = null;
@@ -28,8 +26,7 @@ export function parseConfigString(configStr: string): FirebaseConfig | null {
           projectId: parsed.projectId,
           storageBucket: parsed.storageBucket || '',
           messagingSenderId: parsed.messagingSenderId || '',
-          appId: parsed.appId || '',
-          measurementId: parsed.measurementId || ''
+          appId: parsed.appId || ''
         };
       }
     }
@@ -51,8 +48,7 @@ export function getFirebaseConfig(): FirebaseConfig | null {
       projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
       storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
       messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-      appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
-      measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
+      appId: import.meta.env.VITE_FIREBASE_APP_ID || ''
     };
   }
 
@@ -73,8 +69,7 @@ export function getFirebaseConfig(): FirebaseConfig | null {
     projectId: 'dasong-9c51f',
     storageBucket: 'dasong-9c51f.firebasestorage.app',
     messagingSenderId: '977130728700',
-    appId: '1:977130728700:web:ccc99e871605d08fdafb79',
-    measurementId: 'G-MGZZHYWL9N'
+    appId: '1:977130728700:web:ccc99e871605d08fdafb79'
   };
 }
 
@@ -86,16 +81,7 @@ export function initFirebase(config?: FirebaseConfig): Firestore | null {
     // Prevent re-initialization if app already exists
     if (getApps().length === 0) {
       app = initializeApp(targetConfig);
-      
-      // Initialize Analytics safely inside browser environments
-      if (typeof window !== 'undefined' && targetConfig.measurementId) {
-        isSupported().then((supported) => {
-          if (supported) {
-            getAnalytics(app!);
-            console.log('Firebase Analytics initialized successfully.');
-          }
-        });
-      }
+      console.log('Firebase app initialized (Firestore-only mode).');
     } else {
       app = getApp();
     }
