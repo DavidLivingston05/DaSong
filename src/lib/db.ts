@@ -234,7 +234,7 @@ export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
 // REAL-TIME FIRESTORE SUBSCRIPTIONS (MIRRORS CLOUD TO LOCAL CACHE)
 // -------------------------------------------------------------------------
 
-export function subscribeToSongs(onUpdate: () => void): () => void {
+export function subscribeToSongs(onUpdate: () => void, onError?: (error: Error) => void): () => void {
   if (!isFirebaseActive()) return () => {};
 
   const db = getFirestoreDB()!;
@@ -256,9 +256,11 @@ export function subscribeToSongs(onUpdate: () => void): () => void {
       onUpdate();
     } catch (err) {
       console.error('Error writing batch Firestore changes to local IndexedDB:', err);
+      onError?.(err as Error);
     }
   }, (error) => {
     console.error('Firestore songs snapshot listener error:', error);
+    onError?.(error);
   });
 }
 
@@ -318,7 +320,7 @@ export async function deleteWorshipEvent(id: string): Promise<void> {
   }
 }
 
-export function subscribeToWorshipEvents(onUpdate: (events: WorshipEvent[]) => void): () => void {
+export function subscribeToWorshipEvents(onUpdate: (events: WorshipEvent[]) => void, onError?: (error: Error) => void): () => void {
   if (!isFirebaseActive()) return () => {};
 
   const db = getFirestoreDB()!;
@@ -335,6 +337,7 @@ export function subscribeToWorshipEvents(onUpdate: (events: WorshipEvent[]) => v
     onUpdate(eventsList);
   }, (error) => {
     console.error('Firestore worship events snapshot listener error:', error);
+    onError?.(error);
   });
 }
 
@@ -381,7 +384,7 @@ export async function deleteSuggestion(id: string): Promise<void> {
   }
 }
 
-export function subscribeToSuggestions(onUpdate: (suggestions: SuggestedSong[]) => void): () => void {
+export function subscribeToSuggestions(onUpdate: (suggestions: SuggestedSong[]) => void, onError?: (error: Error) => void): () => void {
   if (!isFirebaseActive()) return () => {};
 
   const db = getFirestoreDB()!;
@@ -398,6 +401,7 @@ export function subscribeToSuggestions(onUpdate: (suggestions: SuggestedSong[]) 
     onUpdate(suggestionsList);
   }, (error) => {
     console.error('Firestore suggestions snapshot listener error:', error);
+    onError?.(error);
   });
 }
 

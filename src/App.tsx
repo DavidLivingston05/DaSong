@@ -37,6 +37,7 @@ export default function App() {
 
   // Firebase configuration & sync states
   const [firebaseActive, setFirebaseActive] = useState<boolean>(() => isFirebaseActive());
+  const [firebaseError, setFirebaseError] = useState<string | null>(null);
   const [showFirebaseModal, setShowFirebaseModal] = useState<boolean>(false);
   const [firebaseConfigText, setFirebaseConfigText] = useState<string>(() => {
     const config = getFirebaseConfig();
@@ -227,19 +228,34 @@ export default function App() {
 
   // Real-time Firebase database listeners
   useEffect(() => {
-    if (!firebaseActive) return;
+    if (!firebaseActive) {
+      setFirebaseError(null);
+      return;
+    }
 
     console.log('Registering real-time Firestore sync subscriptions...');
-    
+    setFirebaseError(null);
+
+    const handleSyncError = (err: any) => {
+      console.error('App Firebase Sync Error:', err);
+      let msg = err?.message || String(err);
+      if (msg.includes('permission-denied') || msg.includes('Missing or insufficient permissions') || msg.includes('Permission denied')) {
+        msg = 'Permission Denied: Please check your Firestore rules! Ensure they allow public read/write access during testing (allow read, write: if true;).';
+      } else if (msg.includes('not-found') || msg.includes('database')) {
+        msg = 'Database Error: Please ensure you have created the "(default)" database in Native Mode in your Firestore console!';
+      }
+      setFirebaseError(msg);
+    };
+
     // 1. Subscribe to songs
     const unsubscribeSongs = subscribeToSongs(async () => {
       await syncSongsList();
-    });
+    }, handleSyncError);
 
     // 2. Subscribe to suggestions
     const unsubscribeSuggestions = subscribeToSuggestions((syncedSuggestions) => {
       setSuggestions(syncedSuggestions);
-    });
+    }, handleSyncError);
 
     return () => {
       unsubscribeSongs();
@@ -856,20 +872,26 @@ export default function App() {
                     id="firebase-sync-status-badge"
                     onClick={() => setShowFirebaseModal(true)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
-                      firebaseActive
-                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
-                        : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                      firebaseError
+                        ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.15)] animate-pulse'
+                        : firebaseActive
+                          ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                          : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800 hover:text-zinc-200'
                     }`}
                     title="Firebase Cloud Sync Console"
                   >
-                    <span className="text-xs leading-none">☁️</span>
+                    <span className="text-xs leading-none">
+                      {firebaseError ? '⚠️' : '☁️'}
+                    </span>
                     <span>
-                      {firebaseActive ? 'Cloud Synced' : 'Offline Cache'}
+                      {firebaseError ? 'Sync Error' : firebaseActive ? 'Cloud Synced' : 'Offline Cache'}
                     </span>
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                      firebaseActive
-                        ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]'
-                        : 'bg-zinc-650'
+                      firebaseError
+                        ? 'bg-red-500 shadow-[0_0_6px_#ef4444]'
+                        : firebaseActive
+                          ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]'
+                          : 'bg-zinc-650'
                     }`} />
                   </button>
                   {/* Mobile Guest Quick Search Icon */}
@@ -1827,6 +1849,24 @@ That [G] saved a wretch like [D] me!`}
                   </div>
                 )}
               </div>
+
+              {/* Display Firebase Sync Error if any */}
+              {firebaseError && (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-left space-y-2 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 text-red-400 font-extrabold text-[11px] font-mono tracking-wider">
+                    <span className="text-xs">⚠️</span> SYNC CONNECTION ERROR
+                  </div>
+                  <p className="text-[10px] text-zinc-300 leading-relaxed font-semibold">
+                    {firebaseError}
+                  </p>
+                  <div className="text-[9px] text-zinc-500 font-medium pt-1 leading-normal border-t border-white/5">
+                    *Troubleshoot Checklist:<br />
+                    1. In your Firebase Console, make sure you created the <strong className="text-amber-500 font-bold">Firestore Database</strong> in <strong className="text-amber-550 font-bold">Native Mode</strong>.<br />
+                    2. Go to the <strong className="text-white font-bold">Rules</strong> tab and set public rules:<br />
+                    <code className="block mt-1 p-1 bg-zinc-950 rounded text-[8.5px] text-zinc-400 font-mono select-all">allow read, write: if true;</code>
+                  </div>
+                </div>
+              )}
 
               {/* Dynamic Action Area: Input configuration block if disconnected */}
               {!firebaseActive ? (
