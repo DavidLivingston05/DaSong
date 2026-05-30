@@ -276,11 +276,13 @@ export default function App() {
         await initDB();
         let list = await getAllSongsMetadata();
         
-        // Auto-seed database with default worship songsheets if completely empty
-        if (list.length === 0) {
+        // Auto-seed database with default worship songsheets if completely empty and not seeded before
+        const hasSeeded = localStorage.getItem('dasong_has_seeded') === 'true';
+        if (list.length === 0 && !hasSeeded) {
           console.log('Song library is empty. Seeding default worship songbook...');
           const { SEED_SONGS } = await import('./data/seedSongs');
           await saveSongsBatch(SEED_SONGS);
+          localStorage.setItem('dasong_has_seeded', 'true');
         }
         
         await syncSongsList();
@@ -565,12 +567,19 @@ export default function App() {
 
   // Clear library and format DB
   const handleClearLibrary = async () => {
+    if (!confirm('Are you sure you want to delete every song from both local and cloud databases permanently? This cannot be undone.')) {
+      return;
+    }
     try {
+      // Mark as seeded so that empty database does not trigger re-seeding on reload
+      localStorage.setItem('dasong_has_seeded', 'true');
       await clearAllSongs();
       setSelectedSongId(null);
       await syncSongsList();
+      alert('All songs have been successfully removed!');
     } catch (err) {
       console.error(err);
+      alert('Failed to clear library: ' + err);
     }
   };
 
