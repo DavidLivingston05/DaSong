@@ -1,0 +1,22 @@
+{
+  "name": "DaSong Studio",
+  "short_name": "DaSong",
+  "description": "Premium lyrics and chord library styled like professional studio DAW hardware with custom pitch transposition and metronomes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090B",
+  "theme_color": "#09090B",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

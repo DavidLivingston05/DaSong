@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+/* Force dark style defaults globally if we are in Elegant Dark */
+body {
+  background-color: #09090B;
+  color: #CBD5E1; /* Slate 300 */
+}
+
+/* Custom scrollbars for the high-end parchment and pristine dark feel */
+#lyric-sheet::-webkit-scrollbar,
+#lyrics-scroll-container::-webkit-scrollbar,
+#song-search-results::-webkit-scrollbar,
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+#lyric-sheet::-webkit-scrollbar-track,
+#lyrics-scroll-container::-webkit-scrollbar-track,
+#song-search-results::-webkit-scrollbar-track,
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#lyric-sheet::-webkit-scrollbar-thumb,
+#lyrics-scroll-container::-webkit-scrollbar-thumb,
+#song-search-results::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.15); /* amber backdrop */
+  border-radius: 99px;
+  transition: background-color 0.2s;
+}
+
+#lyric-sheet::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.3);
+}
+
+/* Glassmorphism utility for modern music design controls */
+.glass-effect {
+  background: rgba(9, 9, 11, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+/* Immersive Elegant dark radial light beam mapping */
+.atmosphere-overlay {
+  background-image: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(100%); opacity: 0; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.active-touch {
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.1s ease;
+}
+
+.active-touch:active {
+  transform: scale(0.95);
+  filter: brightness(0.85);
+}
+
+/* Momentum Kinetic Scrolling and isolated overscroll containment for PWA feel */
+body, 
+#lyrics-scroll-container,
+#mobile-stage-lyrics-canvas,
+#lyric-sheet,
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* iOS Notch Safety margins */
+.pb-safe {
+  padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));
+}
+
+.pt-safe {
+  padding-top: calc(0.625rem + env(safe-area-inset-top, 0px));
+}
+
+.bottom-sheet-mobile {
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* GPU-Accelerated Composite Layers for Constant 60-120 FPS Animations */
+.bottom-sheet-mobile,
+.animate-slideUp,
+.animate-slideDown,
+.animate-slideInRight,
+.animate-fadeIn {
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+

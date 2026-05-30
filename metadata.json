@@ -1,0 +1,6 @@
+{
+  "name": "DaSong",
+  "description": "DaSong is an elegant, high-end lyrics and chord library styled like professional studio DAW hardware, complete with custom key transposition, automatic responsive scrolling, and collaborative digital teleprompters.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
