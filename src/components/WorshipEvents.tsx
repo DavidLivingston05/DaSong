@@ -4,7 +4,7 @@ import {
   Music, BookOpen, Layers, Sparkles, Check, ArrowRight, ArrowUpRight, Search, ListPlus, MoveUp, MoveDown, ZoomIn, ZoomOut, Play, Pause
 } from 'lucide-react';
 import { WorshipEvent, UserRole, Song } from '../types';
-import { SongMetadata, getSongById } from '../lib/db';
+import { SongMetadata, getSongById, getLocalWorshipEvents, saveWorshipEvent, deleteWorshipEvent, subscribeToWorshipEvents } from '../lib/db';
 import { transposeLyrics, stripChords } from '../utils/chordTransposer';
 import { matchSong } from '../lib/search';
 
@@ -23,34 +23,16 @@ export default function WorshipEvents({
   selectedSongId,
   currentRole
 }: WorshipEventsProps) {
-  // Load events from LocalStorage
-  const [events, setEvents] = useState<WorshipEvent[]>(() => {
-    const saved = localStorage.getItem('lyrasync_events');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error parsing events from storage:', e);
-      }
-    }
-    
-    // Default interactive starter event
-    return [
-      {
-        id: 'event-starter-1',
-        title: 'Sunday Service 1 - Morning Praise',
-        date: new Date().toISOString().split('T')[0], // Today
-        time: '09:00',
-        description: 'Morning praise & devotion segment',
-        songIds: [] // User can add their songs
-      }
-    ];
-  });
+  // Load events from local cache initially
+  const [events, setEvents] = useState<WorshipEvent[]>(() => getLocalWorshipEvents());
 
-  // Save events whenever they change
+  // Listen to Firestore real-time updates for shared setlists
   useEffect(() => {
-    localStorage.setItem('lyrasync_events', JSON.stringify(events));
-  }, [events]);
+    const unsubscribe = subscribeToWorshipEvents((syncedEvents) => {
+      setEvents(syncedEvents);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Calendar Month Navigation State
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -213,7 +195,7 @@ export default function WorshipEvents({
     return songs.filter(s => matchSong(s, songSearch));
   }, [songs, songSearch]);
 
-  const handleCreateEventSubmit = (e: React.FormEvent) => {
+  const handleCreateEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createTitle.trim()) {
       alert('Event title is required.');
@@ -229,48 +211,73 @@ export default function WorshipEvents({
       songIds: createSongIds
     };
 
-    setEvents(p => [...p, newEvent]);
-    // Reset forms
-    setCreateTitle('');
-    setCreateDesc('');
-    setCreateSongIds([]);
-    setSongSearch('');
-    setShowCreateDialog(false);
+    try {
+      await saveWorshipEvent(newEvent);
+      setEvents(getLocalWorshipEvents());
+      // Reset forms
+      setCreateTitle('');
+      setCreateDesc('');
+      setCreateSongIds([]);
+      setSongSearch('');
+      setShowCreateDialog(false);
+    } catch (err) {
+      alert('Failed to save event: ' + err);
+    }
   };
 
-  const handleDeleteEvent = (id: string, e: React.MouseEvent) => {
+  const handleDeleteEvent = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Delete this event schedule permanently?')) {
-      setEvents(p => p.filter(ev => ev.id !== id));
-      if (editingEventId === id) setEditingEventId(null);
+      try {
+        await deleteWorshipEvent(id);
+        setEvents(getLocalWorshipEvents());
+        if (editingEventId === id) setEditingEventId(null);
+      } catch (err) {
+        alert('Failed to delete event: ' + err);
+      }
     }
   };
 
   // Manage songs inside an event live
-  const toggleSongInEvent = (eventId: string, songId: string) => {
-    setEvents(p => p.map(ev => {
-      if (ev.id !== eventId) return ev;
-      const exists = ev.songIds.includes(songId);
-      const updatedIds = exists 
-        ? ev.songIds.filter(id => id !== songId) 
-        : [...ev.songIds, songId];
-      return { ...ev, songIds: updatedIds };
-    }));
+  const toggleSongInEvent = async (eventId: string, songId: string) => {
+    const ev = events.find(e => e.id === eventId);
+    if (!ev) return;
+
+    const exists = ev.songIds.includes(songId);
+    const updatedIds = exists 
+      ? ev.songIds.filter(id => id !== songId) 
+      : [...ev.songIds, songId];
+      
+    const updatedEv = { ...ev, songIds: updatedIds };
+
+    try {
+      await saveWorshipEvent(updatedEv);
+      setEvents(getLocalWorshipEvents());
+    } catch (err) {
+      console.error('Failed to toggle song in event:', err);
+    }
   };
 
-  const moveSongInEvent = (eventId: string, index: number, direction: 'up' | 'down') => {
-    setEvents(p => p.map(ev => {
-      if (ev.id !== eventId) return ev;
-      const list = [...ev.songIds];
-      const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= list.length) return ev;
-      
-      const temp = list[index];
-      list[index] = list[targetIndex];
-      list[targetIndex] = temp;
-      
-      return { ...ev, songIds: list };
-    }));
+  const moveSongInEvent = async (eventId: string, index: number, direction: 'up' | 'down') => {
+    const ev = events.find(e => e.id === eventId);
+    if (!ev) return;
+
+    const list = [...ev.songIds];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+    
+    const temp = list[index];
+    list[index] = list[targetIndex];
+    list[targetIndex] = temp;
+    
+    const updatedEv = { ...ev, songIds: list };
+
+    try {
+      await saveWorshipEvent(updatedEv);
+      setEvents(getLocalWorshipEvents());
+    } catch (err) {
+      console.error('Failed to reorder song in event:', err);
+    }
   };
 
   const selectedDateLabel = useMemo(() => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders } from 'lucide-react';
 import { Song, UserRole } from '../types';
-import { getSongById, saveSong, getAllSongsMetadata, SongMetadata } from '../lib/db';
+import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions } from '../lib/db';
 import { transposeLyrics, stripChords } from '../utils/chordTransposer';
 import Metronome from './Metronome';
 
@@ -62,17 +62,9 @@ export default function SongDetail({
     return match ? match.title : 'Previous Song';
   }, [prevSongId, allMetadata]);
 
-  const handleSuggestThisSong = () => {
+  const handleSuggestThisSong = async () => {
     if (!song) return;
-    const saved = localStorage.getItem('lyrasync_guideline_suggestions');
-    let suggestions = [];
-    if (saved) {
-      try {
-        suggestions = JSON.parse(saved);
-      } catch {
-        suggestions = [];
-      }
-    }
+    const suggestions = getLocalSuggestions();
     
     if (suggestions.some((s: any) => s.songId === song.id)) {
       alert(`"${song.title}" has already been suggested to the Admin.`);
@@ -87,10 +79,13 @@ export default function SongDetail({
       timestamp: Date.now()
     };
 
-    suggestions.push(newSuggestion);
-    localStorage.setItem('lyrasync_guideline_suggestions', JSON.stringify(suggestions));
-    alert(`"${song.title}" has been successfully added to the Admin Review suggestions list!`);
-    onLyricsUpdated(); // notify parent
+    try {
+      await saveSuggestion(newSuggestion);
+      alert(`"${song.title}" has been successfully added to the Admin Review suggestions list!`);
+      onLyricsUpdated(); // notify parent
+    } catch (err) {
+      alert('Failed to save suggestion: ' + err);
+    }
   };
   
   // Custom interactive musician transposition controls
