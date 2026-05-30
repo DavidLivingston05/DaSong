@@ -274,6 +274,15 @@ export default function App() {
       setInitialLoading(true);
       try {
         await initDB();
+        let list = await getAllSongsMetadata();
+        
+        // Auto-seed database with default worship songsheets if completely empty
+        if (list.length === 0) {
+          console.log('Song library is empty. Seeding default worship songbook...');
+          const { SEED_SONGS } = await import('./data/seedSongs');
+          await saveSongsBatch(SEED_SONGS);
+        }
+        
         await syncSongsList();
         loadSuggestions();
       } catch (err) {
