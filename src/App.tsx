@@ -13,18 +13,8 @@ import {
   saveSong, 
   deleteSong, 
   clearAllSongs, 
-  SongMetadata,
-  subscribeToSongs,
-  subscribeToSuggestions,
-  migrateLocalDataToCloud
+  SongMetadata
 } from './lib/db';
-import {
-  isFirebaseActive,
-  initFirebase,
-  disconnectFirebase,
-  getFirebaseConfig,
-  parseConfigString
-} from './lib/firebase';
 import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
 import SongList from './components/SongList';
@@ -35,16 +25,7 @@ export default function App() {
   const [songs, setSongs] = useState<SongMetadata[]>([]);
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
 
-  // Firebase configuration & sync states
-  const [firebaseActive, setFirebaseActive] = useState<boolean>(() => isFirebaseActive());
-  const [firebaseError, setFirebaseError] = useState<string | null>(null);
-  const [showFirebaseModal, setShowFirebaseModal] = useState<boolean>(false);
-  const [firebaseConfigText, setFirebaseConfigText] = useState<string>(() => {
-    const config = getFirebaseConfig();
-    return config ? JSON.stringify(config, null, 2) : '';
-  });
-  const [migrationStatus, setMigrationStatus] = useState<string>('');
-  const [migrating, setMigrating] = useState<boolean>(false);
+
 
   // PWA Installation & OS Detection States
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -186,82 +167,7 @@ export default function App() {
     lyrics: ''
   });
 
-  // Firebase client interaction handlers
-  const handleSaveFirebaseConfig = (configStr: string) => {
-    const parsed = parseConfigString(configStr);
-    if (!parsed) {
-      alert('Invalid Firebase configuration JSON block. Please make sure to copy-paste the complete configuration object from your Firebase console.');
-      return;
-    }
 
-    const firestore = initFirebase(parsed);
-    if (firestore) {
-      setFirebaseActive(true);
-      alert('Firebase successfully connected! Cloud sync active.');
-    } else {
-      alert('Failed to initialize Firebase with the provided configuration. Please check your credentials.');
-    }
-  };
-
-  const handleDisconnectFirebase = () => {
-    if (confirm('Disconnect from Firebase cloud database and switch back to local offline storage?')) {
-      disconnectFirebase();
-      setFirebaseActive(false);
-      setFirebaseConfigText('');
-      window.location.reload(); // Reload to cleanly reset subscriptions
-    }
-  };
-
-  const handleRunMigration = async () => {
-    setMigrating(true);
-    setMigrationStatus('Starting migration...');
-    try {
-      await migrateLocalDataToCloud((text) => setMigrationStatus(text));
-      alert('Migration completed successfully! All your songs, setlists, and suggestions are now safely in the cloud.');
-      await syncSongsList();
-    } catch (err: any) {
-      alert('Migration error: ' + err.message);
-    } finally {
-      setMigrating(false);
-    }
-  };
-
-  // Real-time Firebase database listeners
-  useEffect(() => {
-    if (!firebaseActive) {
-      setFirebaseError(null);
-      return;
-    }
-
-    console.log('Registering real-time Firestore sync subscriptions...');
-    setFirebaseError(null);
-
-    const handleSyncError = (err: any) => {
-      console.error('App Firebase Sync Error:', err);
-      let msg = err?.message || String(err);
-      if (msg.includes('permission-denied') || msg.includes('Missing or insufficient permissions') || msg.includes('Permission denied')) {
-        msg = 'Permission Denied: Please check your Firestore rules! Ensure they allow public read/write access during testing (allow read, write: if true;).';
-      } else if (msg.includes('not-found') || msg.includes('database')) {
-        msg = 'Database Error: Please ensure you have created the "(default)" database in Native Mode in your Firestore console!';
-      }
-      setFirebaseError(msg);
-    };
-
-    // 1. Subscribe to songs
-    const unsubscribeSongs = subscribeToSongs(async () => {
-      await syncSongsList();
-    }, handleSyncError);
-
-    // 2. Subscribe to suggestions
-    const unsubscribeSuggestions = subscribeToSuggestions((syncedSuggestions) => {
-      setSuggestions(syncedSuggestions);
-    }, handleSyncError);
-
-    return () => {
-      unsubscribeSongs();
-      unsubscribeSuggestions();
-    };
-  }, [firebaseActive, syncSongsList]);
 
   // Load / Sync songs metadata on load
   const syncSongsList = useCallback(async () => {
@@ -867,33 +773,7 @@ export default function App() {
                     }`} />
                   </button>
 
-                  {/* Firebase Cloud Sync Badge Status Button */}
-                  <button
-                    id="firebase-sync-status-badge"
-                    onClick={() => setShowFirebaseModal(true)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
-                      firebaseError
-                        ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.15)] animate-pulse'
-                        : firebaseActive
-                          ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
-                          : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                    }`}
-                    title="Firebase Cloud Sync Console"
-                  >
-                    <span className="text-xs leading-none">
-                      {firebaseError ? '⚠️' : '☁️'}
-                    </span>
-                    <span>
-                      {firebaseError ? 'Sync Error' : firebaseActive ? 'Cloud Synced' : 'Offline Cache'}
-                    </span>
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                      firebaseError
-                        ? 'bg-red-500 shadow-[0_0_6px_#ef4444]'
-                        : firebaseActive
-                          ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]'
-                          : 'bg-zinc-650'
-                    }`} />
-                  </button>
+
                   {/* Mobile Guest Quick Search Icon */}
                   {session.role === 'guest' && (
                     <button
@@ -1792,158 +1672,7 @@ That [G] saved a wretch like [D] me!`}
                 className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer active-touch text-center shadow-md shadow-amber-500/10"
               >
                 Close Sync Console
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Firebase Cloud Sync Console Modal */}
-      {showFirebaseModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-xs z-50 flex items-end md:items-center justify-center p-0 md:p-4 animate-in fade-in duration-200">
-          <div 
-            id="firebase-sync-modal" 
-            className="bg-[#070708] w-full h-auto md:max-w-md rounded-t-3xl md:rounded-3xl p-6 space-y-5 shadow-2xl border-t md:border border-white/10 text-slate-350 bottom-sheet-mobile md:animate-in md:zoom-in-95 overflow-y-auto pb-safe max-h-[85vh]"
-          >
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                <span className="text-xl">☁️</span> Firebase Cloud Sync
-              </h3>
-              <button
-                onClick={() => setShowFirebaseModal(false)}
-                className="p-1.5 hover:bg-white/5 rounded-full text-slate-400 cursor-pointer active-touch transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Active Connection Telemetry Badging */}
-              <div className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
-                firebaseActive
-                  ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.05)]'
-                  : 'bg-zinc-950 border-zinc-850 text-zinc-400'
-              }`}>
-                <div className="flex flex-col gap-0.5 text-left">
-                  <span className="text-[10px] font-mono tracking-widest uppercase font-extrabold text-zinc-500">CLOUD DATABASE STATE</span>
-                  <span className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
-                    {firebaseActive ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
-                        Cloud Synced Active
-                      </>
-                    ) : (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-zinc-600" />
-                        Local Offline Storage
-                      </>
-                    )}
-                  </span>
-                </div>
-                {firebaseActive && (
-                  <div className="text-right">
-                    <span className="text-[10px] font-mono tracking-widest uppercase font-extrabold text-zinc-500 block">PROJECT ID</span>
-                    <span className="font-mono text-[11px] font-black text-amber-500 tracking-tight block max-w-[120px] truncate">
-                      {getFirebaseConfig()?.projectId || 'dasong-app'}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Display Firebase Sync Error if any */}
-              {firebaseError && (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-left space-y-2 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-2 text-red-400 font-extrabold text-[11px] font-mono tracking-wider">
-                    <span className="text-xs">⚠️</span> SYNC CONNECTION ERROR
-                  </div>
-                  <p className="text-[10px] text-zinc-300 leading-relaxed font-semibold">
-                    {firebaseError}
-                  </p>
-                  <div className="text-[9px] text-zinc-500 font-medium pt-1 leading-normal border-t border-white/5">
-                    *Troubleshoot Checklist:<br />
-                    1. In your Firebase Console, make sure you created the <strong className="text-amber-500 font-bold">Firestore Database</strong> in <strong className="text-amber-550 font-bold">Native Mode</strong>.<br />
-                    2. Go to the <strong className="text-white font-bold">Rules</strong> tab and set public rules:<br />
-                    <code className="block mt-1 p-1 bg-zinc-950 rounded text-[8.5px] text-zinc-400 font-mono select-all">allow read, write: if true;</code>
-                  </div>
-                </div>
-              )}
-
-              {/* Dynamic Action Area: Input configuration block if disconnected */}
-              {!firebaseActive ? (
-                <div className="space-y-3 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800 text-left">
-                  <div>
-                    <label className="block text-[11px] font-bold text-zinc-400 mb-1.5 uppercase font-mono tracking-wider">Connect Custom Firebase Project</label>
-                    <p className="text-[10px] text-zinc-500 leading-relaxed mb-3 font-medium">
-                      Copy and paste the Web App configuration block from your Firebase Console settings:
-                    </p>
-                    <textarea 
-                      id="firebase-config-input"
-                      rows={6}
-                      placeholder={`{\n  "apiKey": "AIzaSy...",\n  "authDomain": "my-project.firebaseapp.com",\n  "projectId": "my-project",\n  "storageBucket": "my-project.appspot.com",\n  "messagingSenderId": "12345678",\n  "appId": "1:12345678:web:abcd"\n}`}
-                      value={firebaseConfigText}
-                      onChange={(e) => setFirebaseConfigText(e.target.value)}
-                      className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-white outline-none focus:border-amber-500 text-xs font-mono"
-                    />
-                  </div>
-                  
-                  <button
-                    onClick={() => handleSaveFirebaseConfig(firebaseConfigText)}
-                    className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2.5 rounded-xl text-xs transition-all active:scale-95 shadow-md shadow-amber-500/10 cursor-pointer active-touch mt-2"
-                  >
-                    Authorize & Connect Cloud
-                  </button>
-                </div>
-              ) : (
-                /* Connected cloud management panel */
-                <div className="space-y-4 text-left">
-                  
-                  {/* Migration and Setup Box */}
-                  <div className="bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800 space-y-3">
-                    <span className="text-[11px] font-bold text-white font-mono uppercase tracking-wider block">Local-to-Cloud Migration Vault</span>
-                    <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
-                      If you have songs, events, or choir setlists created locally on this browser, click below to migrate them to your shared cloud database so everyone can use them!
-                    </p>
-                    
-                    {migrationStatus && (
-                      <div className="p-3 bg-zinc-950 border border-zinc-850 font-mono text-[9.5px] rounded-lg text-amber-500 leading-normal">
-                        {migrationStatus}
-                      </div>
-                    )}
-                    
-                    <button
-                      disabled={migrating}
-                      onClick={handleRunMigration}
-                      className="w-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-bold py-2.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                    >
-                      {migrating ? 'Migrating Vault Data...' : 'Migrate Local Data to Cloud'}
-                    </button>
-                  </div>
-
-                  {/* Disconnect Warning Panel */}
-                  <div className="bg-red-500/5 p-4 rounded-2xl border border-red-500/15 text-left space-y-3">
-                    <span className="text-[11px] font-bold text-red-400 font-mono uppercase tracking-wider block">Danger Zone</span>
-                    <p className="text-[10px] text-zinc-550 leading-relaxed font-semibold">
-                      Disconnecting will clear cloud credentials from this device and return to local browser storage mode.
-                    </p>
-                    <button
-                      onClick={handleDisconnectFirebase}
-                      className="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 font-extrabold py-2.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
-                    >
-                      Disconnect Cloud Database
-                    </button>
-                  </div>
-
-                </div>
-              )}
-            </div>
-
-            <div className="pt-2 border-t border-white/5 flex">
-              <button
-                type="button"
-                onClick={() => setShowFirebaseModal(false)}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer active-touch text-center shadow-md shadow-amber-500/10"
-              >
-                Close Integration Panel
+           
               </button>
             </div>
           </div>

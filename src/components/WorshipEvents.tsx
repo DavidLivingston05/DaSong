@@ -4,7 +4,7 @@ import {
   Music, BookOpen, Layers, Sparkles, Check, ArrowRight, ArrowUpRight, Search, ListPlus, MoveUp, MoveDown, ZoomIn, ZoomOut, Play, Pause
 } from 'lucide-react';
 import { WorshipEvent, UserRole, Song } from '../types';
-import { SongMetadata, getSongById, getLocalWorshipEvents, saveWorshipEvent, deleteWorshipEvent, subscribeToWorshipEvents } from '../lib/db';
+import { SongMetadata, getSongById, getLocalWorshipEvents, saveWorshipEvent, deleteWorshipEvent } from '../lib/db';
 import { transposeLyrics, stripChords } from '../utils/chordTransposer';
 import { matchSong } from '../lib/search';
 
@@ -26,13 +26,7 @@ export default function WorshipEvents({
   // Load events from local cache initially
   const [events, setEvents] = useState<WorshipEvent[]>(() => getLocalWorshipEvents());
 
-  // Listen to Firestore real-time updates for shared setlists
-  useEffect(() => {
-    const unsubscribe = subscribeToWorshipEvents((syncedEvents) => {
-      setEvents(syncedEvents);
-    });
-    return () => unsubscribe();
-  }, []);
+
 
   // Calendar Month Navigation State
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
