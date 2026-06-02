@@ -8,6 +8,7 @@ export interface Song {
   category?: string; // e.g. "Worship", "Hymn", "Thanksgiving", "Christmas"
   favorite?: boolean;
   createdAt: number;
+  updatedAt?: number;
 }
 
 export type PlaybackStatus = 'idle' | 'playing' | 'paused';

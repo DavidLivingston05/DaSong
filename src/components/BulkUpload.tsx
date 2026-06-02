@@ -123,7 +123,8 @@ To [A7] save a wretch like [D] me`;
       bpm,
       category,
       lyrics,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     };
   };
 
@@ -180,20 +181,26 @@ To [A7] save a wretch like [D] me`;
       setProgress(p => ({ ...p, current: Math.min(i + 50, totalCount) }));
     }
 
-    // 2. Multi-insert save batches into IndexedDB transaction
-    setProgress({ current: 0, total: processedSongs.length, stage: 'Writing directly into local Database store...' });
-    
-    for (let i = 0; i < processedSongs.length; i += batchSize) {
-      const batch = processedSongs.slice(i, i + batchSize);
-      await saveSongsBatch(batch);
+    try {
+      // 2. Multi-insert save batches into IndexedDB transaction
+      setProgress({ current: 0, total: processedSongs.length, stage: 'Writing directly into local Database store...' });
       
-      setProgress(p => ({ ...p, current: Math.min(i + batchSize, processedSongs.length) }));
-    }
+      for (let i = 0; i < processedSongs.length; i += batchSize) {
+        const batch = processedSongs.slice(i, i + batchSize);
+        await saveSongsBatch(batch);
+        
+        setProgress(p => ({ ...p, current: Math.min(i + batchSize, processedSongs.length) }));
+      }
 
-    const elapsed = performance.now() - startTime;
-    setImportStats({ imported: processedSongs.length, timeMs: Math.round(elapsed) });
-    setLoading(false);
-    onSuccess();
+      const elapsed = performance.now() - startTime;
+      setImportStats({ imported: processedSongs.length, timeMs: Math.round(elapsed) });
+      setLoading(false);
+      onSuccess();
+    } catch (err: any) {
+      console.error(err);
+      alert('Failed to sync uploaded songs to cloud database: ' + (err.message || err));
+      setLoading(false);
+    }
   };
 
   // Parse bulk paste multiline strings divided by '---'
@@ -218,19 +225,25 @@ To [A7] save a wretch like [D] me`;
       importedSongs.push(song);
     }
 
-    setProgress({ current: 0, total: importedSongs.length, stage: 'Storing in high-performance local table...' });
-    
-    const batchSize = 100;
-    for (let i = 0; i < importedSongs.length; i += batchSize) {
-      const batch = importedSongs.slice(i, i + batchSize);
-      await saveSongsBatch(batch);
-    }
+    try {
+      setProgress({ current: 0, total: importedSongs.length, stage: 'Storing in high-performance local table...' });
+      
+      const batchSize = 100;
+      for (let i = 0; i < importedSongs.length; i += batchSize) {
+        const batch = importedSongs.slice(i, i + batchSize);
+        await saveSongsBatch(batch);
+      }
 
-    const elapsed = performance.now() - startTime;
-    setImportStats({ imported: importedSongs.length, timeMs: Math.round(elapsed) });
-    setLoading(false);
-    setBulkTextArea('');
-    onSuccess();
+      const elapsed = performance.now() - startTime;
+      setImportStats({ imported: importedSongs.length, timeMs: Math.round(elapsed) });
+      setLoading(false);
+      setBulkTextArea('');
+      onSuccess();
+    } catch (err: any) {
+      console.error(err);
+      alert('Failed to sync pasted songs to cloud database: ' + (err.message || err));
+      setLoading(false);
+    }
   };
 
   return (

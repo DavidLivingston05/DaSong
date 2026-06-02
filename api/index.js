@@ -5,7 +5,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Set MongoDB URI from environment variables or use the user's Atlas fallback
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://churchtechonly:Livingston@church.sn67zp8.mongodb.net/dasong?retryWrites=true&w=majority&appName=Church';
@@ -39,6 +40,36 @@ const asyncHandler = (fn) => (req, res, next) => {
 app.get('/api/songs', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const songs = await db.collection('songs').find({}).toArray();
+  res.json(songs);
+}));
+
+// GET /api/songs/metadata
+app.get('/api/songs/metadata', asyncHandler(async (req, res) => {
+  const { db } = await connectToDatabase();
+  const metadata = await db.collection('songs').find({}, {
+    projection: {
+      id: 1,
+      title: 1,
+      author: 1,
+      key: 1,
+      bpm: 1,
+      category: 1,
+      favorite: 1,
+      createdAt: 1,
+      updatedAt: 1
+    }
+  }).toArray();
+  res.json(metadata);
+}));
+
+// POST /api/songs/fetch-batch
+app.post('/api/songs/fetch-batch', asyncHandler(async (req, res) => {
+  const { db } = await connectToDatabase();
+  const ids = req.body.ids;
+  if (!Array.isArray(ids)) {
+    return res.status(400).json({ error: 'ids must be an array of IDs' });
+  }
+  const songs = await db.collection('songs').find({ id: { $in: ids } }).toArray();
   res.json(songs);
 }));
 

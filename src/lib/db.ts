@@ -97,23 +97,56 @@ async function apiRequest(path: string, options?: RequestInit): Promise<any> {
   return response.json();
 }
 
-// Synchronizes the cloud MongoDB state back to local IndexedDB and localStorage
+// Synchronizes the cloud MongoDB state back to local IndexedDB and localStorage using Delta/Timestamp Sync
 export async function syncWithMongoDB(): Promise<void> {
-  // 1. Sync Songs
-  const cloudSongs: Song[] = await apiRequest('/api/songs');
+  // 1. Sync Songs in an optimized Delta fashion to scale to 15,000+ songs
+  const cloudMetadata: SongMetadata[] = await apiRequest('/api/songs/metadata');
   const localMetadata = await getAllSongsMetadata();
-  const localIds = new Set(localMetadata.map(s => s.id));
-  const cloudIds = new Set(cloudSongs.map(s => s.id));
 
-  // Update local IndexedDB with cloud data
-  if (cloudSongs.length > 0) {
-    await saveSongsBatchIndexedDB(cloudSongs);
+  const localMetadataMap = new Map<string, SongMetadata>();
+  for (const s of localMetadata) {
+    localMetadataMap.set(s.id, s);
+  }
+
+  const cloudIds = new Set<string>();
+  const missingOrOutdatedIds: string[] = [];
+
+  for (const cloudSong of cloudMetadata) {
+    cloudIds.add(cloudSong.id);
+    const localSong = localMetadataMap.get(cloudSong.id);
+
+    if (!localSong) {
+      // Missing locally
+      missingOrOutdatedIds.push(cloudSong.id);
+    } else {
+      // Compare timestamps
+      const cloudTime = cloudSong.updatedAt || cloudSong.createdAt || 0;
+      const localTime = localSong.updatedAt || localSong.createdAt || 0;
+      if (cloudTime > localTime) {
+        missingOrOutdatedIds.push(cloudSong.id);
+      }
+    }
   }
 
   // Delete local songs that were deleted from the cloud database
-  for (const id of localIds) {
-    if (!cloudIds.has(id)) {
-      await deleteSongIndexedDB(id);
+  for (const localSong of localMetadata) {
+    if (!cloudIds.has(localSong.id)) {
+      await deleteSongIndexedDB(localSong.id);
+    }
+  }
+
+  // Pull missing/outdated songs in batches of 200 to prevent server/Vercel payload limits
+  if (missingOrOutdatedIds.length > 0) {
+    const chunkSize = 200;
+    for (let i = 0; i < missingOrOutdatedIds.length; i += chunkSize) {
+      const chunk = missingOrOutdatedIds.slice(i, i + chunkSize);
+      const fullSongsChunk: Song[] = await apiRequest('/api/songs/fetch-batch', {
+        method: 'POST',
+        body: JSON.stringify({ ids: chunk })
+      });
+      if (fullSongsChunk.length > 0) {
+        await saveSongsBatchIndexedDB(fullSongsChunk);
+      }
     }
   }
 
@@ -140,6 +173,7 @@ export async function saveSongsBatch(songs: Song[]): Promise<void> {
     });
   } catch (err) {
     console.error('Failed to sync batch to MongoDB:', err);
+    throw err;
   }
 }
 
@@ -152,6 +186,7 @@ export async function saveSong(song: Song): Promise<void> {
     });
   } catch (err) {
     console.error('Failed to sync song to MongoDB:', err);
+    throw err;
   }
 }
 
@@ -163,6 +198,7 @@ export async function deleteSong(id: string): Promise<void> {
     });
   } catch (err) {
     console.error('Failed to sync song deletion to MongoDB:', err);
+    throw err;
   }
 }
 
@@ -174,6 +210,7 @@ export async function clearAllSongs(): Promise<void> {
     });
   } catch (err) {
     console.error('Failed to sync library clear to MongoDB:', err);
+    throw err;
   }
 }
 
@@ -199,6 +236,8 @@ export interface SongMetadata {
   bpm?: number;
   category?: string;
   favorite?: boolean;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
@@ -222,7 +261,9 @@ export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
           key: val.key,
           bpm: val.bpm,
           category: val.category,
-          favorite: !!val.favorite
+          favorite: !!val.favorite,
+          createdAt: val.createdAt,
+          updatedAt: val.updatedAt
         });
         cursor.continue();
       } else {
@@ -281,6 +322,7 @@ export async function saveWorshipEvent(event: WorshipEvent): Promise<void> {
     });
   } catch (err) {
     console.error('Failed to sync worship event to MongoDB:', err);
+    throw err;
   }
 }
 
@@ -294,6 +336,7 @@ export async function deleteWorshipEvent(id: string): Promise<void> {
     });
   } catch (err) {
     console.error('Failed to sync worship event deletion to MongoDB:', err);
+    throw err;
   }
 }
 
@@ -331,6 +374,7 @@ export async function saveSuggestion(suggestion: SuggestedSong): Promise<void> {
     });
   } catch (err) {
     console.error('Failed to sync suggestion to MongoDB:', err);
+    throw err;
   }
 }
 
@@ -344,5 +388,6 @@ export async function deleteSuggestion(id: string): Promise<void> {
     });
   } catch (err) {
     console.error('Failed to sync suggestion deletion to MongoDB:', err);
+    throw err;
   }
 }

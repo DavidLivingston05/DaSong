@@ -209,7 +209,8 @@ export default function SongDetail({
       key: editForm.key,
       bpm: Number(editForm.bpm) || 75,
       category: editForm.category,
-      lyrics: editForm.lyrics
+      lyrics: editForm.lyrics,
+      updatedAt: Date.now()
     };
 
     try {

@@ -4,7 +4,7 @@ import {
   Trash2, X, AlertCircle, RefreshCw, Check, BookOpen, Database, Award, 
   ChevronRight, Compass, HelpCircle, Calendar, Download, Smartphone, Search
 } from 'lucide-react';
-import { Song, UserRole } from './types';
+import { Song, UserRole, WorshipEvent } from './types';
 import { 
   initDB, 
   getAllSongsMetadata, 
@@ -14,7 +14,8 @@ import {
   deleteSong, 
   clearAllSongs, 
   SongMetadata,
-  syncWithMongoDB
+  syncWithMongoDB,
+  getLocalWorshipEvents
 } from './lib/db';
 import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
@@ -51,6 +52,13 @@ export default function App() {
 
   // Choir Suggestions Review State & Helpers
   const [suggestions, setSuggestions] = useState<any[]>([]);
+
+  // Worship Calendar Events State & Helpers
+  const [events, setEvents] = useState<WorshipEvent[]>([]);
+
+  const loadEvents = useCallback(() => {
+    setEvents(getLocalWorshipEvents());
+  }, []);
 
   const loadSuggestions = useCallback(() => {
     const saved = localStorage.getItem('lyrasync_guideline_suggestions');
@@ -199,12 +207,13 @@ export default function App() {
       await syncWithMongoDB();
       await syncSongsList();
       loadSuggestions();
+      loadEvents();
       setMongoStatus('connected');
     } catch (err) {
       console.error('Failed to synchronize with MongoDB Cloud:', err);
       setMongoStatus('error');
     }
-  }, [syncSongsList, loadSuggestions]);
+  }, [syncSongsList, loadSuggestions, loadEvents]);
 
   const handleForceSync = () => {
     triggerMongoSync();
@@ -250,6 +259,7 @@ export default function App() {
         
         await syncSongsList();
         loadSuggestions();
+        loadEvents();
       } catch (err) {
         console.error('Database setup error:', err);
       } finally {
@@ -257,7 +267,7 @@ export default function App() {
       }
     }
     bootApp();
-  }, [syncSongsList, loadSuggestions]);
+  }, [syncSongsList, loadSuggestions, loadEvents]);
 
   // Set dark mode configuration to document body
   useEffect(() => {
@@ -508,7 +518,8 @@ export default function App() {
       bpm: Number(addForm.bpm) || 72,
       category: addForm.category,
       lyrics: addForm.lyrics,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     };
 
     try {
@@ -1258,6 +1269,8 @@ export default function App() {
         {activeTab === 'calendar' && session?.role !== 'guest' && (
           <WorshipEvents
             songs={songs}
+            events={events}
+            onEventsChange={loadEvents}
             onClose={() => setActiveTab('dashboard')}
             onSelectSong={(id, setlistSongIds) => {
               setSongSourceTab('calendar');

@@ -10,6 +10,8 @@ import { matchSong } from '../lib/search';
 
 interface WorshipEventsProps {
   songs: SongMetadata[];
+  events: WorshipEvent[];
+  onEventsChange: () => void;
   onClose: () => void;
   onSelectSong: (id: string, setlistSongIds?: string[]) => void;
   selectedSongId: string | null;
@@ -18,13 +20,13 @@ interface WorshipEventsProps {
 
 export default function WorshipEvents({
   songs,
+  events,
+  onEventsChange,
   onClose,
   onSelectSong,
   selectedSongId,
   currentRole
 }: WorshipEventsProps) {
-  // Load events from local cache initially
-  const [events, setEvents] = useState<WorshipEvent[]>(() => getLocalWorshipEvents());
 
 
 
@@ -207,7 +209,7 @@ export default function WorshipEvents({
 
     try {
       await saveWorshipEvent(newEvent);
-      setEvents(getLocalWorshipEvents());
+      onEventsChange();
       // Reset forms
       setCreateTitle('');
       setCreateDesc('');
@@ -224,7 +226,7 @@ export default function WorshipEvents({
     if (confirm('Delete this event schedule permanently?')) {
       try {
         await deleteWorshipEvent(id);
-        setEvents(getLocalWorshipEvents());
+        onEventsChange();
         if (editingEventId === id) setEditingEventId(null);
       } catch (err) {
         alert('Failed to delete event: ' + err);
@@ -246,7 +248,7 @@ export default function WorshipEvents({
 
     try {
       await saveWorshipEvent(updatedEv);
-      setEvents(getLocalWorshipEvents());
+      onEventsChange();
     } catch (err) {
       console.error('Failed to toggle song in event:', err);
     }
@@ -268,7 +270,7 @@ export default function WorshipEvents({
 
     try {
       await saveWorshipEvent(updatedEv);
-      setEvents(getLocalWorshipEvents());
+      onEventsChange();
     } catch (err) {
       console.error('Failed to reorder song in event:', err);
     }
@@ -961,7 +963,7 @@ export default function WorshipEvents({
             {currentRole === 'admin' && activeEvent && (
               <div className="mt-4 pt-3 border-t border-zinc-900 shrink-0 flex items-center gap-2">
                 <button 
-                  onClick={() => {
+                  onClick={async () => {
                     setCreateTitle(activeEvent.title);
                     setCreateDate(activeEvent.date);
                     setCreateTime(activeEvent.time || '09:00');
@@ -969,7 +971,12 @@ export default function WorshipEvents({
                     setCreateSongIds(activeEvent.songIds);
                     // Open simple quick form by deleting first or just saving over-write:
                     // Deleting and styling
-                    setEvents(p => p.filter(ev => ev.id !== activeEvent.id));
+                    try {
+                      await deleteWorshipEvent(activeEvent.id);
+                    } catch (err) {
+                      console.error(err);
+                    }
+                    onEventsChange();
                     setShowCreateDialog(true);
                   }}
                   className="flex-1 py-3 bg-zinc-900 border border-zinc-800 text-zinc-300 font-bold text-xs rounded-xl text-center active:scale-[0.98] transition-transform"
