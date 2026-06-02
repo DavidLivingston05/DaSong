@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dasong-v1';
+const CACHE_NAME = 'dasong-v2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -13,6 +13,7 @@ self.addEventListener('install', (e) => {
       return cache.addAll(ASSETS);
     })
   );
+  self.skipWaiting(); // Force activation immediately
 });
 
 self.addEventListener('activate', (e) => {
@@ -25,18 +26,33 @@ self.addEventListener('activate', (e) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim()) // Claim clients immediately
   );
 });
 
 self.addEventListener('fetch', (e) => {
+  // Use Network-First strategy for the entry page and navigation requests
+  if (e.request.mode === 'navigate' || e.request.url.endsWith('/') || e.request.url.endsWith('/index.html')) {
+    e.respondWith(
+      fetch(e.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, clone);
+          });
+          return response;
+        })
+        .catch(() => {
+          return caches.match('/index.html');
+        })
+    );
+    return;
+  }
+
+  // Use Cache-First for static assets (images, manifest, icons, hashed JS/CSS bundles)
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
-      return cachedResponse || fetch(e.request).catch(() => {
-        if (e.request.mode === 'navigate') {
-          return caches.match('/index.html');
-        }
-      });
+      return cachedResponse || fetch(e.request);
     })
   );
 });
