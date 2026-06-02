@@ -8,13 +8,16 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Set MongoDB URI from environment variables or use the user's Atlas fallback
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://churchtechonly:Livingston@church.sn67zp8.mongodb.net/dasong?retryWrites=true&w=majority&appName=Church';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 let cachedClient = null;
 let cachedDb = null;
 
 async function connectToDatabase() {
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI environment variable is not configured. Please add it in your Vercel Project Settings.');
+  }
+
   if (cachedClient && cachedDb) {
     return { client: cachedClient, db: cachedDb };
   }
