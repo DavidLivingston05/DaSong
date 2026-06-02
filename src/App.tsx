@@ -269,6 +269,19 @@ export default function App() {
     bootApp();
   }, [syncSongsList, loadSuggestions, loadEvents]);
 
+  // Auto-reload the page when a new Service Worker (Vercel deploy) takes control
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      const handleControllerChange = () => {
+        window.location.reload();
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+      return () => {
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      };
+    }
+  }, []);
+
   // Set dark mode configuration to document body
   useEffect(() => {
     if (isDarkMode) {
