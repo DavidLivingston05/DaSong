@@ -79,24 +79,102 @@ async function clearAllSongsIndexedDB(): Promise<void> {
 }
 
 // -------------------------------------------------------------------------
-// PUBLIC CODES ROUTING (LOCAL ONLY)
+// BACKEND API INTEGRATION HELPERS
 // -------------------------------------------------------------------------
 
-// Bulk insert songs in unified single transaction for maximum upload speed
+async function apiRequest(path: string, options?: RequestInit): Promise<any> {
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.headers || {})
+    }
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(errText || `API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+// Synchronizes the cloud MongoDB state back to local IndexedDB and localStorage
+export async function syncWithMongoDB(): Promise<void> {
+  // 1. Sync Songs
+  const cloudSongs: Song[] = await apiRequest('/api/songs');
+  const localMetadata = await getAllSongsMetadata();
+  const localIds = new Set(localMetadata.map(s => s.id));
+  const cloudIds = new Set(cloudSongs.map(s => s.id));
+
+  // Update local IndexedDB with cloud data
+  if (cloudSongs.length > 0) {
+    await saveSongsBatchIndexedDB(cloudSongs);
+  }
+
+  // Delete local songs that were deleted from the cloud database
+  for (const id of localIds) {
+    if (!cloudIds.has(id)) {
+      await deleteSongIndexedDB(id);
+    }
+  }
+
+  // 2. Sync Worship Calendar Events
+  const cloudEvents: WorshipEvent[] = await apiRequest('/api/events');
+  saveLocalWorshipEvents(cloudEvents);
+
+  // 3. Sync Choir Guidelines Suggestions
+  const cloudSuggestions: SuggestedSong[] = await apiRequest('/api/suggestions');
+  saveLocalSuggestions(cloudSuggestions);
+}
+
+// -------------------------------------------------------------------------
+// PUBLIC CODES ROUTING (LOCAL + MONGO CLOUD)
+// -------------------------------------------------------------------------
+
+// Bulk insert songs in unified single transaction
 export async function saveSongsBatch(songs: Song[]): Promise<void> {
   await saveSongsBatchIndexedDB(songs);
+  try {
+    await apiRequest('/api/songs', {
+      method: 'POST',
+      body: JSON.stringify(songs)
+    });
+  } catch (err) {
+    console.error('Failed to sync batch to MongoDB:', err);
+  }
 }
 
 export async function saveSong(song: Song): Promise<void> {
   await saveSongIndexedDB(song);
+  try {
+    await apiRequest('/api/songs', {
+      method: 'POST',
+      body: JSON.stringify(song)
+    });
+  } catch (err) {
+    console.error('Failed to sync song to MongoDB:', err);
+  }
 }
 
 export async function deleteSong(id: string): Promise<void> {
   await deleteSongIndexedDB(id);
+  try {
+    await apiRequest(`/api/songs/${id}`, {
+      method: 'DELETE'
+    });
+  } catch (err) {
+    console.error('Failed to sync song deletion to MongoDB:', err);
+  }
 }
 
 export async function clearAllSongs(): Promise<void> {
   await clearAllSongsIndexedDB();
+  try {
+    await apiRequest('/api/songs', {
+      method: 'DELETE'
+    });
+  } catch (err) {
+    console.error('Failed to sync library clear to MongoDB:', err);
+  }
 }
 
 // Lazy-load lyrics for a single song (reads local for instant 0ms access)
@@ -157,7 +235,7 @@ export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
 }
 
 // -------------------------------------------------------------------------
-// WORSHIP EVENTS LOCAL SYSTEM
+// WORSHIP EVENTS LOCAL SYSTEM + MONGO CLOUD
 // -------------------------------------------------------------------------
 
 export function getLocalWorshipEvents(): WorshipEvent[] {
@@ -195,15 +273,32 @@ export async function saveWorshipEvent(event: WorshipEvent): Promise<void> {
     localEvents.push(event);
   }
   saveLocalWorshipEvents(localEvents);
+
+  try {
+    await apiRequest('/api/events', {
+      method: 'POST',
+      body: JSON.stringify(event)
+    });
+  } catch (err) {
+    console.error('Failed to sync worship event to MongoDB:', err);
+  }
 }
 
 export async function deleteWorshipEvent(id: string): Promise<void> {
   const localEvents = getLocalWorshipEvents().filter(e => e.id !== id);
   saveLocalWorshipEvents(localEvents);
+
+  try {
+    await apiRequest(`/api/events/${id}`, {
+      method: 'DELETE'
+    });
+  } catch (err) {
+    console.error('Failed to sync worship event deletion to MongoDB:', err);
+  }
 }
 
 // -------------------------------------------------------------------------
-// CHOIR SUGGESTIONS LOCAL SYSTEM
+// CHOIR SUGGESTIONS LOCAL SYSTEM + MONGO CLOUD
 // -------------------------------------------------------------------------
 
 export function getLocalSuggestions(): SuggestedSong[] {
@@ -228,9 +323,26 @@ export async function saveSuggestion(suggestion: SuggestedSong): Promise<void> {
     localSuggestions.push(suggestion);
     saveLocalSuggestions(localSuggestions);
   }
+
+  try {
+    await apiRequest('/api/suggestions', {
+      method: 'POST',
+      body: JSON.stringify(suggestion)
+    });
+  } catch (err) {
+    console.error('Failed to sync suggestion to MongoDB:', err);
+  }
 }
 
 export async function deleteSuggestion(id: string): Promise<void> {
   const localSuggestions = getLocalSuggestions().filter(s => s.id !== id);
   saveLocalSuggestions(localSuggestions);
+
+  try {
+    await apiRequest(`/api/suggestions/${id}`, {
+      method: 'DELETE'
+    });
+  } catch (err) {
+    console.error('Failed to sync suggestion deletion to MongoDB:', err);
+  }
 }

@@ -13,7 +13,8 @@ import {
   saveSong, 
   deleteSong, 
   clearAllSongs, 
-  SongMetadata
+  SongMetadata,
+  syncWithMongoDB
 } from './lib/db';
 import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
@@ -24,6 +25,7 @@ import WorshipEvents from './components/WorshipEvents';
 export default function App() {
   const [songs, setSongs] = useState<SongMetadata[]>([]);
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
+  const [mongoStatus, setMongoStatus] = useState<'connecting' | 'connected' | 'error' | 'offline'>('connecting');
 
 
 
@@ -189,6 +191,45 @@ export default function App() {
     await syncSongsList();
     loadSuggestions();
   }, [syncSongsList, loadSuggestions]);
+
+  // MongoDB sync background worker
+  const triggerMongoSync = useCallback(async () => {
+    setMongoStatus('connecting');
+    try {
+      await syncWithMongoDB();
+      await syncSongsList();
+      loadSuggestions();
+      setMongoStatus('connected');
+    } catch (err) {
+      console.error('Failed to synchronize with MongoDB Cloud:', err);
+      setMongoStatus('error');
+    }
+  }, [syncSongsList, loadSuggestions]);
+
+  const handleForceSync = () => {
+    triggerMongoSync();
+  };
+
+  // Perform full database sync on load, focus, and every 10 seconds
+  useEffect(() => {
+    triggerMongoSync();
+
+    // Sync on window focus for immediate live refresh
+    const handleFocus = () => {
+      triggerMongoSync();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // Polling interval every 10 seconds
+    const interval = setInterval(() => {
+      triggerMongoSync();
+    }, 10000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
+  }, [triggerMongoSync]);
 
   // Initialize DB and load existing songs
   useEffect(() => {
@@ -770,6 +811,43 @@ export default function App() {
                         : wsStatus === 'connecting'
                           ? 'bg-amber-500 animate-pulse shadow-[0_0_6px_#f59e0b]'
                           : 'bg-zinc-600'
+                    }`} />
+                  </button>
+
+                  {/* MongoDB Cloud Sync Status Badge */}
+                  <button
+                    id="mongodb-sync-status-badge"
+                    onClick={handleForceSync}
+                    disabled={mongoStatus === 'connecting'}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
+                      mongoStatus === 'connected'
+                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                        : mongoStatus === 'connecting'
+                          ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 animate-pulse'
+                          : mongoStatus === 'error'
+                            ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
+                            : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800'
+                    }`}
+                    title="Click to Force Sync with MongoDB Atlas"
+                  >
+                    <span className="text-xs leading-none">🍃</span>
+                    <span>
+                      {mongoStatus === 'connected'
+                        ? 'MongoDB Synced'
+                        : mongoStatus === 'connecting'
+                          ? 'Syncing Cloud...'
+                          : mongoStatus === 'error'
+                            ? 'Sync Error'
+                            : 'Offline Storage'}
+                    </span>
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      mongoStatus === 'connected'
+                        ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]'
+                        : mongoStatus === 'connecting'
+                          ? 'bg-amber-500 animate-pulse shadow-[0_0_6px_#f59e0b]'
+                          : mongoStatus === 'error'
+                            ? 'bg-rose-500 shadow-[0_0_6px_#ef4444]'
+                            : 'bg-zinc-650'
                     }`} />
                   </button>
 
