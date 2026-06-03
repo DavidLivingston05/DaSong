@@ -187,6 +187,15 @@ export default function App() {
   // App view toggle states
   const [activeTab, setActiveTab] = useState<'dashboard' | 'search' | 'calendar'>('dashboard');
   const [songSourceTab, setSongSourceTab] = useState<'search' | 'calendar' | 'dashboard'>('search');
+
+  // ── Android Back Button / History API ──────────────────────────────────────
+  // Push a history entry on every meaningful navigation so Android's back button
+  // steps back through in-app screens instead of closing the PWA.
+  const navigateTo = useCallback((tab: 'dashboard' | 'search' | 'calendar') => {
+    setActiveTab(tab);
+    history.pushState({ tab, songId: null }, '', window.location.pathname);
+  }, []);
+  // ───────────────────────────────────────────────────────────────────────────
   const [activeSetlistIds, setActiveSetlistIds] = useState<string[]>([]);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -198,6 +207,37 @@ export default function App() {
       setTargetEventIdForAdd(null);
     }
   }, [showAddModal, showUploadModal]);
+
+  // Seed the initial history entry so there is always something to pop back to,
+  // and handle Android back button presses via popstate.
+  useEffect(() => {
+    // Replace the very first entry so we control it
+    history.replaceState({ tab: 'dashboard', songId: null }, '', window.location.pathname);
+
+    const handlePopState = (e: PopStateEvent) => {
+      const state = e.state as { tab?: string; songId?: string | null } | null;
+
+      // If a song is open, close it first (back = close song detail)
+      setSelectedSongId(prev => {
+        if (prev) {
+          setActiveSetlistIds([]);
+          // Re-push so next back press handles tab level
+          history.pushState({ tab: activeTab, songId: null }, '', window.location.pathname);
+          return null;
+        }
+        return prev;
+      });
+
+      // If no song was open and state carries a tab, restore it
+      if (state?.tab && !state.songId) {
+        setActiveTab(state.tab as 'dashboard' | 'search' | 'calendar');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   
@@ -426,6 +466,8 @@ export default function App() {
     }
 
     if (id && id !== 'dalyric-broadcast-temp') {
+      // Push history so Android back button closes the song detail instead of exiting
+      history.pushState({ songId: id }, '', window.location.pathname);
       setRecentSongIds(prev => {
         const next = [id, ...prev.filter(x => x !== id)].slice(0, 5);
         localStorage.setItem('dasong_recent_songs', JSON.stringify(next));
@@ -1021,7 +1063,7 @@ export default function App() {
             {/* Dashboard Home Button */}
             <button 
               id="tab-dashboard"
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => navigateTo('dashboard')}
               className={`flex items-center gap-2 px-4 rounded-xl text-xs font-black tracking-wider transition-all h-10 border cursor-pointer select-none ${
                 activeTab === 'dashboard' 
                   ? 'bg-zinc-950 border-amber-500 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-black' 
@@ -1039,7 +1081,7 @@ export default function App() {
             {/* Song Library Navigation */}
             <button 
               id="tab-search"
-              onClick={() => setActiveTab('search')}
+              onClick={() => navigateTo('search')}
               className={`flex items-center gap-2 px-4 rounded-xl text-xs font-black tracking-wider transition-all h-10 border cursor-pointer select-none ${
                 activeTab === 'search' 
                   ? 'bg-zinc-950 border-amber-500 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-black' 
@@ -1058,7 +1100,7 @@ export default function App() {
             {session && session.role !== 'guest' && (
               <button 
                 id="tab-calendar"
-                onClick={() => setActiveTab('calendar')}
+                onClick={() => navigateTo('calendar')}
                 className={`flex items-center gap-2 px-4 rounded-xl text-xs font-black tracking-wider transition-all h-10 border cursor-pointer select-none ${
                   activeTab === 'calendar' 
                     ? 'bg-zinc-950 border-amber-500 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-black' 
@@ -1705,8 +1747,8 @@ That [G] saved a wretch like [D] me!`}
           {/* FIND */}
           <button
             onClick={() => {
-              setActiveTab('search');
               setSelectedSongId(null);
+              navigateTo('search');
             }}
             className={`flex flex-col items-center gap-1 px-5 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[56px] ${
               activeTab === 'search' ? 'text-amber-500' : 'text-zinc-500'
@@ -1734,7 +1776,7 @@ That [G] saved a wretch like [D] me!`}
           {/* SETLISTS — non-guest only */}
           {session.role !== 'guest' && (
             <button
-              onClick={() => setActiveTab('calendar')}
+              onClick={() => navigateTo('calendar')}
               className={`flex flex-col items-center gap-1 px-5 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[56px] ${
                 activeTab === 'calendar' ? 'text-amber-500' : 'text-zinc-500'
               }`}
