@@ -303,7 +303,7 @@ export default function SongDetail({
   const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
 
   return (
-    <div id="lyric-presentation-panel" className="bg-[#070708] rounded-3xl border border-white/10 overflow-hidden shadow-2xl flex flex-col h-full min-h-[550px]">
+    <div id="lyric-presentation-panel" className="bg-[#070708] rounded-3xl border border-white/10 overflow-hidden shadow-2xl flex flex-col h-full md:min-h-[550px]">
       
       {/* Detail Header Strip - Masterfully designed for both Desktop (Windows) and Mobile (iOS/Android) */}
       <div className="p-4 border-b border-zinc-800/80 bg-[#050506] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -582,7 +582,7 @@ export default function SongDetail({
             <div
               id="lyric-sheet"
               ref={lyricContainerRef}
-              className="flex-1 overflow-y-auto max-h-[70vh] p-6 md:p-8 space-y-4 bg-[#050506] relative font-serif text-slate-200 selection:bg-amber-500/20 select-none"
+              className="flex-1 overflow-y-auto md:max-h-[70vh] p-6 md:p-8 space-y-4 bg-[#050506] relative font-serif text-slate-200 selection:bg-amber-500/20 select-none"
               style={{ fontSize: `${fontSize}px` }}
             >
               {/* Dynamic Metadata Block with custom visual separator */}
@@ -642,14 +642,16 @@ export default function SongDetail({
                           return (
                             <div key={lIdx} className="mb-2.5 leading-tight">
                               {/* Superscript chords line */}
-                              <div className="h-4 font-mono text-[11px] font-bold text-amber-400 select-none relative whitespace-pre flex">
+                              <div className="h-5.5 font-mono text-[10px] font-bold text-amber-400 select-none relative whitespace-pre flex items-center mb-1">
                                 {chordLine.map((c, cIdx) => {
                                   const prevOffset = cIdx > 0 ? chordLine[cIdx - 1].index : 0;
                                   const spacing = ' '.repeat(Math.max(0, c.index - prevOffset - (cIdx > 0 ? chordLine[cIdx - 1].chord.length : 0)));
                                   return (
                                     <span key={cIdx}>
                                       {spacing}
-                                      <span className="hover:text-amber-300 cursor-pointer">{c.chord}</span>
+                                      <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 px-1 py-0.5 rounded-md font-extrabold mx-0.5 shadow-sm transition-all cursor-pointer">
+                                        {c.chord}
+                                      </span>
                                     </span>
                                   );
                                 })}

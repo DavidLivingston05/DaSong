@@ -749,7 +749,7 @@ export default function WorshipEvents({
                               setSelectedDateStr(ev.date);
                               setMobileStage('eventDetail');
                             }}
-                            className="p-3 bg-zinc-900 border border-zinc-850 hover:border-amber-500/35 rounded-2xl flex items-center justify-between gap-3 cursor-pointer active-touch transition-all"
+                            className="p-4 bg-zinc-900 border border-zinc-850 hover:border-amber-500/35 rounded-2xl flex items-center justify-between gap-3 cursor-pointer active-touch transition-all"
                           >
                             <div className="flex items-center gap-3 text-left min-w-0">
                               {/* Date box */}

@@ -606,19 +606,30 @@ export default function App() {
         {/* Dynamic synth matrix grid line visualizer in backdrop */}
         <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px]"></div>
         
-        <div className="w-full max-w-sm p-6 bg-zinc-900 rounded-3xl border border-zinc-800/80 shadow-[0_0_30px_rgba(245,158,11,0.06)] relative z-10 animate-in fade-in zoom-in-95 duration-200">
+        {/* Glowing backdrop ambient background auras */}
+        <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-rose-500/5 rounded-full blur-3xl"></div>
+
+        <div className="w-full max-w-sm p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_40px_rgba(245,158,11,0.05)] relative z-10 animate-in fade-in zoom-in-95 duration-350">
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center p-3 bg-amber-500/10 rounded-full text-amber-500 mb-3 border border-amber-500/20 relative shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-              <div className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" />
-              <Music className="h-6 w-6 text-amber-500" />
+            <div className="inline-flex items-center justify-center p-3 bg-amber-500/10 rounded-2xl text-amber-500 mb-4 border border-amber-500/20 relative shadow-[0_0_20px_rgba(245,158,11,0.15)] overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/5 to-rose-500/5"></div>
+              {/* Dynamic pulsing visualizer bars representing station active telemetry */}
+              <div className="flex items-end gap-1 h-6 relative z-10 px-1 select-none pointer-events-none">
+                <div className="w-1 h-3 bg-amber-500 rounded-full animate-pulse" />
+                <div className="w-1 h-5 bg-amber-400 rounded-full animate-pulse" />
+                <div className="w-1 h-6 bg-orange-500 rounded-full animate-pulse" />
+                <div className="w-1 h-4 bg-rose-500 rounded-full animate-pulse" />
+                <div className="w-1 h-2 bg-amber-500 rounded-full animate-pulse" />
+              </div>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-white select-none">DaSong <span className="text-amber-500 text-xs font-mono tracking-widest border border-amber-500/30 px-1.5 py-0.5 rounded ml-1 uppercase">Studio</span></h1>
-            <p className="text-zinc-400 text-xs mt-1">Select DAW channel feed to enter the station</p>
+            <h1 className="text-2xl font-black tracking-tight text-white select-none">DaSong <span className="text-amber-500 text-[10px] font-mono tracking-widest border border-amber-500/30 px-2 py-0.5 rounded ml-1.5 uppercase">Studio</span></h1>
+            <p className="text-zinc-500 text-xs mt-1.5 font-medium leading-relaxed">Select DAW channel feed to enter the station</p>
           </div>
 
           {authError && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl text-center font-semibold">
-              {authError}
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold">
+              ⚠️ {authError}
             </div>
           )}
 
@@ -628,37 +639,37 @@ export default function App() {
               <button 
                 id="portal-select-admin"
                 onClick={() => setSelectedPortal('admin')}
-                className="w-full flex items-center justify-between p-4 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800/80 rounded-2xl transition-all text-left outline-none cursor-pointer group hover:border-amber-500/30"
+                className="w-full flex items-center justify-between p-4 bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-900 hover:border-amber-500/30 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
               >
                 <div>
                   <p className="font-bold text-xs text-white flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     System Admin Station
                   </p>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">Configure live schedules & master lyrics library</p>
+                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Configure live schedules & master lyrics library</p>
                 </div>
-                <span className="text-amber-500 font-bold group-hover:translate-x-1 transition-transform">→</span>
+                <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
               </button>
 
               <button 
                 id="portal-select-choir"
                 onClick={() => setSelectedPortal('choir')}
-                className="w-full flex items-center justify-between p-4 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800/80 rounded-2xl transition-all text-left outline-none cursor-pointer group hover:border-amber-500/30"
+                className="w-full flex items-center justify-between p-4 bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-900 hover:border-amber-500/30 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
               >
                 <div>
                   <p className="font-bold text-xs text-white flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                     Musician / Choir Deck
                   </p>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">Real-time pitch transposition & digital chord sheets</p>
+                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Real-time pitch transposition & digital chord sheets</p>
                 </div>
-                <span className="text-amber-500 font-bold group-hover:translate-x-1 transition-transform">→</span>
+                <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
               </button>
 
               <button 
                 id="portal-select-guest"
                 onClick={() => handleSignIn('guest')}
-                className="w-full p-3 bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold rounded-2xl text-center border border-dashed border-zinc-800/85 transition-all mt-4 cursor-pointer"
+                className="w-full p-3.5 bg-zinc-950/50 hover:bg-zinc-900/60 text-zinc-400 hover:text-white text-xs font-bold rounded-2xl text-center border border-dashed border-zinc-900 hover:border-zinc-800 transition-all mt-4 cursor-pointer active-touch"
               >
                 Continue as Guest Browser (Read-Only Stage)
               </button>
@@ -666,27 +677,27 @@ export default function App() {
           ) : (
             /* DYNAMIC FORM VIEWS */
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-zinc-850 pb-2 mb-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">{selectedPortal === 'admin' ? 'Admin' : 'Choir'} Login</h3>
+              <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-2.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">{selectedPortal === 'admin' ? '👑 Admin' : '🧑‍🎤 Choir'} Login</h3>
                 <button 
                   id="portal-back-btn"
                   onClick={() => { setSelectedPortal(null); setAuthError(''); }}
-                  className="text-xs text-zinc-400 hover:text-white font-semibold cursor-pointer"
+                  className="text-xs text-zinc-400 hover:text-white font-bold cursor-pointer transition-colors"
                 >
                   ← Back
                 </button>
               </div>
 
               {selectedPortal === 'admin' && (
-                <div>
-                  <label className="block text-[11px] font-semibold text-zinc-400 mb-1">Security Key Password</label>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Security Key Password</label>
                   <input 
                     id="portal-password-input"
                     type="password"
                     placeholder="••••••••"
                     value={inputPassword}
                     onChange={(e) => setInputPassword(e.target.value)}
-                    className="w-full p-2.5 bg-zinc-950 border border-zinc-800/80 rounded-xl text-white outline-none focus:border-amber-500 text-xs"
+                    className="w-full p-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs font-mono tracking-widest shadow-inner"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleSignIn('admin');
@@ -696,15 +707,15 @@ export default function App() {
               )}
 
               {selectedPortal === 'choir' && (
-                <div>
-                  <label className="block text-[11px] font-semibold text-zinc-400 mb-1">Enter Your Name</label>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Enter Your Name</label>
                   <input 
                     id="portal-name-input"
                     type="text"
                     placeholder="e.g. Brother John"
                     value={inputName}
                     onChange={(e) => setInputName(e.target.value)}
-                    className="w-full p-2.5 bg-zinc-950 border border-[#27272a] rounded-xl text-white outline-none focus:border-amber-500 text-xs"
+                    className="w-full p-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs font-sans shadow-inner"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleSignIn('choir');
@@ -716,7 +727,7 @@ export default function App() {
               <button 
                 id="portal-verify-btn"
                 onClick={() => handleSignIn(selectedPortal)}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer shadow-md shadow-amber-500/10"
+                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-3 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md shadow-amber-500/10 active:scale-98 active-touch"
               >
                 Verify & Authorize
               </button>
@@ -728,7 +739,7 @@ export default function App() {
   }
 
   return (
-    <div id="app-root" className={`min-h-screen bg-[#08080a] text-zinc-300 transition-colors duration-300 flex flex-col font-sans relative pb-20 md:pb-0`}>
+    <div id="app-root" className={`h-screen md:h-auto overflow-hidden md:overflow-visible bg-[#08080a] text-zinc-300 transition-colors duration-300 flex flex-col font-sans relative`}>
       {/* Dynamic hardware grid pattern */}
       <div className="absolute inset-0 pointer-events-none opacity-2 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
       
@@ -1019,7 +1030,7 @@ export default function App() {
       </header>
 
       {/* Main content body grid splits */}
-      <main className="flex-1 p-4 md:p-6 max-w-[1700px] mx-auto w-full min-h-0">
+      <main className={`flex-1 p-4 md:p-6 pb-20 md:pb-6 max-w-[1700px] mx-auto w-full min-h-0 flex flex-col ${selectedSongId ? 'overflow-hidden h-full' : 'overflow-y-auto md:overflow-visible'}`}>
         
         {/* VIEW 1: CLEAN LANDING DASHBOARD */}
         {activeTab === 'dashboard' && (

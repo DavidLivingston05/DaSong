@@ -36,15 +36,14 @@ function SongList({
   React.useEffect(() => {
     const handler = setTimeout(() => {
       setSearchQuery(tempSearch);
-      setCurrentPage(1);
+      setVisibleCount(20);
     }, 180);
     return () => clearTimeout(handler);
   }, [tempSearch]);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [showOnlyFavorites, setShowOnlyFavorites] = useState<boolean>(false);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const itemsPerPage = 15;
+  const [visibleCount, setVisibleCount] = useState<number>(20);
 
   // Derive unique categories for filtering dropdown
   const categories = useMemo(() => {
@@ -74,26 +73,10 @@ function SongList({
     return result;
   }, [songs, searchQuery, selectedCategory, showOnlyFavorites]);
 
-  // Adjust pagination slice safety
+  // Slice list up to visible count for ultra fast layout rendering
   const paginatedSongs = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredSongs.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredSongs, currentPage]);
-
-  const totalPages = Math.ceil(filteredSongs.length / itemsPerPage) || 1;
-
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
-  // Safe handler to make sure current page doesn't overshoot
-  React.useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(1);
-    }
-  }, [totalPages, currentPage]);
+    return filteredSongs.slice(0, visibleCount);
+  }, [filteredSongs, visibleCount]);
 
   // Listen for keyboard shortcuts: pressing "/" focuses the search bar instantly
   React.useEffect(() => {
@@ -151,7 +134,7 @@ function SongList({
                   key={cat}
                   onClick={() => {
                     setSelectedCategory(cat);
-                    setCurrentPage(1);
+                    setVisibleCount(20);
                   }}
                   className={`px-4 py-2 text-[10px] uppercase font-mono tracking-wider font-extrabold rounded-xl border transition-all shrink-0 cursor-pointer select-none active-touch ${
                     isActive
@@ -174,7 +157,7 @@ function SongList({
               id="filter-favorites-toggle"
               onClick={() => {
                 setShowOnlyFavorites(!showOnlyFavorites);
-                setCurrentPage(1);
+                setVisibleCount(20);
               }}
               className={`flex items-center gap-2 px-4 py-2 text-[10px] uppercase tracking-widest font-mono rounded-xl border transition-all cursor-pointer select-none ${
                 showOnlyFavorites
@@ -375,41 +358,20 @@ function SongList({
           )}
         </div>
 
-        {/* Dynamic Pagination Strip - Styled like master meter statistics panel */}
-        <div id="lyrics-paginator" className="p-4 border-t border-zinc-800/80 bg-zinc-950 flex items-center justify-between flex-wrap gap-3 font-mono">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider">
-            Display: <strong className="text-zinc-300 font-bold">{(currentPage - 1) * itemsPerPage + (filteredSongs.length > 0 ? 1 : 0)}</strong> - <strong className="text-zinc-300 font-bold">{Math.min(currentPage * itemsPerPage, filteredSongs.length)}</strong> of <strong className="text-zinc-300 font-bold">{filteredSongs.length}</strong> modules
+        {/* Dynamic Infinite Scroll Load-More Trigger Strip */}
+        <div id="lyrics-paginator" className="p-4 border-t border-zinc-800/80 bg-zinc-950 flex flex-col sm:flex-row items-center justify-between gap-3 font-mono">
+          <div className="text-[10px] text-zinc-500 uppercase tracking-wider text-center sm:text-left">
+            Showing <strong className="text-zinc-300 font-bold">{paginatedSongs.length}</strong> of <strong className="text-zinc-300 font-bold">{filteredSongs.length}</strong> modules
           </div>
 
-          <div className="flex items-center gap-2">
+          {visibleCount < filteredSongs.length && (
             <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`px-3 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer active:scale-95 ${
-                currentPage === 1
-                  ? 'bg-zinc-950 border-zinc-900 text-zinc-800 cursor-not-allowed'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white'
-              }`}
+              onClick={() => setVisibleCount(prev => prev + 20)}
+              className="w-full sm:w-auto px-6 py-2 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black tracking-widest rounded-xl transition-all cursor-pointer shadow-md shadow-amber-500/10 active:scale-95 active-touch uppercase"
             >
-              PREV
+              LOAD MORE CHANNELS
             </button>
-            
-            <span className="text-[10px] font-black px-2.5 text-amber-500 w-[90px] text-center">
-              CH {currentPage} / {totalPages}
-            </span>
-
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer active:scale-95 ${
-                currentPage === totalPages
-                  ? 'bg-zinc-950 border-zinc-900 text-zinc-800 cursor-not-allowed'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white'
-              }`}
-            >
-              NEXT
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
