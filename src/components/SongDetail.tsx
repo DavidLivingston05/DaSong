@@ -105,28 +105,38 @@ export default function SongDetail({
 
   // Swipe gesture tracking refs & handlers for setlist navigation
   const touchStartXRef = useRef<number>(0);
+  const touchStartYRef = useRef<number>(0);
   const touchEndXRef = useRef<number>(0);
+  const touchEndYRef = useRef<number>(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartXRef.current = e.targetTouches[0].clientX;
+    touchStartYRef.current = e.targetTouches[0].clientY;
     touchEndXRef.current = e.targetTouches[0].clientX;
+    touchEndYRef.current = e.targetTouches[0].clientY;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     touchEndXRef.current = e.targetTouches[0].clientX;
+    touchEndYRef.current = e.targetTouches[0].clientY;
   };
 
   const handleTouchEnd = () => {
-    const swipeDistance = touchStartXRef.current - touchEndXRef.current;
-    const minSwipeDistance = 75; // Minimum px distance to recognize a swipe
+    const swipeDistanceX = touchStartXRef.current - touchEndXRef.current;
+    const swipeDistanceY = touchStartYRef.current - touchEndYRef.current;
+    const minSwipeDistanceX = 90; // Higher horizontal threshold for intentional swipe
+    const maxSwipeDistanceY = 40; // Max allowed vertical movement to prevent scrolling conflict
 
-    // Swipe left (next song)
-    if (swipeDistance > minSwipeDistance && hasNextSong && nextSongId) {
-      onSelectSong(nextSongId, worshipSetList);
-    }
-    // Swipe right (previous song)
-    else if (swipeDistance < -minSwipeDistance && hasPrevSong && prevSongId) {
-      onSelectSong(prevSongId, worshipSetList);
+    // Only trigger swipe if horizontal movement is large AND vertical movement is small
+    if (Math.abs(swipeDistanceX) > minSwipeDistanceX && Math.abs(swipeDistanceY) < maxSwipeDistanceY) {
+      // Swipe left (next song)
+      if (swipeDistanceX > 0 && hasNextSong && nextSongId) {
+        onSelectSong(nextSongId, worshipSetList);
+      }
+      // Swipe right (previous song)
+      else if (swipeDistanceX < 0 && hasPrevSong && prevSongId) {
+        onSelectSong(prevSongId, worshipSetList);
+      }
     }
   };
 
