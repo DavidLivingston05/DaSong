@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Heart, Music, Star, Trash2, PlusCircle, ArrowLeft, Layers, Compass, BarChart2, ShieldAlert } from 'lucide-react';
+import { Search, Heart, Music, Star, Trash2, PlusCircle, ArrowLeft, Layers, Compass, BarChart2, ShieldAlert, ChevronRight } from 'lucide-react';
 import { SongMetadata } from '../lib/db';
 import { UserRole } from '../types';
 import { matchSong } from '../lib/search';
@@ -171,8 +171,8 @@ function SongList({
           <input
             id="song-search"
             type="text"
-            className="w-full pl-11 pr-5 py-3 text-xs font-mono rounded-xl border border-zinc-800 bg-zinc-950 text-white placeholder-zinc-600 outline-none focus:border-amber-500 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"
-            placeholder="Search songs: enter title, category, or lyrics keyword..."
+            className="w-full pl-11 pr-5 py-3.5 text-[16px] md:text-xs font-mono rounded-xl border border-zinc-800 bg-zinc-950 text-white placeholder-zinc-600 outline-none focus:border-amber-500 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"
+            placeholder="Search by title, category, or lyrics..."
             value={tempSearch}
             onChange={(e) => {
               setTempSearch(e.target.value);
@@ -335,8 +335,7 @@ function SongList({
           </table>
         </div>
 
-        {/* Mobile/Tablet Card-based View */}
-        <div className="block md:hidden bg-zinc-950/20 py-2.5 space-y-1">
+        <div className="block md:hidden bg-zinc-950/20 py-2 space-y-1">
           {paginatedSongs.length > 0 ? (
             paginatedSongs.map((song, index) => {
               const isSelected = selectedSongId === song.id;
@@ -345,52 +344,48 @@ function SongList({
                   key={song.id}
                   id={`song-card-${song.id}`}
                   onClick={() => onSelectSong(song.id)}
-                  className={`mx-4 p-4 flex items-center justify-between gap-4 cursor-pointer rounded-2xl border transition-all duration-200 active-touch select-none ${
+                  className={`mobile-row mx-3 px-4 py-3 flex items-center justify-between gap-3 cursor-pointer rounded-2xl border transition-all duration-150 active-touch select-none ${
                     isSelected
-                      ? 'bg-gradient-to-br from-zinc-900 to-amber-950/15 border-amber-500/50 shadow-[0_4px_20px_rgba(245,158,11,0.08)] scale-[1.01]'
+                      ? 'bg-gradient-to-br from-zinc-900 to-amber-950/15 border-amber-500/50 shadow-[0_4px_20px_rgba(245,158,11,0.08)]'
                       : kbdIndex === index
-                        ? 'bg-gradient-to-br from-zinc-900/90 to-zinc-950/60 border-amber-500/40 shadow-sm scale-[1.01]'
-                        : 'bg-gradient-to-br from-zinc-900/90 to-zinc-950/60 border-zinc-800/80 hover:border-zinc-700/60 shadow-sm'
+                        ? 'bg-zinc-900/90 border-amber-500/40 shadow-sm'
+                        : 'bg-gradient-to-br from-zinc-900/90 to-zinc-950/60 border-zinc-800/80'
                   }`}
                 >
-                  <div className="flex items-center gap-3.5 truncate">
-                    {isSelected ? (
-                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b] shrink-0" />
-                    ) : (
-                      <div className="w-1.5 h-1.5 rounded-full bg-zinc-755 shrink-0" />
-                    )}
-                    <div className="truncate text-left">
-                      <div className={`text-[14px] font-bold truncate tracking-wide ${isSelected ? 'text-amber-500 font-black' : 'text-zinc-200'}`}>
-                        {song.title}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1.5 font-mono text-[9px] text-zinc-550 flex-wrap">
-                        <span className="truncate max-w-[120px] font-sans font-semibold text-zinc-450">{song.author || 'Traditional'}</span>
-                        {song.bpm && (
-                          <>
-                            <span>•</span>
-                            <span className="bg-zinc-800/80 px-1.5 py-0.5 rounded text-zinc-400 font-bold">{song.bpm} BPM</span>
-                          </>
-                        )}
-                        {song.category && (
-                          <>
-                            <span>•</span>
-                            <span className="text-amber-500/95 font-extrabold bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded uppercase">{song.category}</span>
-                          </>
-                        )}
-                      </div>
+                  {/* Left: indicator dot */}
+                  {isSelected ? (
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b] shrink-0" />
+                  ) : (
+                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-700 shrink-0" />
+                  )}
+
+                  {/* Center: song info */}
+                  <div className="flex-1 truncate text-left min-w-0">
+                    <div className={`text-[15px] font-bold truncate leading-snug ${isSelected ? 'text-amber-500 font-black' : 'text-zinc-100'}`}>
+                      {song.title}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-[11px] font-semibold text-zinc-400 truncate max-w-[130px] font-sans">{song.author || 'Traditional'}</span>
+                      {song.category && (
+                        <span className="text-[10px] font-extrabold uppercase text-amber-500/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono">{song.category}</span>
+                      )}
+                      {song.bpm && (
+                        <span className="text-[10px] font-bold text-zinc-500 bg-zinc-800/80 px-1.5 py-0.5 rounded font-mono">{song.bpm}bpm</span>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {/* Right: actions */}
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => onToggleFavorite(song.id, !!song.favorite)}
-                      className="p-2 text-zinc-650 hover:text-amber-500 transition-colors cursor-pointer"
+                      className="p-3 text-zinc-600 hover:text-amber-500 transition-colors cursor-pointer active-touch rounded-xl"
                       title="Toggle Favorite"
                     >
                       {song.favorite ? (
-                        <Star className="h-4.5 w-4.5 fill-amber-500 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
+                        <Star className="h-5 w-5 fill-amber-500 text-amber-500 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]" />
                       ) : (
-                        <Star className="h-4.5 w-4.5 text-zinc-700" />
+                        <Star className="h-5 w-5 text-zinc-700" />
                       )}
                     </button>
                     {currentRole === 'admin' && (
@@ -400,11 +395,14 @@ function SongList({
                             onDeleteSong(song.id);
                           }
                         }}
-                        className="p-2 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer"
+                        className="p-3 text-zinc-700 hover:text-red-400 transition-colors cursor-pointer active-touch rounded-xl"
                         title="Delete Song"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4.5 w-4.5" />
                       </button>
+                    )}
+                    {!isSelected && (
+                      <ChevronRight className="h-4 w-4 text-zinc-700 ml-0.5 shrink-0" />
                     )}
                   </div>
                 </div>

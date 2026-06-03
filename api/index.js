@@ -98,13 +98,16 @@ app.post('/api/songs', asyncHandler(async (req, res) => {
   
   if (Array.isArray(body)) {
     // Bulk upsert songs
-    const bulkOps = body.map(song => ({
-      updateOne: {
-        filter: { id: song.id },
-        update: { $set: song },
-        upsert: true
-      }
-    }));
+    const bulkOps = body.map(song => {
+      const { _id, ...songData } = song; // Strip immutable _id before $set
+      return {
+        updateOne: {
+          filter: { id: songData.id },
+          update: { $set: songData },
+          upsert: true
+        }
+      };
+    });
     if (bulkOps.length > 0) {
       await db.collection('songs').bulkWrite(bulkOps);
     }
@@ -115,10 +118,11 @@ app.post('/api/songs', asyncHandler(async (req, res) => {
       return res.status(400).json({ error: 'Song must contain id and title' });
     }
 
-    // Use upsert to insert or update the song
+    // Use upsert to insert or update the song (strip _id to avoid immutable field error)
+    const { _id: _songId, ...songData } = song;
     await db.collection('songs').updateOne(
-      { id: song.id },
-      { $set: song },
+      { id: songData.id },
+      { $set: songData },
       { upsert: true }
     );
     res.json({ success: true, song });
@@ -157,12 +161,14 @@ app.post('/api/events', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Event must contain id and title' });
   }
 
+  // Strip MongoDB's immutable _id field to prevent update errors on existing documents
+  const { _id, ...eventData } = event;
   await db.collection('worship_events').updateOne(
-    { id: event.id },
-    { $set: event },
+    { id: eventData.id },
+    { $set: eventData },
     { upsert: true }
   );
-  res.json({ success: true, event });
+  res.json({ success: true, event: eventData });
 }));
 
 // DELETE /api/events/:id

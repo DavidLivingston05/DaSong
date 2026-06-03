@@ -154,9 +154,11 @@ async function syncEventsBiDirectional(cloudEvents: WorshipEvent[]): Promise<voi
   if (eventsToSyncToCloud.length > 0) {
     for (const ev of eventsToSyncToCloud) {
       try {
+        // Strip MongoDB's _id before sending — it cannot be updated via $set
+        const { _id, ...evData } = ev as any;
         await apiRequest('/api/events', {
           method: 'POST',
-          body: JSON.stringify(ev)
+          body: JSON.stringify(evData)
         });
       } catch (err) {
         console.error(`Failed to background sync event ${ev.id} to cloud:`, err);
@@ -434,9 +436,11 @@ export async function saveWorshipEvent(event: WorshipEvent): Promise<void> {
   saveLocalWorshipEvents(localEvents);
 
   try {
+    // Strip MongoDB's _id before sending to prevent immutable field error
+    const { _id, ...eventPayload } = eventWithTimestamp as any;
     await apiRequest('/api/events', {
       method: 'POST',
-      body: JSON.stringify(eventWithTimestamp)
+      body: JSON.stringify(eventPayload)
     });
   } catch (err) {
     console.error('Failed to sync worship event to MongoDB:', err);

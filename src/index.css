@@ -143,4 +143,84 @@ body,
   scrollbar-width: none;  /* Firefox */
 }
 
+/* ===== ANDROID / MOBILE PERFORMANCE CRITICAL ===== */
+
+/* Eliminate 300ms tap delay on all interactive elements — makes the app feel native */
+a, button, [role="button"], input, select, textarea, label {
+  touch-action: manipulation;
+}
+
+/* Prevent iOS Safari auto-zoom on input focus (must be >= 16px) */
+input, select, textarea {
+  font-size: max(16px, 1em);
+}
+
+/* Remove the blue/grey tap flash highlight on Android Chrome */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Mobile row utility: tall enough for easy finger tapping (min 56px) */
+.mobile-row {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+}
+
+/* Floating Action Button — admin quick-add on mobile */
+.fab {
+  position: fixed;
+  z-index: 50;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.45), 0 2px 8px rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
+  will-change: transform;
+}
+.fab:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
+}
+
+/* Active bottom-nav tab bar indicator */
+.nav-tab-active-bar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+}
+
+/* Jump Back In — recent song strip on mobile dashboard */
+.recent-song-pill {
+  flex-shrink: 0;
+  min-width: 140px;
+  max-width: 180px;
+  height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(24,24,27,0.9), rgba(9,9,11,0.95));
+  border: 1px solid rgba(63,63,70,0.8);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s cubic-bezier(0.34,1.56,0.64,1);
+  will-change: transform;
+}
+.recent-song-pill:active {
+  transform: scale(0.95);
+  border-color: rgba(245, 158, 11, 0.4);
+}
 
