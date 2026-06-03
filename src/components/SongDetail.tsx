@@ -103,42 +103,7 @@ export default function SongDetail({
   const [scrolling, setScrolling] = useState<boolean>(false);
   const scrollTimerRef = useRef<number | null>(null);
 
-  // Swipe gesture tracking refs & handlers for setlist navigation
-  const touchStartXRef = useRef<number>(0);
-  const touchStartYRef = useRef<number>(0);
-  const touchEndXRef = useRef<number>(0);
-  const touchEndYRef = useRef<number>(0);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.targetTouches[0].clientX;
-    touchStartYRef.current = e.targetTouches[0].clientY;
-    touchEndXRef.current = e.targetTouches[0].clientX;
-    touchEndYRef.current = e.targetTouches[0].clientY;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndXRef.current = e.targetTouches[0].clientX;
-    touchEndYRef.current = e.targetTouches[0].clientY;
-  };
-
-  const handleTouchEnd = () => {
-    const swipeDistanceX = touchStartXRef.current - touchEndXRef.current;
-    const swipeDistanceY = touchStartYRef.current - touchEndYRef.current;
-    const minSwipeDistanceX = 90; // Higher horizontal threshold for intentional swipe
-    const maxSwipeDistanceY = 40; // Max allowed vertical movement to prevent scrolling conflict
-
-    // Only trigger swipe if horizontal movement is large AND vertical movement is small
-    if (Math.abs(swipeDistanceX) > minSwipeDistanceX && Math.abs(swipeDistanceY) < maxSwipeDistanceY) {
-      // Swipe left (next song)
-      if (swipeDistanceX > 0 && hasNextSong && nextSongId) {
-        onSelectSong(nextSongId, worshipSetList);
-      }
-      // Swipe right (previous song)
-      else if (swipeDistanceX < 0 && hasPrevSong && prevSongId) {
-        onSelectSong(prevSongId, worshipSetList);
-      }
-    }
-  };
 
   // Load all song metadata to support smart related/alternative songs logic
   useEffect(() => {
@@ -617,9 +582,6 @@ export default function SongDetail({
             <div
               id="lyric-sheet"
               ref={lyricContainerRef}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
               className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4 bg-[#050506] relative font-serif text-slate-200 selection:bg-amber-500/20 select-none"
               style={{ fontSize: `${fontSize}px` }}
             >
