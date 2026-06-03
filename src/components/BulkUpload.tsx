@@ -5,7 +5,7 @@ import { saveSongsBatch } from '../lib/db';
 import { parseTwoLineChords } from '../utils/lyricsParser';
 
 interface BulkUploadProps {
-  onSuccess: () => void;
+  onSuccess: (importedSongIds?: string[]) => void;
 }
 
 export default function BulkUpload({ onSuccess }: BulkUploadProps) {
@@ -193,7 +193,7 @@ To [A7] save a wretch like [D] me`;
       const elapsed = performance.now() - startTime;
       setImportStats({ imported: processedSongs.length, timeMs: Math.round(elapsed) });
       setLoading(false);
-      onSuccess();
+      onSuccess(processedSongs.map(s => s.id));
     } catch (err: any) {
       console.error(err);
       alert('Failed to sync uploaded songs to cloud database: ' + (err.message || err));
@@ -232,7 +232,7 @@ To [A7] save a wretch like [D] me`;
       setImportStats({ imported: importedSongs.length, timeMs: Math.round(elapsed) });
       setLoading(false);
       setBulkTextArea('');
-      onSuccess();
+      onSuccess(importedSongs.map(s => s.id));
     } catch (err: any) {
       console.error(err);
       alert('Failed to sync pasted songs to cloud database: ' + (err.message || err));
@@ -303,7 +303,7 @@ To [A7] save a wretch like [D] me`;
       setScrapePreview(null);
       setScrapeUrl('');
       setLoading(false);
-      onSuccess();
+      onSuccess([newSong.id]);
     } catch (err: any) {
       console.error(err);
       alert('Failed saving song: ' + err.message);

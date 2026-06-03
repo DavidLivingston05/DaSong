@@ -16,7 +16,8 @@ import {
   clearAllSongs, 
   SongMetadata,
   syncWithMongoDB,
-  getLocalWorshipEvents
+  getLocalWorshipEvents,
+  saveWorshipEvent
 } from './lib/db';
 import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
@@ -64,6 +65,29 @@ export default function App() {
   const loadEvents = useCallback(() => {
     setEvents(getLocalWorshipEvents());
   }, []);
+
+  const linkSongsToEvent = useCallback(async (eventId: string, songIds: string[]) => {
+    const localEvents = getLocalWorshipEvents();
+    const ev = localEvents.find(e => e.id === eventId);
+    if (!ev) return;
+    
+    const currentSongIds = ev.songIds || [];
+    const updatedIds = [...currentSongIds];
+    songIds.forEach(id => {
+      if (!updatedIds.includes(id)) {
+        updatedIds.push(id);
+      }
+    });
+    
+    const updatedEv = { ...ev, songIds: updatedIds };
+    try {
+      await saveWorshipEvent(updatedEv);
+    } catch (err) {
+      console.error('Failed to link songs to event:', err);
+    } finally {
+      loadEvents();
+    }
+  }, [loadEvents]);
 
   const loadSuggestions = useCallback(() => {
     const saved = localStorage.getItem('lyrasync_guideline_suggestions');
@@ -167,6 +191,13 @@ export default function App() {
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [showEventsModal, setShowEventsModal] = useState<boolean>(false);
+  const [targetEventIdForAdd, setTargetEventIdForAdd] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showAddModal && !showUploadModal) {
+      setTargetEventIdForAdd(null);
+    }
+  }, [showAddModal, showUploadModal]);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   
@@ -565,6 +596,11 @@ export default function App() {
       await syncSongsList();
       setSelectedSongId(newSong.id);
       setShowAddModal(false);
+
+      if (targetEventIdForAdd) {
+        await linkSongsToEvent(targetEventIdForAdd, [newSong.id]);
+      }
+
       setAddForm({
         title: '',
         author: '',
@@ -1391,6 +1427,14 @@ export default function App() {
               }}
               selectedSongId={selectedSongId}
               currentRole={currentRole}
+              onOpenAddModal={(eventId) => {
+                setTargetEventIdForAdd(eventId);
+                setShowAddModal(true);
+              }}
+              onOpenUploadModal={(eventId) => {
+                setTargetEventIdForAdd(eventId);
+                setShowUploadModal(true);
+              }}
             />
           </motion.div>
         )}
@@ -1568,8 +1612,11 @@ That [G] saved a wretch like [D] me!`}
               </button>
             </div>
 
-            <BulkUpload onSuccess={() => {
-              syncSongsList();
+            <BulkUpload onSuccess={async (importedSongIds) => {
+              await syncSongsList();
+              if (targetEventIdForAdd && importedSongIds && importedSongIds.length > 0) {
+                await linkSongsToEvent(targetEventIdForAdd, importedSongIds);
+              }
             }} />
 
             <div className="flex gap-2 justify-end pt-3 border-t border-white/5 pb-6 md:pb-0">

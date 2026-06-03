@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   X, Calendar as CalendarIcon, Clock, Plus, Trash2, ChevronLeft, ChevronRight, 
-  Music, BookOpen, Layers, Sparkles, Check, ArrowRight, ArrowUpRight, Search, ListPlus, MoveUp, MoveDown, ZoomIn, ZoomOut, Play, Pause
+  Music, BookOpen, Layers, Sparkles, Check, ArrowRight, ArrowUpRight, Search, ListPlus, MoveUp, MoveDown, ZoomIn, ZoomOut, Play, Pause,
+  Upload
 } from 'lucide-react';
 import { WorshipEvent, UserRole, Song } from '../types';
 import { SongMetadata, getSongById, getLocalWorshipEvents, saveWorshipEvent, deleteWorshipEvent } from '../lib/db';
@@ -16,6 +17,8 @@ interface WorshipEventsProps {
   onSelectSong: (id: string, setlistSongIds?: string[]) => void;
   selectedSongId: string | null;
   currentRole: UserRole;
+  onOpenAddModal?: (eventId: string) => void;
+  onOpenUploadModal?: (eventId: string) => void;
 }
 
 export default function WorshipEvents({
@@ -25,7 +28,9 @@ export default function WorshipEvents({
   onClose,
   onSelectSong,
   selectedSongId,
-  currentRole
+  currentRole,
+  onOpenAddModal,
+  onOpenUploadModal
 }: WorshipEventsProps) {
 
 
@@ -557,9 +562,29 @@ export default function WorshipEvents({
 
                         {/* Fast inline song add search console */}
                         <div className="pt-3 border-t border-white/5 space-y-3">
-                          <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block">
-                            Link Catalog Songs:
-                          </label>
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                              Link Catalog Songs:
+                            </label>
+                            {currentRole === 'admin' && (
+                              <div className="flex items-center gap-1.5 select-none">
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenAddModal?.(ev.id)}
+                                  className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
+                                >
+                                  <Plus className="h-2.5 w-2.5" /> Create Song
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenUploadModal?.(ev.id)}
+                                  className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
+                                >
+                                  <Upload className="h-2.5 w-2.5" /> Upload Files
+                                </button>
+                              </div>
+                            )}
+                          </div>
                           
                           <div className="relative">
                             <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
@@ -578,7 +603,7 @@ export default function WorshipEvents({
                                 No matching catalog sheets found
                               </div>
                             ) : (
-                              filteredSongs.map(song => {
+                              filteredSongs.slice(0, 30).map(song => {
                                 const isAdded = (ev.songIds || []).includes(song.id);
                                 return (
                                   <button
@@ -903,9 +928,27 @@ export default function WorshipEvents({
                 {/* Inline administrative fast song selection panel for active setups */}
                 {currentRole === 'admin' && activeEvent && (
                   <div className="mt-6 pt-5 border-t border-zinc-900 space-y-3 shrink-0">
-                    <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block pl-0.5">
-                      Link Catalog Songs:
-                    </label>
+                    <div className="flex items-center justify-between pl-0.5">
+                      <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
+                        Link Catalog Songs:
+                      </label>
+                      <div className="flex items-center gap-1.5 select-none">
+                        <button
+                          type="button"
+                          onClick={() => onOpenAddModal?.(activeEvent.id)}
+                          className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
+                        >
+                          <Plus className="h-2.5 w-2.5" /> Create Song
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onOpenUploadModal?.(activeEvent.id)}
+                          className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
+                        >
+                          <Upload className="h-2.5 w-2.5" /> Upload Files
+                        </button>
+                      </div>
+                    </div>
                     <div className="relative">
                       <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
                       <input
