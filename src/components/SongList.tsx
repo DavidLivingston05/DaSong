@@ -140,6 +140,32 @@ function SongList({
           />
         </div>
 
+        {/* Category Selector Carousel - Horizontal Scroll Pills */}
+        <div className="flex flex-col space-y-1.5">
+          <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 font-bold pl-0.5">Filter Channel:</span>
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+            {categories.map((cat) => {
+              const isActive = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-4 py-2 text-[10px] uppercase font-mono tracking-wider font-extrabold rounded-xl border transition-all shrink-0 cursor-pointer select-none active-touch ${
+                    isActive
+                      ? 'bg-amber-500 border-amber-500 text-black shadow-[0_4px_12px_rgba(245,158,11,0.2)]'
+                      : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                  }`}
+                >
+                  {cat === 'All' ? '⚡ All Channels' : cat}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Filters Select boxes & options */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
           <div className="flex flex-wrap items-center gap-3">
@@ -267,7 +293,7 @@ function SongList({
         </div>
 
         {/* Mobile/Tablet Card-based View */}
-        <div className="block md:hidden divide-y divide-zinc-850/60 bg-[#060608]/40">
+        <div className="block md:hidden bg-zinc-950/20 py-2.5 space-y-1">
           {paginatedSongs.length > 0 ? (
             paginatedSongs.map((song) => {
               const isSelected = selectedSongId === song.id;
@@ -275,32 +301,34 @@ function SongList({
                 <div
                   key={song.id}
                   onClick={() => onSelectSong(song.id)}
-                  className={`p-4 flex items-center justify-between gap-4 cursor-pointer transition-all active-touch select-none ${
-                    isSelected ? 'bg-amber-500/5 border-l-4 border-amber-500 pl-3' : 'hover:bg-zinc-900/40'
+                  className={`mx-4 p-4 flex items-center justify-between gap-4 cursor-pointer rounded-2xl border transition-all duration-200 active-touch select-none ${
+                    isSelected
+                      ? 'bg-gradient-to-br from-zinc-900 to-amber-950/15 border-amber-500/50 shadow-[0_4px_20px_rgba(245,158,11,0.08)] scale-[1.01]'
+                      : 'bg-gradient-to-br from-zinc-900/90 to-zinc-950/60 border-zinc-800/80 hover:border-zinc-700/60 shadow-sm'
                   }`}
                 >
-                  <div className="flex items-center gap-3 truncate">
+                  <div className="flex items-center gap-3.5 truncate">
                     {isSelected ? (
                       <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444] shrink-0" />
                     ) : (
-                      <div className="w-1.5 h-1.5 rounded-full bg-zinc-800 shrink-0" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-zinc-750 shrink-0" />
                     )}
                     <div className="truncate text-left">
-                      <div className={`text-sm font-bold truncate ${isSelected ? 'text-amber-500 font-black' : 'text-zinc-200'}`}>
+                      <div className={`text-[14px] font-bold truncate tracking-wide ${isSelected ? 'text-amber-500 font-black' : 'text-zinc-200'}`}>
                         {song.title}
                       </div>
-                      <div className="flex items-center gap-1.5 mt-1 font-mono text-[9px] text-zinc-550 flex-wrap">
+                      <div className="flex items-center gap-2 mt-1.5 font-mono text-[9px] text-zinc-550 flex-wrap">
                         <span className="truncate max-w-[120px] font-sans font-semibold text-zinc-450">{song.author || 'Traditional'}</span>
                         {song.bpm && (
                           <>
                             <span>•</span>
-                            <span>{song.bpm} BPM</span>
+                            <span className="bg-zinc-800/80 px-1.5 py-0.5 rounded text-zinc-400 font-bold">{song.bpm} BPM</span>
                           </>
                         )}
                         {song.category && (
                           <>
                             <span>•</span>
-                            <span className="text-amber-500/85 font-extrabold bg-amber-500/10 border border-amber-500/20 px-1 py-0.2 rounded uppercase">{song.category}</span>
+                            <span className="text-amber-500/95 font-extrabold bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded uppercase">{song.category}</span>
                           </>
                         )}
                       </div>

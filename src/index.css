@@ -134,4 +134,13 @@ body,
   perspective: 1000px;
 }
 
+/* Hide scrollbar utility for sleek mobile carousels */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 

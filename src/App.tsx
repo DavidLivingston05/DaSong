@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Music, Sparkles, Layers, Sliders, Play, Settings, Plus, Star, Heart, 
   Trash2, X, AlertCircle, RefreshCw, Check, BookOpen, Database, Award, 
-  ChevronRight, Compass, HelpCircle, Calendar, Download, Smartphone, Search
+  ChevronRight, Compass, HelpCircle, Calendar, Download, Smartphone, Search,
+  Home
 } from 'lucide-react';
 import { Song, UserRole, WorshipEvent } from './types';
 import { 
@@ -843,7 +844,7 @@ export default function App() {
                     id="mongodb-sync-status-badge"
                     onClick={handleForceSync}
                     disabled={mongoStatus === 'connecting'}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
+                    className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
                       mongoStatus === 'connected'
                         ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
                         : mongoStatus === 'connecting'
@@ -1280,19 +1281,21 @@ export default function App() {
 
         {/* VIEW 3: CALENDAR VIEW */}
         {activeTab === 'calendar' && session?.role !== 'guest' && (
-          <WorshipEvents
-            songs={songs}
-            events={events}
-            onEventsChange={loadEvents}
-            onClose={() => setActiveTab('dashboard')}
-            onSelectSong={(id, setlistSongIds) => {
-              setSongSourceTab('calendar');
-              handleSelectSong(id, setlistSongIds);
-              setActiveTab('search');
-            }}
-            selectedSongId={selectedSongId}
-            currentRole={currentRole}
-          />
+          <div className="w-full min-h-0 animate-in fade-in duration-200">
+            <WorshipEvents
+              songs={songs}
+              events={events}
+              onEventsChange={loadEvents}
+              onClose={() => setActiveTab('dashboard')}
+              onSelectSong={(id, setlistSongIds) => {
+                setSongSourceTab('calendar');
+                handleSelectSong(id, setlistSongIds);
+                setActiveTab('search');
+              }}
+              selectedSongId={selectedSongId}
+              currentRole={currentRole}
+            />
+          </div>
         )}
       </main>
 
@@ -1449,46 +1452,55 @@ That [G] saved a wretch like [D] me!`}
 
       {/* Responsive Mobile Bottom Navigation Dock */}
       {session && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-zinc-950/90 border-t border-zinc-800/80 backdrop-blur-md px-4 py-2.5 flex justify-around items-center shadow-2xl pb-safe">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-zinc-950/80 border-t border-zinc-800/40 backdrop-blur-xl px-4 py-2 flex justify-around items-center shadow-[0_-8px_30px_rgba(0,0,0,0.6)] pb-safe animate-slideUp">
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`flex flex-col items-center gap-1 py-1 px-3 text-xs transition-all active-touch cursor-pointer ${
-              activeTab === 'dashboard' ? 'text-amber-500 font-black' : 'text-zinc-500'
+            className={`flex flex-col items-center gap-1 py-1 px-3 text-xs transition-all active-touch cursor-pointer relative ${
+              activeTab === 'dashboard' ? 'text-amber-500 font-black scale-105' : 'text-zinc-500 hover:text-zinc-400'
             }`}
           >
-            <span className="text-xl leading-none">🏠</span>
+            <Home className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'dashboard' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.5)] scale-110' : ''}`} />
             <span className="text-[9px] font-bold uppercase tracking-wider">Home</span>
+            {activeTab === 'dashboard' && (
+              <span className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
+            )}
           </button>
           <button
             onClick={() => {
               setActiveTab('search');
               setSelectedSongId(null); // Clear selected song to return to index
             }}
-            className={`flex flex-col items-center gap-1 py-1 px-3 text-xs transition-all active-touch cursor-pointer ${
-              activeTab === 'search' ? 'text-amber-500 font-black' : 'text-zinc-500'
+            className={`flex flex-col items-center gap-1 py-1 px-3 text-xs transition-all active-touch cursor-pointer relative ${
+              activeTab === 'search' ? 'text-amber-500 font-black scale-105' : 'text-zinc-500 hover:text-zinc-400'
             }`}
           >
-            <span className="text-xl leading-none">🔍</span>
+            <Search className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'search' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.5)] scale-110' : ''}`} />
             <span className="text-[9px] font-bold uppercase tracking-wider">Find</span>
+            {activeTab === 'search' && (
+              <span className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
+            )}
           </button>
           {session.role !== 'guest' && (
             <button
               onClick={() => setActiveTab('calendar')}
-              className={`flex flex-col items-center gap-1 py-1 px-3 text-xs transition-all active-touch cursor-pointer ${
-                activeTab === 'calendar' ? 'text-amber-500 font-black' : 'text-zinc-500'
+              className={`flex flex-col items-center gap-1 py-1 px-3 text-xs transition-all active-touch cursor-pointer relative ${
+                activeTab === 'calendar' ? 'text-amber-500 font-black scale-105' : 'text-zinc-500 hover:text-zinc-400'
               }`}
             >
-              <span className="text-xl leading-none">📅</span>
+              <Calendar className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'calendar' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.5)] scale-110' : ''}`} />
               <span className="text-[9px] font-bold uppercase tracking-wider">Calendar</span>
+              {activeTab === 'calendar' && (
+                <span className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
+              )}
             </button>
           )}
           {showInstallBanner && !isInstalled && (
             <button
               onClick={handleInstallApp}
-              className="flex flex-col items-center gap-1 py-1 px-3 text-xs transition-all active-touch cursor-pointer text-amber-400 font-bold shrink-0 animate-in fade-in"
+              className="flex flex-col items-center gap-1 py-1 px-3 text-xs transition-all active-touch cursor-pointer text-amber-400 hover:text-amber-300 shrink-0 animate-in fade-in"
               title="Install App"
             >
-              <span className="text-xl leading-none">📲</span>
+              <Smartphone className="w-5 h-5 text-amber-400" />
               <span className="text-[9px] font-bold uppercase tracking-wider">Install</span>
             </button>
           )}

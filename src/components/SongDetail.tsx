@@ -103,6 +103,33 @@ export default function SongDetail({
   const [scrolling, setScrolling] = useState<boolean>(false);
   const scrollTimerRef = useRef<number | null>(null);
 
+  // Swipe gesture tracking refs & handlers for setlist navigation
+  const touchStartXRef = useRef<number>(0);
+  const touchEndXRef = useRef<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.targetTouches[0].clientX;
+    touchEndXRef.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndXRef.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const swipeDistance = touchStartXRef.current - touchEndXRef.current;
+    const minSwipeDistance = 75; // Minimum px distance to recognize a swipe
+
+    // Swipe left (next song)
+    if (swipeDistance > minSwipeDistance && hasNextSong && nextSongId) {
+      onSelectSong(nextSongId, worshipSetList);
+    }
+    // Swipe right (previous song)
+    else if (swipeDistance < -minSwipeDistance && hasPrevSong && prevSongId) {
+      onSelectSong(prevSongId, worshipSetList);
+    }
+  };
+
   // Load all song metadata to support smart related/alternative songs logic
   useEffect(() => {
     async function loadMetadata() {
@@ -514,7 +541,7 @@ export default function SongDetail({
               </div>
 
               {/* 3. COMFORTABLE FONT SIZE ADJUSTMENTS */}
-              <div className="flex-1 flex items-center justify-between sm:justify-start md:justify-end gap-3">
+              <div className="flex-1 flex items-center justify-between sm:justify-start md:justify-center gap-3">
                 <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest block md:hidden">Size:</span>
                 <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-900 border border-zinc-800 w-full sm:w-auto">
                   <button
@@ -539,12 +566,50 @@ export default function SongDetail({
                 </div>
               </div>
 
+              {/* 4. AUTO SCROLL CONTROLLER */}
+              <div className="flex-1 flex items-center justify-between sm:justify-start md:justify-end gap-3">
+                <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest block md:hidden">Scroll:</span>
+                <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-900 border border-zinc-800 w-full sm:w-auto">
+                  <button
+                    onClick={() => {
+                      if (autoScrollSpeed === 0) setAutoScrollSpeed(2);
+                      setScrolling(!scrolling);
+                    }}
+                    className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all active:scale-90 cursor-pointer ${
+                      scrolling && autoScrollSpeed > 0
+                        ? 'bg-amber-500 border-amber-500 text-black shadow-[0_0_10px_rgba(245,158,11,0.3)] font-black'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'
+                    }`}
+                    title={scrolling && autoScrollSpeed > 0 ? 'Pause scroll' : 'Start auto-scroll'}
+                  >
+                    {scrolling && autoScrollSpeed > 0 ? <Pause className="h-4 w-4 stroke-[2.5]" /> : <Play className="h-4 w-4 stroke-[2.5]" />}
+                  </button>
+                  
+                  {scrolling && (
+                    <select
+                      value={autoScrollSpeed}
+                      onChange={(e) => setAutoScrollSpeed(Number(e.target.value))}
+                      className="bg-zinc-950 text-xs font-bold font-mono h-10 px-2 rounded-xl text-amber-500 border border-zinc-800 focus:outline-none cursor-pointer"
+                    >
+                      <option value={1}>1x Speed</option>
+                      <option value={2}>2x Speed</option>
+                      <option value={3}>3x Speed</option>
+                      <option value={4}>4x Speed</option>
+                      <option value={5}>5x Speed</option>
+                    </select>
+                  )}
+                </div>
+              </div>
+
             </div>
 
             {/* Scrolling Lyric Sheet Canvas */}
             <div
               id="lyric-sheet"
               ref={lyricContainerRef}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4 bg-[#050506] relative font-serif text-slate-200 selection:bg-amber-500/20 select-text"
               style={{ fontSize: `${fontSize}px` }}
             >
@@ -856,6 +921,56 @@ export default function SongDetail({
                   >
                     Larger Text
                   </button>
+                </div>
+              </div>
+
+              {/* Auto Scroll Controls */}
+              <div className="space-y-2.5 border-b border-zinc-900 pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-left">
+                    <span className="text-xs font-bold text-white block">Auto Scroll Sheet</span>
+                    <span className="text-[10px] text-zinc-550">Hands-free scrolling speed</span>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    {scrolling && autoScrollSpeed > 0 ? `Speed ${autoScrollSpeed}` : 'Stopped'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (autoScrollSpeed === 0) setAutoScrollSpeed(2); // default speed
+                      setScrolling(!scrolling);
+                    }}
+                    className={`flex-1 h-11 border rounded-xl active-touch text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      scrolling && autoScrollSpeed > 0
+                        ? 'bg-amber-500 border-amber-500 text-black font-extrabold'
+                        : 'bg-zinc-900 border-zinc-850 text-zinc-300'
+                    }`}
+                  >
+                    {scrolling && autoScrollSpeed > 0 ? (
+                      <>
+                        <Pause className="h-3.5 w-3.5 stroke-[2.5]" /> Pause Scroll
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3.5 w-3.5 stroke-[2.5]" /> Start Scroll
+                      </>
+                    )}
+                  </button>
+                  
+                  {scrolling && (
+                    <select
+                      value={autoScrollSpeed}
+                      onChange={(e) => setAutoScrollSpeed(Number(e.target.value))}
+                      className="bg-zinc-900 text-xs font-bold h-11 px-3.5 rounded-xl text-[#f59e0b] border border-zinc-850 active-touch"
+                    >
+                      <option value={1}>1x Speed</option>
+                      <option value={2}>2x Speed</option>
+                      <option value={3}>3x Speed</option>
+                      <option value={4}>4x Speed</option>
+                      <option value={5}>5x Speed</option>
+                    </select>
+                  )}
                 </div>
               </div>
 
