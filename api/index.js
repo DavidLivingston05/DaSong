@@ -207,6 +207,122 @@ app.delete('/api/suggestions/:id', asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
+// POST /api/lyrics/scrape-url
+app.post('/api/lyrics/scrape-url', asyncHandler(async (req, res) => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: 'url parameter is required' });
+  }
+
+  try {
+    new URL(url);
+  } catch (e) {
+    return res.status(400).json({ error: 'Invalid URL format' });
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+  });
+
+  if (!response.ok) {
+    return res.status(response.status).json({ error: `Failed to fetch URL: ${response.statusText}` });
+  }
+
+  const html = await response.text();
+
+  // Try to find pre-formatted text (which usually holds chords)
+  const preMatches = [...html.matchAll(/<pre[^>]*>([\s\S]*?)<\/pre>/gi)];
+  let extractedText = '';
+
+  if (preMatches.length > 0) {
+    extractedText = preMatches.map(m => m[1]).join('\n\n');
+  } else {
+    // Try common container patterns
+    const containerRegexes = [
+      /<div[^>]+(?:class|id)=["'][^"']*(?:lyrics|lyric|chords|chord|tab-content)[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi
+    ];
+    
+    let containerMatch = null;
+    for (const regex of containerRegexes) {
+      const matches = [...html.matchAll(regex)];
+      if (matches.length > 0) {
+        containerMatch = matches.map(m => m[1]).join('\n\n');
+        break;
+      }
+    }
+
+    if (containerMatch) {
+      extractedText = containerMatch;
+    } else {
+      let bodyContent = html;
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      if (bodyMatch) {
+        bodyContent = bodyMatch[1];
+      }
+
+      bodyContent = bodyContent
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+        .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+        .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '');
+
+      extractedText = bodyContent;
+    }
+  }
+
+  // Convert HTML line breaks to newline characters
+  let cleanText = extractedText
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<p[^>]*>/gi, '')
+    .replace(/<[^>]*>/g, '');
+
+  // Decode common HTML entities
+  const htmlEntities = {
+    '&nbsp;': ' ',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#039;': "'",
+    '&rsquo;': "'",
+    '&lsquo;': "'",
+    '&ldquo;': '"',
+    '&rdquo;': '"',
+    '&ndash;': '-',
+    '&mdash;': '--',
+    '&copy;': '©'
+  };
+
+  for (const [entity, value] of Object.entries(htmlEntities)) {
+    cleanText = cleanText.replace(new RegExp(entity, 'g'), value);
+  }
+
+  cleanText = cleanText
+    .split('\n')
+    .map(line => line.trimEnd())
+    .join('\n')
+    .trim();
+
+  let title = '';
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (titleMatch) {
+    title = titleMatch[1]
+      .replace(/Chords.*|Tab.*|Lyrics.*/gi, '')
+      .replace(/ - Ultimate Guitar.*/gi, '')
+      .trim();
+  }
+
+  res.json({
+    success: true,
+    title: title || 'Scraped Song',
+    lyrics: cleanText
+  });
+}));
+
 // Error handler middleware
 app.use((err, req, res, next) => {
   console.error('API Error:', err);

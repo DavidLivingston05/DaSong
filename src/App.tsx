@@ -24,6 +24,7 @@ import SongList from './components/SongList';
 import SongDetail from './components/SongDetail';
 import WorshipEvents from './components/WorshipEvents';
 import { motion, AnimatePresence } from 'motion/react';
+import { parseTwoLineChords } from './utils/lyricsParser';
 
 
 export default function App() {
@@ -1484,7 +1485,21 @@ export default function App() {
               <div>
                 <label className="text-xs font-semibold text-slate-400 flex items-center justify-between">
                   <span>Lyrics Sheet with Bracket Chords *</span>
-                  <span className="text-[10px] text-amber-400 font-mono">Format: [C] Amazing [F] grace...</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!addForm.lyrics) return;
+                        const formatted = parseTwoLineChords(addForm.lyrics);
+                        setAddForm(p => ({ ...p, lyrics: formatted }));
+                      }}
+                      className="text-[9px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono font-bold transition-all cursor-pointer"
+                      title="Convert traditional chords-above-lyrics formatting into bracketed format"
+                    >
+                      🪄 Auto-Format Two-Line Chords
+                    </button>
+                    <span className="text-[10px] text-amber-450 font-mono hidden sm:inline">Format: [C] Amazing...</span>
+                  </div>
                 </label>
                 <textarea
                   id="add-lyrics"

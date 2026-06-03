@@ -3,6 +3,7 @@ import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Ed
 import { Song, UserRole } from '../types';
 import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions } from '../lib/db';
 import { transposeLyrics, stripChords } from '../utils/chordTransposer';
+import { parseTwoLineChords } from '../utils/lyricsParser';
 import Metronome from './Metronome';
 
 
@@ -530,7 +531,21 @@ export default function SongDetail({
             </div>
           </div>
           <div>
-            <label className="text-xs font-mono text-slate-400">Sheet Content (Brackets formatted chords for transposing)</label>
+            <label className="text-xs font-mono text-slate-400 flex items-center justify-between">
+              <span>Sheet Content (Brackets formatted chords for transposing)</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!editForm.lyrics) return;
+                  const formatted = parseTwoLineChords(editForm.lyrics);
+                  setEditForm(p => ({ ...p, lyrics: formatted }));
+                }}
+                className="text-[9px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono font-bold transition-all cursor-pointer"
+                title="Convert traditional chords-above-lyrics formatting into bracketed format"
+              >
+                🪄 Auto-Format Two-Line Chords
+              </button>
+            </label>
             <textarea
               id="edit-lyrics"
               value={editForm.lyrics}
