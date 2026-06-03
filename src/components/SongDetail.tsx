@@ -620,7 +620,7 @@ export default function SongDetail({
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4 bg-[#050506] relative font-serif text-slate-200 selection:bg-amber-500/20 select-text"
+              className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4 bg-[#050506] relative font-serif text-slate-200 selection:bg-amber-500/20 select-none"
               style={{ fontSize: `${fontSize}px` }}
             >
               {/* Dynamic Metadata Block with custom visual separator */}

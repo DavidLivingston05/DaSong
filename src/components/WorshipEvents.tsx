@@ -1065,7 +1065,7 @@ export default function WorshipEvents({
               style={{ maxHeight: 'calc(100vh - 180px)' }}
             >
               <pre 
-                className="whitespace-pre-wrap font-sans leading-relaxed text-zinc-200 tracking-wide select-text pb-20 font-medium"
+                className="whitespace-pre-wrap font-sans leading-relaxed text-zinc-200 tracking-wide select-none pb-20 font-medium"
                 style={{ fontSize: `${mobileFontSize}px` }}
               >
                 {mobileShowChords 
