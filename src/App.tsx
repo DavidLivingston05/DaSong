@@ -410,10 +410,11 @@ export default function App() {
       if (fullSong) {
         fullSong.favorite = !currentFav;
         await saveSong(fullSong);
-        await syncSongsList();
       }
     } catch (err) {
       console.error('Failed toggling favorited state:', err);
+    } finally {
+      await syncSongsList();
     }
   }, [syncSongsList]);
 
@@ -424,9 +425,10 @@ export default function App() {
       if (selectedSongId === id) {
         setSelectedSongId(null);
       }
-      await syncSongsList();
     } catch (err) {
       console.error('Failed deleting song:', err);
+    } finally {
+      await syncSongsList();
     }
   }, [selectedSongId, syncSongsList]);
 

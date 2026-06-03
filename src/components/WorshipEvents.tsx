@@ -209,6 +209,9 @@ export default function WorshipEvents({
 
     try {
       await saveWorshipEvent(newEvent);
+    } catch (err) {
+      console.warn('Setlist cloud sync warning:', err);
+    } finally {
       onEventsChange();
       // Reset forms
       setCreateTitle('');
@@ -216,8 +219,6 @@ export default function WorshipEvents({
       setCreateSongIds([]);
       setSongSearch('');
       setShowCreateDialog(false);
-    } catch (err) {
-      alert('Failed to save setlist: ' + err);
     }
   };
 
@@ -226,10 +227,11 @@ export default function WorshipEvents({
     if (confirm('Delete this setlist permanently?')) {
       try {
         await deleteWorshipEvent(id);
+      } catch (err) {
+        console.warn('Setlist cloud delete warning:', err);
+      } finally {
         onEventsChange();
         if (editingEventId === id) setEditingEventId(null);
-      } catch (err) {
-        alert('Failed to delete setlist: ' + err);
       }
     }
   };
@@ -249,9 +251,10 @@ export default function WorshipEvents({
 
     try {
       await saveWorshipEvent(updatedEv);
-      onEventsChange();
     } catch (err) {
       console.error('Failed to toggle song in event:', err);
+    } finally {
+      onEventsChange();
     }
   };
 
@@ -272,9 +275,10 @@ export default function WorshipEvents({
 
     try {
       await saveWorshipEvent(updatedEv);
-      onEventsChange();
     } catch (err) {
       console.error('Failed to reorder song in event:', err);
+    } finally {
+      onEventsChange();
     }
   };
 
