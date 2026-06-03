@@ -106,7 +106,7 @@ export default function WorshipEvents({
       if (fullSong) {
         setActiveLyricsSong(fullSong);
         setMobileTransposeStep(0);
-        onSelectSong(songMetadata.id, activeEvent ? activeEvent.songIds : []); // Triggers selection globally
+        onSelectSong(songMetadata.id, activeEvent ? (activeEvent.songIds || []) : []); // Triggers selection globally
         setMobileStage('lyrics');
       }
     } catch (err) {
@@ -239,10 +239,11 @@ export default function WorshipEvents({
     const ev = events.find(e => e.id === eventId);
     if (!ev) return;
 
-    const exists = ev.songIds.includes(songId);
+    const songIds = ev.songIds || [];
+    const exists = songIds.includes(songId);
     const updatedIds = exists 
-      ? ev.songIds.filter(id => id !== songId) 
-      : [...ev.songIds, songId];
+      ? songIds.filter(id => id !== songId) 
+      : [...songIds, songId];
       
     const updatedEv = { ...ev, songIds: updatedIds };
 
@@ -258,7 +259,8 @@ export default function WorshipEvents({
     const ev = events.find(e => e.id === eventId);
     if (!ev) return;
 
-    const list = [...ev.songIds];
+    const songIds = ev.songIds || [];
+    const list = [...songIds];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= list.length) return;
     
@@ -450,7 +452,7 @@ export default function WorshipEvents({
                           onClick={() => setEditingEventId(isExpanded ? null : ev.id)}
                           className="text-[11px] font-bold text-slate-400 hover:text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-full cursor-pointer transition-colors"
                         >
-                          {isExpanded ? 'Fold List' : `Manage Setup (${ev.songIds.length})`}
+                          {isExpanded ? 'Fold List' : `Manage Setup (${(ev.songIds || []).length})`}
                         </button>
                         <button 
                           onClick={(e) => handleDeleteEvent(ev.id, e)}
@@ -474,13 +476,13 @@ export default function WorshipEvents({
                           </p>
                         </div>
 
-                        {ev.songIds.length === 0 ? (
+                        {(ev.songIds || []).length === 0 ? (
                           <div className="py-6 text-center text-xs text-slate-500 italic bg-white/[0.01] rounded-xl border border-white/5">
                             No songs currently placed. Link a song from your repertory catalogue below!
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            {ev.songIds.map((sId, index) => {
+                            {(ev.songIds || []).map((sId, index) => {
                               const matchSong = songs.find(s => s.id === sId);
                               const isPlayActive = sId === selectedSongId;
                               
@@ -503,7 +505,7 @@ export default function WorshipEvents({
                                     <span className="text-slate-500 font-bold">--&gt;</span>
                                     <button
                                       onClick={() => {
-                                        onSelectSong(matchSong.id, ev.songIds);
+                                        onSelectSong(matchSong.id, ev.songIds || []);
                                       }}
                                       className="font-bold text-white hover:text-amber-400 text-left truncate cursor-pointer transition-colors"
                                       title="Load on lyrics screen"
@@ -528,7 +530,7 @@ export default function WorshipEvents({
                                       <MoveUp className="h-3 w-3" />
                                     </button>
                                     <button
-                                      disabled={index === ev.songIds.length - 1}
+                                      disabled={index === (ev.songIds || []).length - 1}
                                       onClick={() => moveSongInEvent(ev.id, index, 'down')}
                                       className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
                                       title="Shift Down"
@@ -573,7 +575,7 @@ export default function WorshipEvents({
                               </div>
                             ) : (
                               filteredSongs.map(song => {
-                                const isAdded = ev.songIds.includes(song.id);
+                                const isAdded = (ev.songIds || []).includes(song.id);
                                 return (
                                   <button
                                     key={song.id}
@@ -612,7 +614,7 @@ export default function WorshipEvents({
       {/* --------------------------------------------------------------------------------------------------------------------------------------
           MOBILE VIEW: Native smartphone-style full-screen sequential pages (Replacing whole screen)
          -------------------------------------------------------------------------------------------------------------------------------------- */}
-      <div className="md:hidden flex-1 flex flex-col min-h-screen w-full bg-[#070708] text-zinc-100 font-sans select-none overflow-y-auto">
+      <div className={`md:hidden flex-1 flex flex-col min-h-screen w-full bg-[#070708] text-zinc-100 font-sans ${mobileStage === 'lyrics' ? 'overflow-hidden h-screen' : 'select-none overflow-y-auto'}`}>
         
         {/* ----------------------------------------------------
             STAGE 1: FRESH CALENDAR MONTH PAGE
@@ -765,7 +767,7 @@ export default function WorshipEvents({
                               <div className="truncate">
                                 <h4 className="text-xs font-bold text-white truncate">{ev.title}</h4>
                                 <p className="text-[9px] text-zinc-500 font-mono mt-0.5 uppercase tracking-wide">
-                                  {ev.time || 'All Day'} • {ev.songIds.length} Songs
+                                  {ev.time || 'All Day'} • {(ev.songIds || []).length} Songs
                                 </p>
                               </div>
                             </div>
@@ -826,9 +828,9 @@ export default function WorshipEvents({
                   Order of Worship Songs
                 </p>
 
-                {activeEvent && activeEvent.songIds.length > 0 ? (
+                {activeEvent && (activeEvent.songIds || []).length > 0 ? (
                   <div className="space-y-2.5">
-                    {activeEvent.songIds.map((songId, index) => {
+                    {(activeEvent.songIds || []).map((songId, index) => {
                       const matchSong = songs.find(s => s.id === songId);
                       if (!matchSong) return null;
 
@@ -864,7 +866,7 @@ export default function WorshipEvents({
                                   <MoveUp className="h-3.5 w-3.5" />
                                 </button>
                                 <button
-                                  disabled={index === activeEvent.songIds.length - 1}
+                                  disabled={index === (activeEvent.songIds || []).length - 1}
                                   onClick={(e) => { e.stopPropagation(); moveSongInEvent(activeEvent.id, index, 'down'); }}
                                   className="p-1 bg-zinc-950 text-zinc-400 border border-zinc-850 rounded disabled:opacity-20 cursor-pointer"
                                 >
@@ -912,7 +914,7 @@ export default function WorshipEvents({
                     </div>
                     <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-1">
                       {filteredSongs.slice(0, 30).map(song => {
-                        const isAdded = activeEvent.songIds.includes(song.id);
+                        const isAdded = (activeEvent.songIds || []).includes(song.id);
                         return (
                           <button
                             key={song.id}
@@ -968,7 +970,7 @@ export default function WorshipEvents({
                     setCreateDate(activeEvent.date);
                     setCreateTime(activeEvent.time || '09:00');
                     setCreateDesc(activeEvent.description || '');
-                    setCreateSongIds(activeEvent.songIds);
+                    setCreateSongIds(activeEvent.songIds || []);
                     // Open simple quick form by deleting first or just saving over-write:
                     // Deleting and styling
                     try {
@@ -1065,7 +1067,7 @@ export default function WorshipEvents({
               style={{ maxHeight: 'calc(100vh - 180px)' }}
             >
               <pre 
-                className="whitespace-pre-wrap font-sans leading-relaxed text-zinc-200 tracking-wide select-none pb-20 font-medium"
+                className="whitespace-pre-wrap font-sans leading-relaxed text-zinc-200 tracking-wide pb-20 font-medium"
                 style={{ fontSize: `${mobileFontSize}px` }}
               >
                 {mobileShowChords 

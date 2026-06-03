@@ -545,7 +545,7 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
           id="lyrics-scroll-container"
           ref={scrollContainerRef}
           onClick={handleLyricsTouch}
-          className="flex-1 overflow-y-auto px-6 py-12 md:px-16 cursor-pointer select-none"
+          className="flex-1 overflow-y-auto px-6 py-12 md:px-16 cursor-pointer"
         >
           <div
             className={`mx-auto transition-all ${

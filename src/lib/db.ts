@@ -283,7 +283,14 @@ export function getLocalWorshipEvents(): WorshipEvent[] {
   const saved = localStorage.getItem('lyrasync_events');
   if (saved) {
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.map(e => ({
+          ...e,
+          songIds: Array.isArray(e.songIds) ? e.songIds : []
+        }));
+      }
+      return [];
     } catch {
       return [];
     }
@@ -302,7 +309,11 @@ export function getLocalWorshipEvents(): WorshipEvent[] {
 }
 
 export function saveLocalWorshipEvents(events: WorshipEvent[]) {
-  localStorage.setItem('lyrasync_events', JSON.stringify(events));
+  const normalized = events.map(e => ({
+    ...e,
+    songIds: Array.isArray(e.songIds) ? e.songIds : []
+  }));
+  localStorage.setItem('lyrasync_events', JSON.stringify(normalized));
 }
 
 export async function saveWorshipEvent(event: WorshipEvent): Promise<void> {
