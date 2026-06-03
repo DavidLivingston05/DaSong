@@ -114,6 +114,57 @@ async function getLocalSongsCountAndMaxTimestamp(): Promise<{ count: number, las
   });
 }
 
+// Bi-directional event synchronization to prevent local event changes from being overwritten by sync
+async function syncEventsBiDirectional(cloudEvents: WorshipEvent[]): Promise<void> {
+  const localEvents = getLocalWorshipEvents();
+  const localEventsMap = new Map<string, WorshipEvent>();
+  localEvents.forEach(e => localEventsMap.set(e.id, e));
+  
+  const mergedEvents = [...localEvents];
+  const eventsToSyncToCloud: WorshipEvent[] = [];
+  
+  cloudEvents.forEach(cloudEv => {
+    const localEv = localEventsMap.get(cloudEv.id);
+    const cloudTime = cloudEv.updatedAt || 0;
+    const localTime = localEv ? (localEv.updatedAt || 0) : 0;
+    
+    if (!localEv) {
+      // Missing locally
+      mergedEvents.push(cloudEv);
+    } else if (cloudTime > localTime) {
+      // Cloud is newer, overwrite local
+      const idx = mergedEvents.findIndex(e => e.id === cloudEv.id);
+      if (idx >= 0) mergedEvents[idx] = cloudEv;
+    } else if (localTime > cloudTime) {
+      // Local is newer, sync back to cloud
+      eventsToSyncToCloud.push(localEv);
+    }
+  });
+  
+  // Sync local events not present in cloud
+  const cloudEventsIds = new Set(cloudEvents.map(e => e.id));
+  localEvents.forEach(localEv => {
+    if (!cloudEventsIds.has(localEv.id)) {
+      eventsToSyncToCloud.push(localEv);
+    }
+  });
+
+  saveLocalWorshipEvents(mergedEvents);
+  
+  if (eventsToSyncToCloud.length > 0) {
+    for (const ev of eventsToSyncToCloud) {
+      try {
+        await apiRequest('/api/events', {
+          method: 'POST',
+          body: JSON.stringify(ev)
+        });
+      } catch (err) {
+        console.error(`Failed to background sync event ${ev.id} to cloud:`, err);
+      }
+    }
+  }
+}
+
 // Synchronizes the cloud MongoDB state back to local IndexedDB and localStorage using Delta/Timestamp Sync
 export async function syncWithMongoDB(): Promise<void> {
   // Check if we are already in sync by using a lightweight check endpoint
@@ -124,7 +175,7 @@ export async function syncWithMongoDB(): Promise<void> {
     if (localCheck.count === syncCheck.count && localCheck.lastUpdated === syncCheck.lastUpdated) {
       // Local is in sync, only sync calendar events and choir suggestions to keep things light
       const cloudEvents: WorshipEvent[] = await apiRequest('/api/events');
-      saveLocalWorshipEvents(cloudEvents);
+      await syncEventsBiDirectional(cloudEvents);
 
       const cloudSuggestions: SuggestedSong[] = await apiRequest('/api/suggestions');
       saveLocalSuggestions(cloudSuggestions);
@@ -193,7 +244,7 @@ export async function syncWithMongoDB(): Promise<void> {
 
   // 2. Sync Worship Calendar Events
   const cloudEvents: WorshipEvent[] = await apiRequest('/api/events');
-  saveLocalWorshipEvents(cloudEvents);
+  await syncEventsBiDirectional(cloudEvents);
 
   // 3. Sync Choir Guidelines Suggestions
   const cloudSuggestions: SuggestedSong[] = await apiRequest('/api/suggestions');
@@ -372,19 +423,20 @@ export function saveLocalWorshipEvents(events: WorshipEvent[]) {
 }
 
 export async function saveWorshipEvent(event: WorshipEvent): Promise<void> {
+  const eventWithTimestamp = { ...event, updatedAt: Date.now() };
   const localEvents = getLocalWorshipEvents();
   const index = localEvents.findIndex(e => e.id === event.id);
   if (index >= 0) {
-    localEvents[index] = event;
+    localEvents[index] = eventWithTimestamp;
   } else {
-    localEvents.push(event);
+    localEvents.push(eventWithTimestamp);
   }
   saveLocalWorshipEvents(localEvents);
 
   try {
     await apiRequest('/api/events', {
       method: 'POST',
-      body: JSON.stringify(event)
+      body: JSON.stringify(eventWithTimestamp)
     });
   } catch (err) {
     console.error('Failed to sync worship event to MongoDB:', err);

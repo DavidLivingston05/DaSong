@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders } from 'lucide-react';
-import { Song, UserRole } from '../types';
-import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions } from '../lib/db';
+import { Song, UserRole, WorshipEvent } from '../types';
+import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions, getLocalWorshipEvents, saveWorshipEvent } from '../lib/db';
 import { transposeLyrics, stripChords } from '../utils/chordTransposer';
 import { parseTwoLineChords } from '../utils/lyricsParser';
 import Metronome from './Metronome';
@@ -38,6 +38,35 @@ export default function SongDetail({
   const [loading, setLoading] = useState<boolean>(true);
   const [allMetadataState, setAllMetadataState] = useState<SongMetadata[]>([]);
   const allMetadata = songsMetadata || allMetadataState;
+
+  const [events, setEvents] = useState<WorshipEvent[]>([]);
+  const [showSetlistDropdown, setShowSetlistDropdown] = useState<boolean>(false);
+
+  useEffect(() => {
+    setEvents(getLocalWorshipEvents());
+  }, [songId]);
+
+  const sortedEvents = useMemo(() => {
+    return [...events].sort((a, b) => b.date.localeCompare(a.date));
+  }, [events]);
+
+  const handleToggleSongInSetlist = async (ev: WorshipEvent) => {
+    const songIds = ev.songIds || [];
+    const exists = songIds.includes(songId);
+    const updatedIds = exists 
+      ? songIds.filter(id => id !== songId) 
+      : [...songIds, songId];
+    
+    const updatedEv = { ...ev, songIds: updatedIds, updatedAt: Date.now() };
+    
+    setEvents(prev => prev.map(e => e.id === ev.id ? updatedEv : e));
+    
+    try {
+      await saveWorshipEvent(updatedEv);
+    } catch (err) {
+      console.error('Failed to toggle song in event:', err);
+    }
+  };
 
 
   // Setup active worship set sequence helpers based on passed array
@@ -479,6 +508,51 @@ export default function SongDetail({
               <Edit3 className="h-4 w-4 shrink-0" /> 
               <span>Edit Lyrics</span>
             </button>
+          )}
+
+          {/* Add to Setlist Dropdown Trigger */}
+          {currentRole === 'admin' && song && (
+            <div className="relative flex-1 sm:flex-initial">
+              <button
+                type="button"
+                onClick={() => setShowSetlistDropdown(!showSetlistDropdown)}
+                className="w-full h-12 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-850 hover:text-white px-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="h-4 w-4 shrink-0" /> 
+                <span>Add to Setlist</span>
+              </button>
+              {showSetlistDropdown && (
+                <div className="absolute right-0 bottom-14 md:bottom-auto md:top-14 w-60 bg-zinc-950 border border-zinc-850 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-zinc-900">Select Target Setlist</p>
+                  <div className="max-h-[160px] overflow-y-auto pr-1">
+                    {sortedEvents.length === 0 ? (
+                      <p className="text-[10px] text-zinc-500 italic p-3 text-center">No setlists created yet.</p>
+                    ) : (
+                      sortedEvents.map(ev => {
+                        const isAdded = (ev.songIds || []).includes(song.id);
+                        return (
+                          <button
+                            type="button"
+                            key={ev.id}
+                            onClick={() => handleToggleSongInSetlist(ev)}
+                            className={`w-full text-left p-2.5 rounded-xl text-xs flex items-center justify-between gap-2 hover:bg-white/5 transition-all cursor-pointer ${
+                              isAdded ? 'text-emerald-400 font-bold' : 'text-zinc-300'
+                            }`}
+                          >
+                            <span className="truncate">{ev.title}</span>
+                            {isAdded ? (
+                              <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                            ) : (
+                              <Plus className="h-3.5 w-3.5 text-zinc-650 shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Fullscreen Presentation Trigger Selection */}

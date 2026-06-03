@@ -34,6 +34,7 @@ export interface WorshipEvent {
   time?: string;
   description?: string;
   songIds: string[]; // references of Song IDs
+  updatedAt?: number;
 }
 
 export type UserRole = 'admin' | 'guest' | 'choir';

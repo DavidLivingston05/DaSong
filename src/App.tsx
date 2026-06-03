@@ -1370,6 +1370,7 @@ export default function App() {
                     if (songSourceTab === 'calendar') {
                       setActiveTab('calendar');
                     }
+                    loadEvents();
                   }}
                   onEnterStageMode={handleEnterStageMode}
                   onToggleFavorite={handleToggleFavorite}
