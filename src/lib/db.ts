@@ -97,8 +97,43 @@ async function apiRequest(path: string, options?: RequestInit): Promise<any> {
   return response.json();
 }
 
+async function getLocalSongsCountAndMaxTimestamp(): Promise<{ count: number, lastUpdated: number }> {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const countRequest = store.count();
+
+    countRequest.onerror = () => reject(countRequest.error);
+    countRequest.onsuccess = () => {
+      const count = countRequest.result;
+      const cachedTimeStr = localStorage.getItem('dasong_local_max_updated_at');
+      const lastUpdated = cachedTimeStr ? parseInt(cachedTimeStr, 10) : 0;
+      resolve({ count, lastUpdated });
+    };
+  });
+}
+
 // Synchronizes the cloud MongoDB state back to local IndexedDB and localStorage using Delta/Timestamp Sync
 export async function syncWithMongoDB(): Promise<void> {
+  // Check if we are already in sync by using a lightweight check endpoint
+  try {
+    const syncCheck: { count: number; lastUpdated: number } = await apiRequest('/api/songs/sync-check');
+    const localCheck = await getLocalSongsCountAndMaxTimestamp();
+
+    if (localCheck.count === syncCheck.count && localCheck.lastUpdated === syncCheck.lastUpdated) {
+      // Local is in sync, only sync calendar events and choir suggestions to keep things light
+      const cloudEvents: WorshipEvent[] = await apiRequest('/api/events');
+      saveLocalWorshipEvents(cloudEvents);
+
+      const cloudSuggestions: SuggestedSong[] = await apiRequest('/api/suggestions');
+      saveLocalSuggestions(cloudSuggestions);
+      return;
+    }
+  } catch (err) {
+    console.warn('API sync-check failed, falling back to full delta sync check:', err);
+  }
+
   // 1. Sync Songs in an optimized Delta fashion to scale to 15,000+ songs
   const cloudMetadata: SongMetadata[] = await apiRequest('/api/songs/metadata');
   const localMetadata = await getAllSongsMetadata();
@@ -111,16 +146,19 @@ export async function syncWithMongoDB(): Promise<void> {
   const cloudIds = new Set<string>();
   const missingOrOutdatedIds: string[] = [];
 
+  let maxCloudTime = 0;
   for (const cloudSong of cloudMetadata) {
     cloudIds.add(cloudSong.id);
     const localSong = localMetadataMap.get(cloudSong.id);
+
+    const cloudTime = cloudSong.updatedAt || cloudSong.createdAt || 0;
+    if (cloudTime > maxCloudTime) maxCloudTime = cloudTime;
 
     if (!localSong) {
       // Missing locally
       missingOrOutdatedIds.push(cloudSong.id);
     } else {
       // Compare timestamps
-      const cloudTime = cloudSong.updatedAt || cloudSong.createdAt || 0;
       const localTime = localSong.updatedAt || localSong.createdAt || 0;
       if (cloudTime > localTime) {
         missingOrOutdatedIds.push(cloudSong.id);
@@ -150,6 +188,9 @@ export async function syncWithMongoDB(): Promise<void> {
     }
   }
 
+  // Save the new max timestamp to localStorage so future checks can hit the cache!
+  localStorage.setItem('dasong_local_max_updated_at', String(maxCloudTime));
+
   // 2. Sync Worship Calendar Events
   const cloudEvents: WorshipEvent[] = await apiRequest('/api/events');
   saveLocalWorshipEvents(cloudEvents);
@@ -166,6 +207,14 @@ export async function syncWithMongoDB(): Promise<void> {
 // Bulk insert songs in unified single transaction
 export async function saveSongsBatch(songs: Song[]): Promise<void> {
   await saveSongsBatchIndexedDB(songs);
+  let maxTime = 0;
+  for (const s of songs) {
+    const t = s.updatedAt || s.createdAt || 0;
+    if (t > maxTime) maxTime = t;
+  }
+  if (maxTime > 0) {
+    localStorage.setItem('dasong_local_max_updated_at', String(maxTime));
+  }
   try {
     await apiRequest('/api/songs', {
       method: 'POST',
@@ -179,6 +228,8 @@ export async function saveSongsBatch(songs: Song[]): Promise<void> {
 
 export async function saveSong(song: Song): Promise<void> {
   await saveSongIndexedDB(song);
+  const now = song.updatedAt || song.createdAt || Date.now();
+  localStorage.setItem('dasong_local_max_updated_at', String(now));
   try {
     await apiRequest('/api/songs', {
       method: 'POST',
@@ -192,6 +243,8 @@ export async function saveSong(song: Song): Promise<void> {
 
 export async function deleteSong(id: string): Promise<void> {
   await deleteSongIndexedDB(id);
+  // Remove last updated cache to force recalculation on next sync check
+  localStorage.removeItem('dasong_local_max_updated_at');
   try {
     await apiRequest(`/api/songs/${id}`, {
       method: 'DELETE'
@@ -204,6 +257,7 @@ export async function deleteSong(id: string): Promise<void> {
 
 export async function clearAllSongs(): Promise<void> {
   await clearAllSongsIndexedDB();
+  localStorage.removeItem('dasong_local_max_updated_at');
   try {
     await apiRequest('/api/songs', {
       method: 'DELETE'
@@ -213,6 +267,7 @@ export async function clearAllSongs(): Promise<void> {
     throw err;
   }
 }
+
 
 // Lazy-load lyrics for a single song (reads local for instant 0ms access)
 export async function getSongById(id: string): Promise<Song | null> {

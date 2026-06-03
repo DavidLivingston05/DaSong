@@ -17,6 +17,7 @@ interface SongDetailProps {
   backLabel?: string;
   setlistSongIds?: string[];
   tempBroadcastSong?: Song | null;
+  songsMetadata?: SongMetadata[];
 }
 
 export default function SongDetail({
@@ -29,11 +30,14 @@ export default function SongDetail({
   currentRole,
   backLabel,
   setlistSongIds = [],
-  tempBroadcastSong = null
+  tempBroadcastSong = null,
+  songsMetadata
 }: SongDetailProps) {
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [allMetadata, setAllMetadata] = useState<SongMetadata[]>([]);
+  const [allMetadataState, setAllMetadataState] = useState<SongMetadata[]>([]);
+  const allMetadata = songsMetadata || allMetadataState;
+
 
   // Setup active worship set sequence helpers based on passed array
   const worshipSetList = useMemo(() => {
@@ -94,6 +98,34 @@ export default function SongDetail({
   const [fontSize, setFontSize] = useState<number>(16);
   const [showMobileDrawer, setShowMobileDrawer] = useState<boolean>(false);
 
+  // Compute transposed key
+  const transposedKey = useMemo(() => {
+    const originalKey = song?.key || 'G';
+    if (transposeStep === 0) return originalKey;
+
+    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const flats: Record<string, string> = {
+      'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#',
+      'db': 'C#', 'eb': 'D#', 'gb': 'F#', 'ab': 'G#', 'bb': 'A#'
+    };
+    
+    let cleanKey = originalKey.trim();
+    const isMinor = cleanKey.endsWith('m') && cleanKey.length > 1 && !cleanKey.endsWith('im');
+    let baseNote = isMinor ? cleanKey.slice(0, -1) : cleanKey;
+    
+    if (flats[baseNote]) {
+      baseNote = flats[baseNote];
+    }
+    
+    let idx = notes.findIndex(n => n.toUpperCase() === baseNote.toUpperCase());
+    if (idx === -1) return originalKey;
+    
+    let targetIdx = (idx + transposeStep) % 12;
+    if (targetIdx < 0) targetIdx += 12;
+    
+    return notes[targetIdx] + (isMinor ? 'm' : '');
+  }, [song?.key, transposeStep]);
+
   
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editForm, setEditForm] = useState({ title: '', author: '', key: '', bpm: 75, category: '', lyrics: '' });
@@ -103,20 +135,111 @@ export default function SongDetail({
   const [scrolling, setScrolling] = useState<boolean>(false);
   const scrollTimerRef = useRef<number | null>(null);
 
+  // Keyboard control shortcuts for instant Stage/Musician projection control
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isTyping = activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        (activeEl as HTMLElement).isContentEditable
+      );
+
+      // Disable keyboard shortcuts when editing or typing
+      if (isTyping || isEditing) return;
+
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault();
+          onClose();
+          break;
+        case '[':
+        case '{':
+          e.preventDefault();
+          setFontSize(p => Math.max(12, p - 1));
+          break;
+        case ']':
+        case '}':
+          e.preventDefault();
+          setFontSize(p => Math.min(28, p + 1));
+          break;
+        case ' ':
+          e.preventDefault();
+          setAutoScrollSpeed(speed => {
+            if (speed === 0) return 2;
+            return speed;
+          });
+          setScrolling(prev => !prev);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          // Increase scrolling speed
+          setAutoScrollSpeed(speed => Math.min(speed + 1, 10));
+          setScrolling(true);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          // Decrease scrolling speed
+          setAutoScrollSpeed(speed => Math.max(speed - 1, 1));
+          setScrolling(true);
+          break;
+        case '+':
+        case '=':
+          e.preventDefault();
+          if (showChords) setTransposeStep(prev => prev + 1);
+          break;
+        case '-':
+        case '_':
+          e.preventDefault();
+          if (showChords) setTransposeStep(prev => prev - 1);
+          break;
+        case '0':
+          e.preventDefault();
+          if (showChords) setTransposeStep(0);
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          if (nextSongId) {
+            e.preventDefault();
+            onSelectSong(nextSongId, worshipSetList);
+          }
+          break;
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          if (prevSongId) {
+            e.preventDefault();
+            onSelectSong(prevSongId, worshipSetList);
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [songId, nextSongId, prevSongId, worshipSetList, showChords, autoScrollSpeed, isEditing, onClose, onSelectSong]);
+
 
 
   // Load all song metadata to support smart related/alternative songs logic
   useEffect(() => {
+    if (songsMetadata) return;
     async function loadMetadata() {
       try {
         const meta = await getAllSongsMetadata();
-        setAllMetadata(meta);
+        setAllMetadataState(meta);
       } catch (err) {
         console.error('Failed loading metadata for suggestions:', err);
       }
     }
     loadMetadata();
-  }, [songId]);
+  }, [songId, songsMetadata]);
+
 
   // 1. Lazy load full song sheet from Database tables safely
   useEffect(() => {
@@ -276,7 +399,7 @@ export default function SongDetail({
     return (
       <div className="bg-white rounded-3xl border border-amber-950/10 p-12 text-center animate-pulse dark:bg-stone-900 dark:border-white/5">
         <Music className="h-10 w-10 text-amber-900/10 mx-auto animate-spin" />
-        <h4 className="font-serif font-bold text-amber-950 mt-4 dark:text-stone-300">Searching Hymnal Vaults...</h4>
+        <h4 className="font-serif font-bold text-amber-950 mt-4 dark:text-stone-300">Loading lyrics sheet...</h4>
       </div>
     );
   }
@@ -357,13 +480,13 @@ export default function SongDetail({
             </button>
           )}
 
-          {/* Core Broadcast Presentation Trigger Selection */}
+          {/* Fullscreen Presentation Trigger Selection */}
           <button
             id="stage-presentation-trigger"
             onClick={() => onEnterStageMode(transposeStep)}
             className="flex-1 sm:flex-initial h-12 bg-amber-500 hover:bg-amber-400 text-black px-5 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer active:scale-95"
           >
-            <span>Stage Presentation</span> 
+            <span>Present Fullscreen</span> 
             <ArrowUpRight className="h-4 w-4 stroke-[3] shrink-0" />
           </button>
         </div>
@@ -497,7 +620,7 @@ export default function SongDetail({
                     title="Click to reset key pitch"
                   >
                     <span className="text-[9px] uppercase tracking-normal opacity-70">
-                      Key: <span className="underline font-bold">{song.key || 'G'}</span>
+                      Key: <span className="underline font-bold">{transposeStep === 0 ? (song.key || 'G') : `${song.key || 'G'} → ${transposedKey}`}</span>
                     </span>
                     <span className="font-bold leading-none mt-0.5 text-xs">
                       {transposeStep === 0 ? 'Original' : `${transposeStep > 0 ? '+' : ''}${transposeStep} Shift`}
@@ -595,15 +718,9 @@ export default function SongDetail({
                   Author/Credits: <span className="text-slate-300 font-semibold">{song.author || 'Traditional'}</span>
                 </p>
                 <div className="border-t border-dashed border-zinc-800/80 my-4 pt-4 flex flex-wrap items-center justify-between select-none pointer-events-none gap-2">
-                  <span className="text-[9px] font-mono tracking-widest text-[#ef4444]/60 uppercase flex items-center gap-1">
-                    <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse"></span>
-                    STUDIO FEED IN {song.bpm || 75} BPM
+                  <span className="text-[10px] font-mono tracking-wider text-zinc-550 uppercase flex items-center gap-1.5">
+                    Tempo: <span className="text-amber-500 font-bold">{song.bpm || 72} BPM</span>
                   </span>
-                  <div className="flex gap-1.5">
-                    <span className="w-1 h-1 rounded-full bg-emerald-500/40"></span>
-                    <span className="w-1 h-1 rounded-full bg-amber-500/40"></span>
-                    <span className="w-1 h-1 rounded-full bg-red-400/40"></span>
-                  </div>
                 </div>
               </div>
 
@@ -844,7 +961,9 @@ export default function SongDetail({
                 <div className="flex items-center justify-between">
                   <div className="text-left">
                     <span className="text-xs font-bold text-white block">Key Pitch shift</span>
-                    <span className="text-[10px] text-zinc-550">Transpose active sheet chords</span>
+                    <span className="text-[10px] text-zinc-550">
+                      {transposeStep === 0 ? `Current Key: ${song?.key || 'G'}` : `Key: ${song?.key || 'G'} → ${transposedKey}`}
+                    </span>
                   </div>
                   <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 uppercase">
                     {transposeStep === 0 ? 'Original' : `${transposeStep > 0 ? '+' : ''}${transposeStep} Shift`}

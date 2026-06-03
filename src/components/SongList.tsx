@@ -44,6 +44,7 @@ function SongList({
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [showOnlyFavorites, setShowOnlyFavorites] = useState<boolean>(false);
   const [visibleCount, setVisibleCount] = useState<number>(20);
+  const [kbdIndex, setKbdIndex] = useState<number>(-1);
 
   // Derive unique categories for filtering dropdown
   const categories = useMemo(() => {
@@ -56,6 +57,9 @@ function SongList({
 
   // High performance filter loop matching multiple constraints with phonetic Tamil/Tanglish support
   const filteredSongs = useMemo(() => {
+    if (!searchQuery.trim() && selectedCategory === 'All' && !showOnlyFavorites) {
+      return songs;
+    }
     const result = songs.filter(song => {
       // 1. Phonetic & Dual-Script Text Filter
       const matchesText = !searchQuery.trim() || matchSong(song, searchQuery);
@@ -73,39 +77,92 @@ function SongList({
     return result;
   }, [songs, searchQuery, selectedCategory, showOnlyFavorites]);
 
+
   // Slice list up to visible count for ultra fast layout rendering
   const paginatedSongs = useMemo(() => {
     return filteredSongs.slice(0, visibleCount);
   }, [filteredSongs, visibleCount]);
 
-  // Listen for keyboard shortcuts: pressing "/" focuses the search bar instantly
+  // Reset keyboard selection when active filter inputs change
+  React.useEffect(() => {
+    setKbdIndex(-1);
+  }, [searchQuery, selectedCategory, showOnlyFavorites]);
+
+  // Keyboard navigation listener (ArrowUp, ArrowDown, Enter)
   React.useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const activeElement = document.activeElement;
-      const isTyping = activeElement && (
-        activeElement.tagName === 'INPUT' || 
+      const isTypingInChat = activeElement && (
         activeElement.tagName === 'TEXTAREA' || 
         (activeElement as HTMLElement).isContentEditable
       );
 
-      if (e.key === '/' && !isTyping) {
+      // Only allow shortcuts if the user isn't typing in an external text block (like requests modal)
+      if (isTypingInChat) return;
+
+      const isInput = activeElement && activeElement.tagName === 'INPUT';
+
+      // Press "/" to focus search bar
+      if (e.key === '/' && !isInput) {
         e.preventDefault();
         const searchInput = document.getElementById('song-search');
         if (searchInput) {
           searchInput.focus();
           (searchInput as HTMLInputElement).select();
         }
+        return;
+      }
+
+      // Press Escape to blur search
+      if (e.key === 'Escape' && isInput) {
+        (activeElement as HTMLElement).blur();
+        return;
+      }
+
+      // Keyboard arrow navigation
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setKbdIndex(prev => {
+          const next = prev + 1;
+          return next < paginatedSongs.length ? next : prev;
+        });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setKbdIndex(prev => {
+          const next = prev - 1;
+          return next >= 0 ? next : prev;
+        });
+      } else if (e.key === 'Enter') {
+        if (kbdIndex >= 0 && kbdIndex < paginatedSongs.length) {
+          e.preventDefault();
+          if (isInput) {
+            (activeElement as HTMLElement).blur();
+          }
+          onSelectSong(paginatedSongs[kbdIndex].id);
+        }
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
+  }, [paginatedSongs, kbdIndex, onSelectSong]);
+
+  // Automatically scroll the keyboard highlighted item into view if it moves off-screen
+  React.useEffect(() => {
+    if (kbdIndex >= 0 && paginatedSongs[kbdIndex]) {
+      const songId = paginatedSongs[kbdIndex].id;
+      const activeEl = document.getElementById(`song-row-${songId}`) || 
+                       document.getElementById(`song-card-${songId}`);
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [kbdIndex, paginatedSongs]);
 
   return (
     <div id="song-list-module" className="flex flex-col space-y-4 text-zinc-300">
       
-      {/* Search and Filters panel - Styled like an audio master channel rack */}
+      {/* Search and Filters panel */}
       <div className="bg-zinc-900 rounded-2xl border border-zinc-800/80 p-5 shadow-[0_4px_30px_rgba(0,0,0,0.4)] space-y-4 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
         {/* Dynamic Search Box */}
@@ -115,7 +172,7 @@ function SongList({
             id="song-search"
             type="text"
             className="w-full pl-11 pr-5 py-3 text-xs font-mono rounded-xl border border-zinc-800 bg-zinc-950 text-white placeholder-zinc-600 outline-none focus:border-amber-500 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"
-            placeholder="Search core catalog: enter song name, code keywords, or tag..."
+            placeholder="Search songs: enter title, category, or lyrics keyword..."
             value={tempSearch}
             onChange={(e) => {
               setTempSearch(e.target.value);
@@ -125,7 +182,7 @@ function SongList({
 
         {/* Category Selector Carousel - Horizontal Scroll Pills */}
         <div className="flex flex-col space-y-1.5">
-          <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 font-bold pl-0.5">Filter Channel:</span>
+          <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 font-bold pl-0.5">Filter by Category:</span>
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
             {categories.map((cat) => {
               const isActive = selectedCategory === cat;
@@ -142,7 +199,7 @@ function SongList({
                       : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                   }`}
                 >
-                  {cat === 'All' ? '⚡ All Channels' : cat}
+                  {cat === 'All' ? '⚡ All Songs' : cat}
                 </button>
               );
             })}
@@ -189,32 +246,35 @@ function SongList({
         </div>
       </div>
 
-      {/* Song Grid / Lists layout - Styled like DAW Mixer Strip Grid */}
+      {/* Song Grid / Lists layout */}
       <div className="bg-zinc-900 rounded-2xl border border-zinc-800/80 overflow-hidden shadow-[0_10px_35px_rgba(0,0,0,0.5)]">
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-zinc-950 border-b border-zinc-800/80">
-                <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 w-14 text-center font-bold">LED</th>
-                <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">Channel Strip Feed Title</th>
+                <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 w-14 text-center font-bold">Fav</th>
+                <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">Song Title</th>
                 {currentRole === 'admin' && (
-                  <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 w-16 text-center font-bold">Trash</th>
+                  <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 w-16 text-center font-bold">Delete</th>
                 )}
               </tr>
             </thead>
             <tbody>
               {paginatedSongs.length > 0 ? (
-                paginatedSongs.map((song) => {
+                paginatedSongs.map((song, index) => {
                   const isSelected = selectedSongId === song.id;
                   return (
                     <tr
                       key={song.id}
+                      id={`song-row-${song.id}`}
                       onClick={() => onSelectSong(song.id)}
                       className={`group border-b border-zinc-850/60 hover:bg-zinc-800/35 cursor-pointer transition-all ${
                         isSelected 
-                          ? 'bg-amber-500/5 text-white font-extrabold border-b border-amber-500/30' 
-                          : 'text-zinc-300'
+                          ? 'bg-amber-500/5 text-white font-extrabold border-b border-amber-500/30 ring-1 ring-amber-500/25' 
+                          : kbdIndex === index 
+                            ? 'bg-zinc-800/50 text-white border-b border-zinc-700 shadow-sm ring-1 ring-amber-500/20'
+                            : 'text-zinc-300'
                       }`}
                     >
                       {/* Favorite Toggle button cells */}
@@ -228,11 +288,11 @@ function SongList({
                         </button>
                       </td>
                       
-                      {/* Title block with cleavage symbol */}
+                      {/* Title block with music symbol */}
                       <td className="p-4 text-xs font-semibold">
                         <div className="flex items-center gap-3">
                           {isSelected ? (
-                            <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]" />
+                            <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
                           ) : (
                             <div className="w-1.5 h-1.5 rounded-full bg-zinc-800 text-zinc-550" />
                           )}
@@ -264,9 +324,9 @@ function SongList({
                 <tr>
                   <td colSpan={currentRole === 'admin' ? 3 : 2} className="text-center py-16 px-4 bg-zinc-950/40">
                     <Layers className="h-10 w-10 text-zinc-800 mx-auto mb-3" />
-                    <p className="font-bold text-zinc-400 text-xs font-mono uppercase tracking-widest">No Channel Feed Found</p>
+                    <p className="font-bold text-zinc-400 text-xs font-mono uppercase tracking-widest">No Songs Found</p>
                     <p className="text-[10px] text-zinc-600 mt-1 uppercase font-mono">
-                      Adjust search query or import lyrics to begin.
+                      Adjust your search query or add a song to begin.
                     </p>
                   </td>
                 </tr>
@@ -278,23 +338,26 @@ function SongList({
         {/* Mobile/Tablet Card-based View */}
         <div className="block md:hidden bg-zinc-950/20 py-2.5 space-y-1">
           {paginatedSongs.length > 0 ? (
-            paginatedSongs.map((song) => {
+            paginatedSongs.map((song, index) => {
               const isSelected = selectedSongId === song.id;
               return (
                 <div
                   key={song.id}
+                  id={`song-card-${song.id}`}
                   onClick={() => onSelectSong(song.id)}
                   className={`mx-4 p-4 flex items-center justify-between gap-4 cursor-pointer rounded-2xl border transition-all duration-200 active-touch select-none ${
                     isSelected
                       ? 'bg-gradient-to-br from-zinc-900 to-amber-950/15 border-amber-500/50 shadow-[0_4px_20px_rgba(245,158,11,0.08)] scale-[1.01]'
-                      : 'bg-gradient-to-br from-zinc-900/90 to-zinc-950/60 border-zinc-800/80 hover:border-zinc-700/60 shadow-sm'
+                      : kbdIndex === index
+                        ? 'bg-gradient-to-br from-zinc-900/90 to-zinc-950/60 border-amber-500/40 shadow-sm scale-[1.01]'
+                        : 'bg-gradient-to-br from-zinc-900/90 to-zinc-950/60 border-zinc-800/80 hover:border-zinc-700/60 shadow-sm'
                   }`}
                 >
                   <div className="flex items-center gap-3.5 truncate">
                     {isSelected ? (
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444] shrink-0" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b] shrink-0" />
                     ) : (
-                      <div className="w-1.5 h-1.5 rounded-full bg-zinc-750 shrink-0" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-zinc-755 shrink-0" />
                     )}
                     <div className="truncate text-left">
                       <div className={`text-[14px] font-bold truncate tracking-wide ${isSelected ? 'text-amber-500 font-black' : 'text-zinc-200'}`}>
@@ -361,7 +424,7 @@ function SongList({
         {/* Dynamic Infinite Scroll Load-More Trigger Strip */}
         <div id="lyrics-paginator" className="p-4 border-t border-zinc-800/80 bg-zinc-950 flex flex-col sm:flex-row items-center justify-between gap-3 font-mono">
           <div className="text-[10px] text-zinc-500 uppercase tracking-wider text-center sm:text-left">
-            Showing <strong className="text-zinc-300 font-bold">{paginatedSongs.length}</strong> of <strong className="text-zinc-300 font-bold">{filteredSongs.length}</strong> modules
+            Showing <strong className="text-zinc-300 font-bold">{paginatedSongs.length}</strong> of <strong className="text-zinc-300 font-bold">{filteredSongs.length}</strong> songs
           </div>
 
           {visibleCount < filteredSongs.length && (
@@ -369,7 +432,7 @@ function SongList({
               onClick={() => setVisibleCount(prev => prev + 20)}
               className="w-full sm:w-auto px-6 py-2 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black tracking-widest rounded-xl transition-all cursor-pointer shadow-md shadow-amber-500/10 active:scale-95 active-touch uppercase"
             >
-              LOAD MORE CHANNELS
+              LOAD MORE SONGS
             </button>
           )}
         </div>

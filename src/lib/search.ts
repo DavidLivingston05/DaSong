@@ -49,41 +49,52 @@ export function cleanForSearch(str: string): string {
     .trim();
 }
 
+const singleWordMatchCache = new Map<string, boolean>();
+
+function isSingleWordMatch(queryWord: string, songWord: string): boolean {
+  const cacheKey = `${queryWord}:${songWord}`;
+  const cached = singleWordMatchCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  let match = false;
+  if (songWord.includes(queryWord) || queryWord.includes(songWord)) {
+    match = true;
+  } else {
+    const isShortOrNumeric = queryWord.length < 4 || /^\d+$/.test(queryWord);
+    if (!isShortOrNumeric) {
+      const lengthDiff = Math.abs(queryWord.length - songWord.length);
+      const maxLength = Math.max(queryWord.length, songWord.length);
+      
+      if (lengthDiff <= Math.floor(maxLength * 0.25)) {
+        const distance = getLevenshteinDistance(queryWord, songWord);
+        const similarity = 1 - distance / maxLength;
+        if (similarity >= 0.75) {
+          match = true;
+        }
+      }
+    }
+  }
+
+  if (singleWordMatchCache.size > 50000) {
+    singleWordMatchCache.clear();
+  }
+  singleWordMatchCache.set(cacheKey, match);
+  return match;
+}
+
 /**
  * Checks if a cleaned query keyword match exists inside a list of song words.
  * Implements prefix, substring, and 75% character threshold similarity phonetic tolerance for longer keywords.
  */
 export function isWordMatch(queryWord: string, songWords: string[]): boolean {
-  // Purely numeric strings and short words (< 4 characters) demand strict substring checks to filter noise
-  const isShortOrNumeric = queryWord.length < 4 || /^\d+$/.test(queryWord);
-
   for (const songWord of songWords) {
-    // Exact or substring match (e.g. "alle" matching "alleluya")
-    if (songWord.includes(queryWord) || queryWord.includes(songWord)) {
+    if (isSingleWordMatch(queryWord, songWord)) {
       return true;
     }
-
-    // Dynamic phonetic match via Levenshtein edit distance for long keywords (>= 4 characters)
-    // Matches "enbam" with "inbam", or "aalugirar" with "aaluhirar"
-    if (!isShortOrNumeric) {
-      const lengthDiff = Math.abs(queryWord.length - songWord.length);
-      const maxLength = Math.max(queryWord.length, songWord.length);
-      
-      // Math proof: similarity can never be >= 0.75 if length difference is greater than 25%
-      if (lengthDiff > Math.floor(maxLength * 0.25)) {
-        continue;
-      }
-
-      const distance = getLevenshteinDistance(queryWord, songWord);
-      const similarity = 1 - distance / maxLength;
-      if (similarity >= 0.75) {
-        return true;
-      }
-    }
   }
-
   return false;
 }
+
 
 /**
  * Checks if a song matches a given multi-word search query.

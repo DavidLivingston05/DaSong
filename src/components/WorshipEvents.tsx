@@ -194,7 +194,7 @@ export default function WorshipEvents({
   const handleCreateEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createTitle.trim()) {
-      alert('Event title is required.');
+      alert('Setlist title is required.');
       return;
     }
 
@@ -217,19 +217,19 @@ export default function WorshipEvents({
       setSongSearch('');
       setShowCreateDialog(false);
     } catch (err) {
-      alert('Failed to save event: ' + err);
+      alert('Failed to save setlist: ' + err);
     }
   };
 
   const handleDeleteEvent = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Delete this event schedule permanently?')) {
+    if (confirm('Delete this setlist permanently?')) {
       try {
         await deleteWorshipEvent(id);
         onEventsChange();
         if (editingEventId === id) setEditingEventId(null);
       } catch (err) {
-        alert('Failed to delete event: ' + err);
+        alert('Failed to delete setlist: ' + err);
       }
     }
   };
@@ -299,7 +299,7 @@ export default function WorshipEvents({
                 <div className="h-7 w-7 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
                   <CalendarIcon className="h-4 w-4 text-amber-500" />
                 </div>
-                <h4 className="text-sm font-bold text-white tracking-wide">Praise Calendar</h4>
+                <h4 className="text-sm font-bold text-white tracking-wide">Worship Setlists</h4>
               </div>
             </div>
 
@@ -315,7 +315,7 @@ export default function WorshipEvents({
                 }}
                 className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs py-3 rounded-2xl shadow-[0_0_20px_rgba(245,158,11,0.15)] flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
-                <Plus className="h-4 w-4 stroke-[3]" /> Create Event
+                <Plus className="h-4 w-4 stroke-[3]" /> Create Setlist
               </button>
             )}
 
@@ -403,9 +403,9 @@ export default function WorshipEvents({
             {dateEvents.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white/[0.01] rounded-3xl border border-white/5 border-dashed">
                 <CalendarIcon className="h-10 w-10 text-slate-700 animate-pulse mb-3" />
-                <h5 className="font-bold text-sm text-slate-300">No Events Scheduled</h5>
+                <h5 className="font-bold text-sm text-slate-300">No Setlists Scheduled</h5>
                 <p className="text-xs text-slate-500 max-w-xs mt-1">
-                  There are no song setlists indexed for this day yet. Click "+ Create Event" to schedule Sunday's praises!
+                  There are no song setlists for this day yet. Click "+ Create Setlist" to create one!
                 </p>
               </div>
             ) : (
@@ -623,8 +623,8 @@ export default function WorshipEvents({
           <div className="w-full min-h-screen flex flex-col p-5 bg-[#070708] animate-fadeIn">
             <div className="flex justify-between items-center mb-6 border-b border-zinc-850 pb-4 shrink-0">
               <div>
-                <h1 className="text-2xl font-black text-amber-500 tracking-tight">Praise Calendar</h1>
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider mt-0.5">Worship Events Directory</p>
+                <h1 className="text-2xl font-black text-amber-500 tracking-tight">Worship Setlists</h1>
+                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider mt-0.5">Worship Setlists Directory</p>
               </div>
               <button 
                 onClick={onClose}
@@ -649,7 +649,7 @@ export default function WorshipEvents({
                   }}
                   className="w-full bg-[#f59e0b] text-black font-extrabold text-xs py-3.5 rounded-xl shadow-[0_4px_16px_rgba(242,158,11,0.1)] flex items-center justify-center gap-2 cursor-pointer transition-transform"
                 >
-                  <Plus className="h-4.5 w-4.5 stroke-[2.5]" /> Create Worship Event
+                  <Plus className="h-4.5 w-4.5 stroke-[2.5]" /> Create Setlist
                 </button>
               )}
                            {/* Responsive View Switcher Tabs */}
@@ -956,7 +956,7 @@ export default function WorshipEvents({
                   }}
                   className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-[#f59e0b] border border-amber-500/25 rounded-xl text-xs font-bold font-mono transition-transform"
                 >
-                  Create Event Block
+                  Create Setlist
                 </button>
               </div>
             )}
@@ -1137,7 +1137,7 @@ export default function WorshipEvents({
           >
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h4 className="font-bold text-base text-white flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5 text-amber-500" /> Create Worship Event
+                <CalendarIcon className="h-5 w-5 text-amber-500" /> Create Worship Setlist
               </h4>
               <button 
                 type="button"
@@ -1150,7 +1150,7 @@ export default function WorshipEvents({
 
             <div className="space-y-3.5 font-sans">
               <div>
-                <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Event Title</label>
+                <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Setlist Title</label>
                 <input
                   type="text"
                   required

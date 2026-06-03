@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Music, Sparkles, Layers, Sliders, Play, Settings, Plus, Star, Heart, 
   Trash2, X, AlertCircle, RefreshCw, Check, BookOpen, Database, Award, 
@@ -23,10 +23,13 @@ import StageMode from './components/StageMode';
 import SongList from './components/SongList';
 import SongDetail from './components/SongDetail';
 import WorshipEvents from './components/WorshipEvents';
+import { motion, AnimatePresence } from 'motion/react';
+
 
 export default function App() {
   const [songs, setSongs] = useState<SongMetadata[]>([]);
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
+  const [recentSongIds, setRecentSongIds] = useState<string[]>([]);
   const [mongoStatus, setMongoStatus] = useState<'connecting' | 'connected' | 'error' | 'offline'>('connecting');
 
 
@@ -243,6 +246,16 @@ export default function App() {
 
   // Initialize DB and load existing songs
   useEffect(() => {
+    // Load recently viewed songs
+    try {
+      const stored = localStorage.getItem('dasong_recent_songs');
+      if (stored) {
+        setRecentSongIds(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error('Failed loading recent songs from localStorage:', e);
+    }
+
     async function bootApp() {
       setInitialLoading(true);
       try {
@@ -378,6 +391,14 @@ export default function App() {
       setActiveSetlistIds(setlistSongIds);
     } else if (!id) {
       setActiveSetlistIds([]);
+    }
+
+    if (id && id !== 'dalyric-broadcast-temp') {
+      setRecentSongIds(prev => {
+        const next = [id, ...prev.filter(x => x !== id)].slice(0, 5);
+        localStorage.setItem('dasong_recent_songs', JSON.stringify(next));
+        return next;
+      });
     }
   }, []);
 
@@ -584,6 +605,13 @@ export default function App() {
     }
   };
 
+  // Memoized recently viewed songs mapping
+  const recentSongs = useMemo(() => {
+    return recentSongIds
+      .map(id => songs.find(s => s.id === id))
+      .filter((s): s is SongMetadata => !!s);
+  }, [recentSongIds, songs]);
+
   // Total calculated statistics for dashboard boxes
   const stats = React.useMemo(() => {
     let favs = 0;
@@ -623,8 +651,8 @@ export default function App() {
                 <div className="w-1 h-2 bg-amber-500 rounded-full animate-pulse" />
               </div>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-white select-none">DaSong <span className="text-amber-500 text-[10px] font-mono tracking-widest border border-amber-500/30 px-2 py-0.5 rounded ml-1.5 uppercase">Studio</span></h1>
-            <p className="text-zinc-500 text-xs mt-1.5 font-medium leading-relaxed">Select DAW channel feed to enter the station</p>
+            <h1 className="text-2xl font-black tracking-tight text-white select-none">DaSong <span className="text-amber-500 text-[10px] font-mono tracking-widest border border-amber-500/30 px-2 py-0.5 rounded ml-1.5 uppercase">Songbook</span></h1>
+            <p className="text-zinc-500 text-xs mt-1.5 font-medium leading-relaxed">Choose your login portal to continue</p>
           </div>
 
           {authError && (
@@ -644,9 +672,9 @@ export default function App() {
                 <div>
                   <p className="font-bold text-xs text-white flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    System Admin Station
+                    System Administrator
                   </p>
-                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Configure live schedules & master lyrics library</p>
+                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Manage song library, import files, and build service schedules</p>
                 </div>
                 <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
               </button>
@@ -659,9 +687,9 @@ export default function App() {
                 <div>
                   <p className="font-bold text-xs text-white flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                    Musician / Choir Deck
+                    Choir & Musicians
                   </p>
-                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Real-time pitch transposition & digital chord sheets</p>
+                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Read chord sheets, transpose pitch, and suggest song selections</p>
                 </div>
                 <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
               </button>
@@ -671,7 +699,7 @@ export default function App() {
                 onClick={() => handleSignIn('guest')}
                 className="w-full p-3.5 bg-zinc-950/50 hover:bg-zinc-900/60 text-zinc-400 hover:text-white text-xs font-bold rounded-2xl text-center border border-dashed border-zinc-900 hover:border-zinc-800 transition-all mt-4 cursor-pointer active-touch"
               >
-                Continue as Guest Browser (Read-Only Stage)
+                Continue as Guest (Browse lyrics only)
               </button>
             </div>
           ) : (
@@ -790,7 +818,7 @@ export default function App() {
                 DaSong
               </h1>
               <span className="text-[8px] md:text-[9.5px] font-mono tracking-[0.25em] text-zinc-500 font-extrabold uppercase mt-1 block">
-                STUDIO
+                SONGBOOK
               </span>
             </div>
           </div>
@@ -798,9 +826,9 @@ export default function App() {
           {/* Real-time sync counters & Telemetry strip */}
           <div id="stats-dashboard" className="flex items-center gap-3 md:gap-3.5 flex-wrap">
             <div className="text-right hidden md:block">
-              <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Vault Total</span>
+              <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Total Songs</span>
               <span className="font-mono text-xs leading-none text-zinc-300 block font-black">
-                {stats.total.toLocaleString()} Synced Sheets
+                {stats.total.toLocaleString()} Songs
               </span>
             </div>
 
@@ -823,20 +851,20 @@ export default function App() {
                           ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 animate-pulse'
                           : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800 hover:text-zinc-200'
                     }`}
-                    title="DaLyric TV Sync Console"
+                    title="Live Projection Sync Console"
                   >
                     <span className="text-xs leading-none">📺</span>
                     <span>
                       {wsStatus === 'connected' ? (
                         <>
-                          <span className="hidden xs:inline">Sync Active </span>
+                          <span className="hidden xs:inline">TV Linked </span>
                           <span>({wsRoomCode})</span>
                         </>
                       ) : wsStatus === 'connecting' ? (
                         'Connecting...'
                       ) : (
                         <>
-                          <span className="hidden xs:inline">Sync TV </span>
+                          <span className="hidden xs:inline">TV Link </span>
                           <span>Offline</span>
                         </>
                       )}
@@ -864,17 +892,17 @@ export default function App() {
                             ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
                             : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800'
                     }`}
-                    title="Click to Force Sync with MongoDB Atlas"
+                    title="Click to Force Sync with Cloud Database"
                   >
                     <span className="text-xs leading-none">🍃</span>
                     <span>
                       {mongoStatus === 'connected'
-                        ? 'MongoDB Synced'
+                        ? 'Cloud Saved'
                         : mongoStatus === 'connecting'
-                          ? 'Syncing Cloud...'
+                          ? 'Syncing...'
                           : mongoStatus === 'error'
                             ? 'Sync Error'
-                            : 'Offline Storage'}
+                            : 'Offline'}
                     </span>
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                       mongoStatus === 'connected'
@@ -904,7 +932,7 @@ export default function App() {
                     <button 
                       onClick={handleInstallApp}
                       className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer active-touch mr-1 shrink-0 animate-in fade-in"
-                      title="Install DaSong Studio App to Desktop/Mobile"
+                      title="Install DaSong Songbook App"
                     >
                       <Download className="h-3.5 w-3.5 stroke-[2.5]" /> Install App
                     </button>
@@ -948,7 +976,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Row 2: Unified Action & Navigation Bar (MIDI Strip Channel Selectors) */}
+        {/* Row 2: Unified Action & Navigation Bar */}
         <div id="unified-action-bar" className="hidden md:flex items-center justify-between w-full border-t border-zinc-800/80 pt-3 relative">
           <div className="flex items-center gap-2.5">
             {/* Dashboard Home Button */}
@@ -969,7 +997,7 @@ export default function App() {
               🏠 Home
             </button>
 
-            {/* Search Vault Trigger */}
+            {/* Song Library Navigation */}
             <button 
               id="tab-search"
               onClick={() => setActiveTab('search')}
@@ -984,10 +1012,10 @@ export default function App() {
               ) : (
                 <span className="w-2 h-2 rounded-full bg-zinc-800 mr-0.5 shrink-0" />
               )}
-              🔍 Find Songs
+              🔍 Song Library
             </button>
 
-            {/* Praise Calendar Navigation (Hidden for Guests) */}
+            {/* Worship Setlists Navigation (Hidden for Guests) */}
             {session && session.role !== 'guest' && (
               <button 
                 id="tab-calendar"
@@ -1003,7 +1031,7 @@ export default function App() {
                 ) : (
                   <span className="w-2 h-2 rounded-full bg-zinc-800 mr-0.5 shrink-0" />
                 )}
-                <Calendar className="h-3.5 w-3.5 shrink-0" /> Praise Calendar
+                <Calendar className="h-3.5 w-3.5 shrink-0" /> Worship Setlists
               </button>
             )}
           </div>
@@ -1015,14 +1043,14 @@ export default function App() {
                 onClick={() => setShowAddModal(true)}
                 className="bg-amber-500 hover:bg-amber-400 text-black font-black px-4 rounded-xl text-xs transition-all shadow-[0_0_10px_rgba(245,158,11,0.1)] flex items-center gap-1.5 h-10 cursor-pointer active:scale-95"
               >
-                <Plus className="h-4 w-4 text-black stroke-[3]" /> Core Song
+                <Plus className="h-4 w-4 text-black stroke-[3]" /> Add Song
               </button>
               
               <button 
                 onClick={() => setShowUploadModal(true)}
                 className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-4 rounded-xl text-xs font-bold border border-zinc-800 transition-all h-10 cursor-pointer flex items-center gap-1.5 active:scale-95"
               >
-                <Database className="h-4 w-4 text-amber-500" /> Import TXT File
+                <Database className="h-4 w-4 text-amber-500" /> Import File
               </button>
             </div>
           )}
@@ -1031,19 +1059,26 @@ export default function App() {
 
       {/* Main content body grid splits */}
       <main className={`flex-1 p-4 md:p-6 pb-20 md:pb-6 max-w-[1700px] mx-auto w-full min-h-0 flex flex-col ${selectedSongId ? 'overflow-hidden h-full' : 'overflow-y-auto md:overflow-visible'}`}>
-        
-        {/* VIEW 1: CLEAN LANDING DASHBOARD */}
-        {activeTab === 'dashboard' && (
-          <div className="flex flex-col items-center justify-center py-4 md:py-12 text-center px-4 animate-in fade-in duration-200 w-full max-w-4xl mx-auto">
+        <AnimatePresence mode="wait">
+          {/* VIEW 1: CLEAN LANDING DASHBOARD */}
+          {activeTab === 'dashboard' && (
+            <motion.div
+              key="dashboard"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col items-center justify-center py-4 md:py-12 text-center px-4 w-full max-w-4xl mx-auto"
+            >
             {/* Top Greeting Card */}
             <div className="w-full text-left mb-6 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 rounded-3xl border border-zinc-800/80 shadow-lg relative overflow-hidden">
               <div className="absolute top-0 right-0 w-36 h-36 bg-amber-500/5 rounded-full blur-3xl"></div>
-              <span className="text-[9px] font-mono tracking-widest text-amber-500 font-extrabold uppercase bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Active Station</span>
+              <span className="text-[9px] font-mono tracking-widest text-amber-500 font-extrabold uppercase bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Active Session</span>
               <h2 className="text-xl md:text-3xl font-black text-white tracking-tight mt-2.5">
-                Welcome back, <span className="text-amber-500">{session?.name || 'Musician'}</span>
+                Welcome back, <span className="text-amber-500">{session?.name || 'User'}</span>
               </h2>
               <p className="text-xs text-zinc-400 mt-1 select-none font-mono">
-                Access channel: <span className="text-amber-400 font-bold uppercase">{session?.role} deck</span>
+                Logged in as: <span className="text-amber-400 font-bold uppercase">{session?.role}</span>
               </p>
             </div>
 
@@ -1074,7 +1109,7 @@ export default function App() {
                   {/* Middle Column: Explanatory Copy */}
                   <div className="flex-1 min-w-0 pr-4">
                     <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                      Install DaSong Studio App
+                      Install DaSong Songbook App
                       <span className="bg-amber-500/10 text-amber-400 text-[8px] font-mono font-bold px-1.5 py-0.2 rounded border border-amber-500/20 uppercase tracking-wide">PWA Active</span>
                     </h3>
                     <p className="text-[11.5px] text-zinc-400 mt-1 select-none font-medium leading-relaxed">
@@ -1104,11 +1139,11 @@ export default function App() {
             {/* Quick Metrics Cards */}
             <div className="grid grid-cols-3 gap-3 w-full mb-6 select-none">
               <div className="bg-zinc-900/60 border border-zinc-850 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
-                <span className="text-[8px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Vault Total</span>
+                <span className="text-[8px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Total Songs</span>
                 <span className="font-mono text-lg md:text-2xl text-amber-500 block font-black mt-1">
                   {stats.total}
                 </span>
-                <span className="text-[9px] md:text-[10px] text-zinc-500 mt-0.5 block font-sans">Sheets</span>
+                <span className="text-[9px] md:text-[10px] text-zinc-500 mt-0.5 block font-sans">Songs</span>
               </div>
               <div className="bg-zinc-900/60 border border-zinc-850 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
                 <span className="text-[8px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Starred</span>
@@ -1118,7 +1153,7 @@ export default function App() {
                 <span className="text-[9px] md:text-[10px] text-zinc-500 mt-0.5 block font-sans">Favorites</span>
               </div>
               <div className="bg-zinc-900/60 border border-zinc-850 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
-                <span className="text-[8px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Genres</span>
+                <span className="text-[8px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Categories</span>
                 <span className="font-mono text-lg md:text-2xl text-amber-500 block font-black mt-1">
                   {stats.categories}
                 </span>
@@ -1134,13 +1169,13 @@ export default function App() {
               >
                 <div className="text-3xl p-3 bg-zinc-950 border border-zinc-800 rounded-2xl group-hover:scale-110 transition-transform">🎵</div>
                 <div>
-                  <div className="text-sm font-bold text-white tracking-wide">Browse Song Vault</div>
-                  <p className="text-xs text-zinc-400 mt-1">Search, transpose, and read lyrics sheets with active musical keys.</p>
+                  <div className="text-sm font-bold text-white tracking-wide">Browse Song Library</div>
+                  <p className="text-xs text-zinc-400 mt-1">Search songs, transpose chords, and read lyrics.</p>
                 </div>
               </button>
               
               <button 
-                onClick={() => session?.role !== 'guest' ? setActiveTab('calendar') : alert('Guests do not have access to scheduling')}
+                onClick={() => session?.role !== 'guest' ? setActiveTab('calendar') : alert('Guests do not have access to setlists')}
                 className={`p-5 border rounded-3xl text-left transition-all shadow-lg group flex items-start gap-4 active-touch ${
                   session?.role === 'guest' 
                     ? 'bg-zinc-950/30 border-zinc-900/40 opacity-40 cursor-not-allowed text-slate-650' 
@@ -1149,43 +1184,75 @@ export default function App() {
               >
                 <div className="text-3xl p-3 bg-zinc-950 border border-zinc-800 rounded-2xl group-hover:scale-110 transition-transform">📅</div>
                 <div>
-                  <div className="text-sm font-bold text-white tracking-wide">Praise Calendar</div>
-                  <p className="text-xs text-zinc-400 mt-1">Check worship agendas, arrange live setlists, and prepare services.</p>
+                  <div className="text-sm font-bold text-white tracking-wide">Worship Setlists</div>
+                  <p className="text-xs text-zinc-400 mt-1">Plan worship services, schedule song lists, and arrange calendars.</p>
                 </div>
               </button>
             </div>
 
+            {/* Recently Viewed Songs Section */}
+            {recentSongs.length > 0 && (
+              <div className="w-full text-left mt-6 bg-zinc-900/60 p-5 md:p-6 rounded-3xl border border-zinc-850 shadow-md relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/[0.02] rounded-full blur-2xl"></div>
+                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black">Recently Viewed Songs</span>
+                <div className="mt-3.5 space-y-2 relative z-10">
+                  {recentSongs.map(song => (
+                    <button
+                      key={song.id}
+                      onClick={() => handleSelectSong(song.id)}
+                      className="w-full p-3.5 bg-zinc-950/50 hover:bg-zinc-950 hover:border-amber-500/30 border border-zinc-850 rounded-2xl flex items-center justify-between gap-3 text-left transition-all cursor-pointer group active-touch"
+                    >
+                      <div className="flex items-center gap-3 truncate">
+                        <div className="h-7 w-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
+                          <Music className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="truncate">
+                          <div className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors truncate">{song.title}</div>
+                          <div className="text-[10px] text-zinc-500 font-mono mt-0.5">{song.author || 'Traditional'}</div>
+                        </div>
+                      </div>
+                      {song.category && (
+                        <span className="text-[9px] font-extrabold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2 py-0.5 rounded shrink-0">
+                          {song.category}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Administrative Quick Actions Console */}
             {session?.role === 'admin' && (
               <div className="w-full text-left mt-6 bg-zinc-900/60 p-5 rounded-3xl border border-zinc-850 shadow-md select-none">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black">Admin command rack</span>
+                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black">Admin Actions Console</span>
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   <button
                     onClick={() => setShowAddModal(true)}
                     className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-4 py-3 rounded-2xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer h-12 active-touch"
                   >
-                    <Plus className="h-4 w-4 text-black stroke-[3]" /> Add Core Song
+                    <Plus className="h-4 w-4 text-black stroke-[3]" /> Add Song
                   </button>
                   <button
                     onClick={() => setShowUploadModal(true)}
                     className="bg-zinc-950 hover:bg-zinc-900 text-zinc-350 hover:text-white px-4 py-3 rounded-2xl text-xs font-bold border border-zinc-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer h-12 active-touch"
                   >
-                    <Database className="h-4 w-4 text-amber-500" /> Import TXT Files
+                    <Database className="h-4 w-4 text-amber-500" /> Import Files
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Choir Suggestions Review Rack */}
+            {/* Choir Requests Review Panel */}
             {session?.role === 'admin' && (
               <div className="w-full text-left mt-6 bg-zinc-900/60 p-6 rounded-3xl border border-zinc-850 shadow-md">
                 <div className="flex items-center justify-between border-b border-zinc-850 pb-3 mb-4 select-none">
                   <div>
-                    <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black">Choir Suggestions</span>
-                    <h3 className="text-sm font-bold text-white tracking-wide mt-1">Live Suggestion Review Panel</h3>
+                    <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black">Song Requests</span>
+                    <h3 className="text-sm font-bold text-white tracking-wide mt-1">Choir Requests Review</h3>
                   </div>
                   <span className="bg-amber-500/10 text-amber-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-500/20">
-                    {suggestions.length} Suggested
+                    {suggestions.length} Requested
                   </span>
                 </div>
 
@@ -1213,7 +1280,7 @@ export default function App() {
                             }}
                             className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-3.5 py-1.8 rounded-xl text-[10px] uppercase font-mono tracking-wider transition-all active:scale-95 cursor-pointer active-touch flex items-center gap-1"
                           >
-                            🔍 Inspect Sheet
+                            🔍 View Lyrics
                           </button>
                           
                           <button
@@ -1233,20 +1300,27 @@ export default function App() {
                 ) : (
                   <div className="text-center py-10 bg-zinc-950/30 rounded-2xl border border-dashed border-zinc-850/65 select-none">
                     <Music className="h-8 w-8 text-zinc-800 mx-auto mb-2.5 animate-pulse" />
-                    <p className="font-bold text-zinc-500 text-[10px] font-mono uppercase tracking-widest">Suggestions Queue Empty</p>
+                    <p className="font-bold text-zinc-500 text-[10px] font-mono uppercase tracking-widest">Request Queue Empty</p>
                     <p className="text-[9.5px] text-zinc-650 mt-1 uppercase font-mono">
-                      Suggestions made by choir members will appear here in real-time.
+                      Song requests submitted by choir members will appear here in real-time.
                     </p>
                   </div>
                 )}
               </div>
             )}
-          </div>
-        )}
+            </motion.div>
+          )}
 
-        {/* VIEW 2: DEDICATED SONG SEARCH VIEW */}
-        {activeTab === 'search' && (
-          <div className="w-full min-h-0 animate-in fade-in duration-200">
+          {/* VIEW 2: DEDICATED SONG SEARCH VIEW */}
+          {activeTab === 'search' && (
+            <motion.div
+              key="search"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.18 }}
+              className="w-full min-h-0"
+            >
             {selectedSongId ? (
               /* Dedicated full-page lyric reading panel */
               <div className="w-full flex flex-col min-h-0 animate-in slide-in-from-right-5 duration-200">
@@ -1266,7 +1340,9 @@ export default function App() {
                   backLabel={songSourceTab === 'calendar' ? 'Back to Setlist' : 'Back to Search'}
                   setlistSongIds={activeSetlistIds}
                   tempBroadcastSong={tempBroadcastSong}
+                  songsMetadata={songs}
                 />
+
               </div>
             ) : (
               /* Full-page Core Directory Grid Index List */
@@ -1287,12 +1363,19 @@ export default function App() {
                 />
               </div>
             )}
-          </div>
-        )}
+            </motion.div>
+          )}
 
-        {/* VIEW 3: CALENDAR VIEW */}
-        {activeTab === 'calendar' && session?.role !== 'guest' && (
-          <div className="w-full min-h-0 animate-in fade-in duration-200">
+          {/* VIEW 3: CALENDAR VIEW */}
+          {activeTab === 'calendar' && session?.role !== 'guest' && (
+            <motion.div
+              key="calendar"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.18 }}
+              className="w-full min-h-0"
+            >
             <WorshipEvents
               songs={songs}
               events={events}
@@ -1306,14 +1389,31 @@ export default function App() {
               selectedSongId={selectedSongId}
               currentRole={currentRole}
             />
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </main>
 
       {/* Manual ADD individual Song dialog Overlay */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-xs z-40 flex items-end md:items-center justify-center p-0 md:p-4">
-          <div id="add-song-modal" className="bg-[#070708] w-full h-full md:h-auto md:max-w-2xl rounded-t-3xl md:rounded-3xl p-5 md:p-6 space-y-4 shadow-2xl border-t md:border border-white/10 text-slate-300 animate-slideUp md:animate-in md:fade-in md:zoom-in-95 overflow-y-auto pb-safe">
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xs z-40 flex items-end md:items-center justify-center p-0 md:p-4"
+            onClick={() => setShowAddModal(false)}
+          >
+            <motion.div
+              id="add-song-modal"
+              initial={{ y: '20px', opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: '20px', opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="bg-[#070708] w-full h-full md:h-auto md:max-w-2xl rounded-t-3xl md:rounded-3xl p-5 md:p-6 space-y-4 shadow-2xl border-t md:border border-white/10 text-slate-350 overflow-y-auto pb-safe"
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-1.5">
                 <BookOpen className="h-5 w-5 text-amber-500" /> Add New Lyric Sheet
@@ -1414,14 +1514,31 @@ That [G] saved a wretch like [D] me!`}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bulk Uploader dialog modal Overlay */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-xs z-40 flex items-end md:items-center justify-center p-0 md:p-4">
-          <div id="bulk-upload-modal" className="bg-[#070708] w-full h-full md:h-auto md:max-w-4xl rounded-t-3xl md:rounded-3xl p-5 md:p-6 space-y-4 shadow-2xl border-t md:border border-white/10 text-slate-350 animate-slideUp md:animate-in md:fade-in md:zoom-in-95 overflow-y-auto pb-safe">
+      <AnimatePresence>
+        {showUploadModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xs z-40 flex items-end md:items-center justify-center p-0 md:p-4"
+            onClick={() => setShowUploadModal(false)}
+          >
+            <motion.div
+              id="bulk-upload-modal"
+              initial={{ y: '20px', opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: '20px', opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="bg-[#070708] w-full h-full md:h-auto md:max-w-4xl rounded-t-3xl md:rounded-3xl p-5 md:p-6 space-y-4 shadow-2xl border-t md:border border-white/10 text-slate-350 overflow-y-auto pb-safe"
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="font-bold text-lg text-white flex items-center gap-1.5">
                 <Database className="h-5 w-5 text-amber-500" /> Bulk Lyrics Import Wizard
@@ -1447,9 +1564,10 @@ That [G] saved a wretch like [D] me!`}
                 Done / Close Wizard
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Full-screen Presentation View Overlay triggers if loaded */}
       {stageModeSong && (
@@ -1499,7 +1617,7 @@ That [G] saved a wretch like [D] me!`}
               }`}
             >
               <Calendar className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'calendar' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.5)] scale-110' : ''}`} />
-              <span className="text-[9px] font-bold uppercase tracking-wider">Calendar</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider">Setlists</span>
               {activeTab === 'calendar' && (
                 <span className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
               )}
@@ -1519,12 +1637,25 @@ That [G] saved a wretch like [D] me!`}
       )}
 
       {/* iOS Safari Custom Installation Instructions Drawer */}
-      {showIOSInstructions && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-xs z-50 flex items-end md:items-center justify-center p-0 md:p-4 animate-in fade-in duration-200">
-          <div 
-            id="ios-install-modal" 
-            className="bg-[#070708] w-full h-auto md:max-w-md rounded-t-3xl md:rounded-3xl p-6 space-y-5 shadow-2xl border-t md:border border-white/10 text-slate-350 bottom-sheet-mobile md:animate-in md:zoom-in-95 overflow-y-auto pb-safe"
+      <AnimatePresence>
+        {showIOSInstructions && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-end md:items-center justify-center p-0 md:p-4"
+            onClick={() => setShowIOSInstructions(false)}
           >
+            <motion.div 
+              id="ios-install-modal" 
+              initial={{ y: '20px', opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: '20px', opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="bg-[#070708] w-full h-auto md:max-w-md rounded-t-3xl md:rounded-3xl p-6 space-y-5 shadow-2xl border-t md:border border-white/10 text-slate-350 bottom-sheet-mobile overflow-y-auto pb-safe"
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Smartphone className="h-5 w-5 text-amber-500" /> Save to Home Screen
@@ -1609,17 +1740,31 @@ That [G] saved a wretch like [D] me!`}
                 Close Instructions
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* DaLyric TV Cloud Sync Console Drawer Modal */}
-      {showSyncModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-xs z-50 flex items-end md:items-center justify-center p-0 md:p-4 animate-in fade-in duration-200">
-          <div 
-            id="tv-sync-modal" 
-            className="bg-[#070708] w-full h-auto md:max-w-md rounded-t-3xl md:rounded-3xl p-6 space-y-5 shadow-2xl border-t md:border border-white/10 text-slate-350 bottom-sheet-mobile md:animate-in md:zoom-in-95 overflow-y-auto pb-safe"
+      <AnimatePresence>
+        {showSyncModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-end md:items-center justify-center p-0 md:p-4"
+            onClick={() => setShowSyncModal(false)}
           >
+            <motion.div 
+              id="tv-sync-modal" 
+              initial={{ y: '20px', opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: '20px', opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="bg-[#070708] w-full h-auto md:max-w-md rounded-t-3xl md:rounded-3xl p-6 space-y-5 shadow-2xl border-t md:border border-white/10 text-slate-350 bottom-sheet-mobile overflow-y-auto pb-safe"
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <span className="text-xl">📺</span> DaLyric TV Sync Console
@@ -1802,9 +1947,10 @@ That [G] saved a wretch like [D] me!`}
            
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

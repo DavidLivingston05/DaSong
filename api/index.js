@@ -46,6 +46,21 @@ app.get('/api/songs', asyncHandler(async (req, res) => {
   res.json(songs);
 }));
 
+// GET /api/songs/sync-check
+app.get('/api/songs/sync-check', asyncHandler(async (req, res) => {
+  const { db } = await connectToDatabase();
+  const count = await db.collection('songs').countDocuments();
+  const latestSong = await db.collection('songs')
+    .find({}, { projection: { updatedAt: 1, createdAt: 1 } })
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .limit(1)
+    .toArray();
+  const lastUpdated = latestSong.length > 0
+    ? (latestSong[0].updatedAt || latestSong[0].createdAt || 0)
+    : 0;
+  res.json({ count, lastUpdated });
+}));
+
 // GET /api/songs/metadata
 app.get('/api/songs/metadata', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
