@@ -83,9 +83,65 @@ function isSingleWordMatch(queryWord: string, songWord: string): boolean {
   return match;
 }
 
+const TAMIL_VOWELS: Record<string, string> = {
+  'அ': 'a', 'ஆ': 'a', 'இ': 'i', 'ஈ': 'i', 'உ': 'u', 'ஊ': 'u',
+  'எ': 'e', 'ஏ': 'e', 'ஐ': 'ai', 'ஒ': 'o', 'ஓ': 'o', 'ஔ': 'au'
+};
+
+const TAMIL_CONSONANTS: Record<string, string> = {
+  'க': 'k', 'ங': 'ng', 'ச': 's', 'ஞ': 'nj', 'ட': 't', 'ண': 'n',
+  'த': 'th', 'ந': 'n', 'ப': 'p', 'ம': 'm', 'ய': 'y', 'ர': 'r',
+  'ல': 'l', 'வ': 'v', 'ழ': 'zh', 'ள': 'l', 'ற': 'r', 'ன': 'n',
+  'ஜ': 'j', 'ஷ': 'sh', 'ஸ': 's', 'ஹ': 'h'
+};
+
+const TAMIL_VOWEL_SIGNS: Record<string, string> = {
+  'ா': 'a', 'ி': 'i', 'ீ': 'i', 'ு': 'u', 'ூ': 'u',
+  'ெ': 'e', 'ே': 'e', 'ை': 'ai', 'ொ': 'o', 'ோ': 'o', 'ௌ': 'au'
+};
+
+/**
+ * Transliterates Tamil characters to their phonetically equivalent Tanglish text.
+ */
+export function transliterateTamilToTanglish(text: string): string {
+  let result = '';
+  let i = 0;
+  while (i < text.length) {
+    const char = text[i];
+    if (TAMIL_VOWELS[char] !== undefined) {
+      result += TAMIL_VOWELS[char];
+      i++;
+      continue;
+    }
+    if (TAMIL_CONSONANTS[char] !== undefined) {
+      const consonantSound = TAMIL_CONSONANTS[char];
+      const nextChar = text[i + 1];
+      if (nextChar === '்') {
+        result += consonantSound;
+        i += 2;
+      } else if (TAMIL_VOWEL_SIGNS[nextChar] !== undefined) {
+        result += consonantSound + TAMIL_VOWEL_SIGNS[nextChar];
+        i += 2;
+      } else {
+        result += consonantSound + 'a';
+        i++;
+      }
+      continue;
+    }
+    if (char === '்' || TAMIL_VOWEL_SIGNS[char] !== undefined) {
+      i++;
+      continue;
+    }
+    result += char;
+    i++;
+  }
+  return result;
+}
+
 /**
  * Checks if a cleaned query keyword match exists inside a list of song words.
  * Implements prefix, substring, and 75% character threshold similarity phonetic tolerance for longer keywords.
+ * Also handles transliterating Tamil query words to enable cross-script matching.
  */
 export function isWordMatch(queryWord: string, songWords: string[]): boolean {
   for (const songWord of songWords) {
@@ -93,9 +149,21 @@ export function isWordMatch(queryWord: string, songWords: string[]): boolean {
       return true;
     }
   }
+
+  // Handle cross-script matching if query word has Tamil characters
+  if (/[\u0b80-\u0bff]/.test(queryWord)) {
+    const transliterated = cleanForSearch(transliterateTamilToTanglish(queryWord));
+    if (transliterated && transliterated !== queryWord) {
+      for (const songWord of songWords) {
+        if (isSingleWordMatch(transliterated, songWord)) {
+          return true;
+        }
+      }
+    }
+  }
+
   return false;
 }
-
 
 /**
  * Checks if a song matches a given multi-word search query.
@@ -131,7 +199,10 @@ export function matchSong(song: FilterableSong, searchQuery: string): boolean {
     const cleanCategory = song.category ? cleanForSearch(song.category) : '';
     const cleanSnippet = song.lyricsSnippet ? cleanForSearch(song.lyricsSnippet) : '';
 
-    songWords = `${cleanId} ${cleanTitle} ${cleanAuthor} ${cleanCategory} ${cleanSnippet}`
+    const transliteratedTitle = transliterateTamilToTanglish(cleanTitle);
+    const transliteratedSnippet = transliterateTamilToTanglish(cleanSnippet);
+
+    songWords = `${cleanId} ${cleanTitle} ${transliteratedTitle} ${cleanAuthor} ${cleanCategory} ${cleanSnippet} ${transliteratedSnippet}`
       .split(' ')
       .filter(Boolean);
 
@@ -157,14 +228,6 @@ export function clearSearchCache(): void {
  * Returns an array of non-overlapping {start, end} character index ranges where
  * any query word matches inside `text`. Used by <HighlightText> to wrap matched
  * substrings in amber <mark> spans without re-running the full matchSong pipeline.
- *
- * Strategy:
- * - Clean and split the query into words.
- * - For each query word, scan the display text for the first substring that the
- *   isSingleWordMatch heuristic would accept (prefix/substr/fuzzy).
- * - Collect all such ranges, then merge overlapping ones.
- * - Short or numeric query words use only exact substring matching to avoid
- *   false highlights from the fuzzy tier.
  */
 export function getHighlightRanges(
   text: string,
@@ -193,7 +256,6 @@ export function getHighlightRanges(
     if (ranges.length > 0 || isShortOrNumeric) continue;
 
     // 2. Word-level fuzzy scan — only for longer words with no exact match
-    // Split display text into word tokens with their char positions
     const wordTokenRegex = /\S+/g;
     let match: RegExpExecArray | null;
     while ((match = wordTokenRegex.exec(lowerText)) !== null) {
@@ -224,4 +286,130 @@ export function getHighlightRanges(
     }
   }
   return merged;
+}
+
+/**
+ * Calculates search relevance score for Holyrics-style ranking (higher score = more relevant).
+ */
+export function getSearchRelevanceScore(song: FilterableSong, searchQuery: string): number {
+  const query = searchQuery.trim();
+  if (!query) return 0;
+
+  const cleanQuery = cleanForSearch(query);
+  if (!cleanQuery) return 0;
+
+  const cleanTitle = cleanForSearch(song.title);
+  const transliteratedTitle = cleanForSearch(transliterateTamilToTanglish(song.title));
+
+  // 1. Exact title match (original or transliterated)
+  if (cleanTitle === cleanQuery || transliteratedTitle === cleanQuery) {
+    return 100;
+  }
+
+  // 2. Title starts with query
+  if (cleanTitle.startsWith(cleanQuery) || transliteratedTitle.startsWith(cleanQuery)) {
+    return 90;
+  }
+
+  // 3. Title contains query
+  if (cleanTitle.includes(cleanQuery) || transliteratedTitle.includes(cleanQuery)) {
+    return 80;
+  }
+
+  // 4. Word-level title match
+  const queryWords = cleanQuery.split(' ').filter(Boolean);
+  const titleWords = `${cleanTitle} ${transliteratedTitle}`.split(' ').filter(Boolean);
+  const allWordsInTitle = queryWords.every(qw => titleWords.some(tw => tw.includes(qw) || qw.includes(tw)));
+  if (allWordsInTitle) {
+    return 70;
+  }
+
+  // 5. Author match
+  if (song.author) {
+    const cleanAuthor = cleanForSearch(song.author);
+    if (cleanAuthor === cleanQuery) return 60;
+    if (cleanAuthor.includes(cleanQuery)) return 55;
+  }
+
+  // 6. Category match
+  if (song.category) {
+    const cleanCategory = cleanForSearch(song.category);
+    if (cleanCategory === cleanQuery) return 50;
+  }
+
+  // 7. Lyrics match
+  if (song.lyricsSnippet) {
+    const cleanLyrics = cleanForSearch(song.lyricsSnippet);
+    const transliteratedLyrics = cleanForSearch(transliterateTamilToTanglish(song.lyricsSnippet));
+
+    if (cleanLyrics.includes(cleanQuery) || transliteratedLyrics.includes(cleanQuery)) {
+      return 40;
+    }
+
+    const lyricWords = `${cleanLyrics} ${transliteratedLyrics}`.split(' ').filter(Boolean);
+    const allWordsInLyrics = queryWords.every(qw => lyricWords.some(lw => lw.includes(qw) || qw.includes(lw)));
+    if (allWordsInLyrics) {
+      return 35;
+    }
+
+    const someWordsInLyrics = queryWords.some(qw => lyricWords.some(lw => lw.includes(qw) || qw.includes(lw)));
+    if (someWordsInLyrics) {
+      return 20;
+    }
+  }
+
+  // 8. General fallback match
+  return 10;
+}
+
+/**
+ * Finds the first lyric line in the song snippet that contains search matches.
+ */
+export function findMatchingLyricLine(lyrics: string | undefined, searchQuery: string): string | undefined {
+  if (!lyrics || !searchQuery.trim()) return undefined;
+
+  const cleanQuery = cleanForSearch(searchQuery);
+  const queryWords = cleanQuery.split(' ').filter(Boolean);
+  if (queryWords.length === 0) return undefined;
+
+  const lines = lyrics.split(/\r?\n/);
+
+  // Pass 1: exact match on query phrase
+  for (const line of lines) {
+    const cleanLine = cleanForSearch(line);
+    const transliteratedLine = cleanForSearch(transliterateTamilToTanglish(line));
+    if (cleanLine.includes(cleanQuery) || transliteratedLine.includes(cleanQuery)) {
+      return line.trim();
+    }
+  }
+
+  // Pass 2: line containing all query words
+  for (const line of lines) {
+    const cleanLine = cleanForSearch(line);
+    const transliteratedLine = cleanForSearch(transliterateTamilToTanglish(line));
+    const combinedWords = `${cleanLine} ${transliteratedLine}`.split(' ').filter(Boolean);
+
+    const allWordsMatch = queryWords.every(qWord =>
+      combinedWords.some(w => w.includes(qWord) || qWord.includes(w))
+    );
+    if (allWordsMatch) {
+      return line.trim();
+    }
+  }
+
+  // Pass 3: line matching longest query word (min length 3)
+  const sortedWords = [...queryWords].sort((a, b) => b.length - a.length);
+  for (const line of lines) {
+    const cleanLine = cleanForSearch(line);
+    const transliteratedLine = cleanForSearch(transliterateTamilToTanglish(line));
+    const combinedWords = `${cleanLine} ${transliteratedLine}`.split(' ').filter(Boolean);
+
+    for (const qWord of sortedWords) {
+      if (qWord.length >= 3 && combinedWords.some(w => w.includes(qWord) || qWord.includes(w))) {
+        return line.trim();
+      }
+    }
+  }
+
+  return undefined;
 }

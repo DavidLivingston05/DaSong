@@ -1196,33 +1196,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* === MOBILE JUMP BACK IN (hidden on desktop) === */}
-            {recentSongs.length > 0 && (
-              <div className="w-full mb-4 md:hidden">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black block mb-3 px-1">
-                  ⚡ Jump Back In
-                </span>
-                <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
-                  {recentSongs.map(song => (
-                    <button
-                      key={song.id}
-                      onClick={() => {
-                        setSongSourceTab('search');
-                        handleSelectSong(song.id);
-                        setActiveTab('search');
-                      }}
-                      className="recent-song-pill active-touch text-left"
-                    >
-                      <div className="text-[13px] font-bold text-white truncate leading-tight">{song.title}</div>
-                      <div className="text-[10px] text-zinc-500 font-mono mt-1 truncate">{song.author || 'Traditional'}</div>
-                      {song.category && (
-                        <div className="text-[9px] font-extrabold uppercase text-amber-500/90 mt-1">{song.category}</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* === DESKTOP GREETING CARD (hidden on mobile) === */}
             <div className="hidden md:block w-full text-left mb-6 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 rounded-3xl border border-zinc-800/80 shadow-lg relative overflow-hidden">
@@ -1344,21 +1317,23 @@ export default function App() {
               </button>
             </div>
 
-            {/* === DESKTOP JUMP BACK IN (hidden on mobile) === */}
+            {/* === RESPONSIVE JUMP BACK IN === */}
             {recentSongs.length > 0 && (
-              <div className="hidden md:block w-full mt-6">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black block mb-3 pl-0.5">
+              <div className="w-full mt-6">
+                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black block mb-3 pl-0.5 text-left">
                   ⚡ Jump Back In
                 </span>
-                <div className="space-y-2 bg-zinc-900/60 p-5 md:p-6 rounded-3xl border border-zinc-850 shadow-md relative overflow-hidden">
+                
+                {/* Desktop View: list */}
+                <div className="hidden md:block space-y-2 bg-zinc-900/60 p-5 md:p-6 rounded-3xl border border-zinc-850 shadow-md relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/[0.02] rounded-full blur-2xl"></div>
                   {recentSongs.map(song => (
                     <button
                       key={song.id}
                       onClick={() => {
+                        setActiveTab('search');
                         setSongSourceTab('search');
                         handleSelectSong(song.id);
-                        setActiveTab('search');
                       }}
                       className="w-full p-3.5 bg-zinc-950/50 hover:bg-zinc-950 hover:border-amber-500/30 border border-zinc-850 rounded-2xl flex items-center justify-between gap-3 text-left transition-all cursor-pointer group active-touch"
                     >
@@ -1375,6 +1350,27 @@ export default function App() {
                         <span className="text-[9px] font-extrabold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2 py-0.5 rounded shrink-0">
                           {song.category}
                         </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Mobile View: horizontal scroll pills */}
+                <div className="md:hidden flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
+                  {recentSongs.map(song => (
+                    <button
+                      key={song.id}
+                      onClick={() => {
+                        setActiveTab('search');
+                        setSongSourceTab('search');
+                        handleSelectSong(song.id);
+                      }}
+                      className="recent-song-pill active-touch text-left shrink-0"
+                    >
+                      <div className="text-[13px] font-bold text-white truncate leading-tight">{song.title}</div>
+                      <div className="text-[10px] text-zinc-500 font-mono mt-1 truncate">{song.author || 'Traditional'}</div>
+                      {song.category && (
+                        <div className="text-[9px] font-extrabold uppercase text-amber-500/90 mt-1">{song.category}</div>
                       )}
                     </button>
                   ))}

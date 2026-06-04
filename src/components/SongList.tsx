@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Search, Heart, Music, Star, Trash2, PlusCircle, ArrowLeft, Layers, Compass, BarChart2, ShieldAlert, ChevronRight, BookOpen } from 'lucide-react';
 import { SongMetadata } from '../lib/db';
 import { UserRole } from '../types';
-import { matchSong, getHighlightRanges } from '../lib/search';
+import { matchSong, getHighlightRanges, getSearchRelevanceScore, findMatchingLyricLine } from '../lib/search';
 
 /**
  * Highlights portions of `text` that match `query` with an amber glow.
@@ -60,12 +60,12 @@ function SongList({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [tempSearch, setTempSearch] = useState<string>('');
 
-  // Debounce the typing query to prevent input lag
+  // Debounce the typing query to prevent input lag (40ms for Holyrics-style instant feedback)
   React.useEffect(() => {
     const handler = setTimeout(() => {
       setSearchQuery(tempSearch);
       setVisibleCount(20);
-    }, 180);
+    }, 40);
     return () => clearTimeout(handler);
   }, [tempSearch]);
 
@@ -98,8 +98,15 @@ function SongList({
       });
     }
 
-    // Apply sort
+    // Apply sort (Holyrics relevance scoring takes priority when search is active)
     return [...result].sort((a, b) => {
+      if (searchQuery.trim()) {
+        const scoreA = getSearchRelevanceScore(a, searchQuery);
+        const scoreB = getSearchRelevanceScore(b, searchQuery);
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+      }
       switch (sortBy) {
         case 'title-asc': return a.title.localeCompare(b.title);
         case 'title-desc': return b.title.localeCompare(a.title);
@@ -364,6 +371,7 @@ function SongList({
               {paginatedSongs.length > 0 ? (
                 paginatedSongs.map((song, index) => {
                   const isSelected = selectedSongId === song.id;
+                  const matchingLine = searchQuery.trim() ? findMatchingLyricLine(song.lyricsSnippet, searchQuery) : undefined;
                   return (
                     <tr
                       key={song.id}
@@ -397,9 +405,16 @@ function SongList({
                             <div className="w-1.5 h-1.5 rounded-full bg-zinc-800 text-zinc-550" />
                           )}
                           <Music className={`h-3.5 w-3.5 ${isSelected ? 'text-amber-500' : 'text-zinc-650'}`} />
-                          <span className={`${isSelected ? 'text-amber-500 font-black' : 'text-zinc-200 group-hover:text-amber-400/90'}`}>
-                            <HighlightText text={song.title} query={searchQuery} />
-                          </span>
+                          <div className="flex flex-col text-left">
+                            <span className={`${isSelected ? 'text-amber-500 font-black' : 'text-zinc-200 group-hover:text-amber-400/90'}`}>
+                              <HighlightText text={song.title} query={searchQuery} />
+                            </span>
+                            {matchingLine && (
+                              <div className="text-[10px] text-zinc-550 font-sans italic mt-1 font-normal max-w-md truncate">
+                                &ldquo;... <HighlightText text={matchingLine} query={searchQuery} /> ...&rdquo;
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
 
@@ -462,6 +477,7 @@ function SongList({
           {paginatedSongs.length > 0 ? (
             paginatedSongs.map((song, index) => {
               const isSelected = selectedSongId === song.id;
+              const matchingLine = searchQuery.trim() ? findMatchingLyricLine(song.lyricsSnippet, searchQuery) : undefined;
               return (
                 <div
                   key={song.id}
@@ -487,6 +503,11 @@ function SongList({
                     <div className={`text-[15px] font-bold truncate leading-snug ${isSelected ? 'text-amber-500 font-black' : 'text-zinc-100'}`}>
                       <HighlightText text={song.title} query={searchQuery} />
                     </div>
+                    {matchingLine && (
+                      <div className="text-[11px] text-zinc-500 font-sans italic mt-1 truncate">
+                        &ldquo;... <HighlightText text={matchingLine} query={searchQuery} /> ...&rdquo;
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-[11px] font-semibold text-zinc-400 truncate max-w-[130px] font-sans">
                         <HighlightText text={song.author || 'Traditional'} query={searchQuery} />
