@@ -58,17 +58,7 @@ function SongList({
   onSuggestSong
 }: SongListProps) {
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [tempSearch, setTempSearch] = useState<string>('');
   const [showFilters, setShowFilters] = useState<boolean>(false);
-
-  // Debounce: 80ms for responsive and lag-free feedback
-  React.useEffect(() => {
-    const handler = setTimeout(() => {
-      setSearchQuery(tempSearch);
-      setVisibleCount(20);
-    }, 80);
-    return () => clearTimeout(handler);
-  }, [tempSearch]);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [showOnlyFavorites, setShowOnlyFavorites] = useState<boolean>(false);
@@ -79,7 +69,7 @@ function SongList({
   const deleteTimerRef = useRef<number | null>(null);
 
   // Clear search
-  const clearSearch = () => { setTempSearch(''); setSelectedCategory('All'); setShowOnlyFavorites(false); };
+  const clearSearch = () => { setSearchQuery(''); setSelectedCategory('All'); setShowOnlyFavorites(false); };
 
   // Derive unique categories for filtering dropdown
   const categories = useMemo(() => {
@@ -259,10 +249,13 @@ function SongList({
               autoComplete="off"
               className="w-full pl-11 pr-10 py-3 text-sm rounded-xl border border-zinc-800/80 bg-zinc-950/60 text-white placeholder-zinc-500 outline-none focus:border-amber-500 focus:bg-zinc-950 transition-all"
               placeholder="Search songs, lyrics, Tamil or English…"
-              value={tempSearch}
-              onChange={(e) => setTempSearch(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setVisibleCount(20);
+              }}
             />
-            {tempSearch.length > 0 && (
+            {searchQuery.length > 0 && (
               <button
                 onClick={clearSearch}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-zinc-500 hover:text-zinc-200 transition-colors active-touch"
