@@ -99,14 +99,14 @@ body {
   filter: brightness(0.85);
 }
 
-/* Momentum Kinetic Scrolling and isolated overscroll containment for PWA feel */
+/* Momentum Kinetic Scrolling and smooth scrolling for PWA feel */
 body, 
 #lyrics-scroll-container,
 #mobile-stage-lyrics-canvas,
 #lyric-sheet,
 .overflow-y-auto {
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
 }
 
 /* iOS Notch Safety margins */
