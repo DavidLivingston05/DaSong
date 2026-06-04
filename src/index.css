@@ -109,6 +109,15 @@ body,
   scroll-behavior: smooth;
 }
 
+/* Force GPU Composite Layers for buttery-smooth 60/120fps scrolling in Chrome */
+#lyric-sheet,
+#lyrics-scroll-container,
+.overflow-y-auto {
+  will-change: scroll-position, transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
 /* iOS Notch Safety margins */
 .pb-safe {
   padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));
