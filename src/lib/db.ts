@@ -92,6 +92,31 @@ async function clearAllSongsIndexedDB(): Promise<void> {
 // BACKEND API INTEGRATION HELPERS
 // -------------------------------------------------------------------------
 
+function getUnsyncedSongIds(): string[] {
+  const saved = localStorage.getItem('dasong_unsynced_song_ids');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function addUnsyncedSongIds(ids: string[]): void {
+  const current = new Set(getUnsyncedSongIds());
+  ids.forEach(id => current.add(id));
+  localStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
+}
+
+function removeUnsyncedSongIds(ids: string[]): void {
+  const current = new Set(getUnsyncedSongIds());
+  ids.forEach(id => current.delete(id));
+  localStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
+}
+
 async function apiRequest(path: string, options?: RequestInit): Promise<any> {
   const response = await fetch(path, {
     ...options,
@@ -179,6 +204,29 @@ async function syncEventsBiDirectional(cloudEvents: WorshipEvent[]): Promise<voi
 
 // Synchronizes the cloud MongoDB state back to local IndexedDB and localStorage using Delta/Timestamp Sync
 export async function syncWithMongoDB(): Promise<void> {
+  // 0. Sync unsynced songs to cloud first
+  const unsyncedIds = getUnsyncedSongIds();
+  if (unsyncedIds.length > 0) {
+    const songsToSync: Song[] = [];
+    for (const id of unsyncedIds) {
+      const song = await getSongById(id);
+      if (song) {
+        songsToSync.push(song);
+      }
+    }
+    if (songsToSync.length > 0) {
+      try {
+        await apiRequest('/api/songs', {
+          method: 'POST',
+          body: JSON.stringify(songsToSync)
+        });
+        removeUnsyncedSongIds(unsyncedIds);
+      } catch (err) {
+        console.error('Failed to sync queued unsynced songs to MongoDB:', err);
+      }
+    }
+  }
+
   // Check if we are already in sync by using a lightweight check endpoint
   try {
     const syncCheck: { count: number; lastUpdated: number } = await apiRequest('/api/songs/sync-check');
@@ -229,9 +277,10 @@ export async function syncWithMongoDB(): Promise<void> {
     }
   }
 
-  // Delete local songs that were deleted from the cloud database
+  // Delete local songs that were deleted from the cloud database, unless they are unsynced new additions
+  const currentUnsynced = new Set(getUnsyncedSongIds());
   for (const localSong of localMetadata) {
-    if (!cloudIds.has(localSong.id)) {
+    if (!cloudIds.has(localSong.id) && !currentUnsynced.has(localSong.id)) {
       await deleteSongIndexedDB(localSong.id);
     }
   }
@@ -278,14 +327,16 @@ export async function saveSongsBatch(songs: Song[]): Promise<void> {
   if (maxTime > 0) {
     localStorage.setItem('dasong_local_max_updated_at', String(maxTime));
   }
+  const ids = songs.map(s => s.id);
+  addUnsyncedSongIds(ids);
   try {
     await apiRequest('/api/songs', {
       method: 'POST',
       body: JSON.stringify(songs)
     });
+    removeUnsyncedSongIds(ids);
   } catch (err) {
-    console.error('Failed to sync batch to MongoDB:', err);
-    throw err;
+    console.warn('Failed to sync batch to MongoDB, queued for background sync:', err);
   }
 }
 
@@ -293,14 +344,15 @@ export async function saveSong(song: Song): Promise<void> {
   await saveSongIndexedDB(song);
   const now = song.updatedAt || song.createdAt || Date.now();
   localStorage.setItem('dasong_local_max_updated_at', String(now));
+  addUnsyncedSongIds([song.id]);
   try {
     await apiRequest('/api/songs', {
       method: 'POST',
       body: JSON.stringify(song)
     });
+    removeUnsyncedSongIds([song.id]);
   } catch (err) {
-    console.error('Failed to sync song to MongoDB:', err);
-    throw err;
+    console.warn('Failed to sync song to MongoDB, queued for background sync:', err);
   }
 }
 
@@ -308,6 +360,7 @@ export async function deleteSong(id: string): Promise<void> {
   await deleteSongIndexedDB(id);
   // Remove last updated cache to force recalculation on next sync check
   localStorage.removeItem('dasong_local_max_updated_at');
+  removeUnsyncedSongIds([id]);
   try {
     await apiRequest(`/api/songs/${id}`, {
       method: 'DELETE'
@@ -321,6 +374,7 @@ export async function deleteSong(id: string): Promise<void> {
 export async function clearAllSongs(): Promise<void> {
   await clearAllSongsIndexedDB();
   localStorage.removeItem('dasong_local_max_updated_at');
+  localStorage.removeItem('dasong_unsynced_song_ids');
   try {
     await apiRequest('/api/songs', {
       method: 'DELETE'

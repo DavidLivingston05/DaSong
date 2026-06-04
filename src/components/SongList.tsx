@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Music, Star, Trash2, Layers, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Music, Star, Trash2, Layers, ChevronRight, Search } from 'lucide-react';
 import { SongMetadata } from '../lib/db';
 import { UserRole } from '../types';
 
@@ -25,14 +25,34 @@ function SongList({
   currentRole
 }: SongListProps) {
   const [visibleCount, setVisibleCount] = useState<number>(20);
+  const [inputValue, setInputValue] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [kbdIndex, setKbdIndex] = useState<number>(-1);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const deleteTimerRef = useRef<number | null>(null);
 
+  // Debounce search input by 150ms to prevent key lag when searching a large catalog
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchQuery(inputValue);
+      setVisibleCount(20);
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [inputValue]);
+
   // Sort songs alphabetically by title
   const sortedSongs = useMemo(() => {
-    return [...songs].sort((a, b) => a.title.localeCompare(b.title));
-  }, [songs]);
+    let filtered = songs;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = songs.filter(s => 
+        s.title.toLowerCase().includes(q) || 
+        (s.author && s.author.toLowerCase().includes(q)) ||
+        (s.lyricsSnippet && s.lyricsSnippet.toLowerCase().includes(q))
+      );
+    }
+    return [...filtered].sort((a, b) => a.title.localeCompare(b.title));
+  }, [songs, searchQuery]);
 
   // Slice list up to visible count for performance
   const paginatedSongs = useMemo(() => {
@@ -50,6 +70,7 @@ function SongList({
       const activeElement = document.activeElement;
       const isTypingInChat = activeElement && (
         activeElement.tagName === 'TEXTAREA' || 
+        activeElement.tagName === 'INPUT' ||
         (activeElement as HTMLElement).isContentEditable
       );
 
@@ -119,6 +140,22 @@ function SongList({
   return (
     <div id="song-list-module" className="flex flex-col space-y-3.5 text-zinc-300">
       
+      {/* Search Input */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+          <Search className="h-4 w-4 text-zinc-500" />
+        </div>
+        <input
+          type="text"
+          placeholder="Search songs by title, author, or lyrics..."
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+          }}
+          className="block w-full pl-10 pr-4 py-3 border border-zinc-800 rounded-xl leading-5 bg-zinc-900 text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 text-sm transition-all shadow-sm"
+        />
+      </div>
+
       {/* Song Grid / Lists layout */}
       <div className="bg-zinc-900 border border-zinc-800/80 overflow-hidden shadow-lg rounded-2xl">
         {/* Desktop Table View */}

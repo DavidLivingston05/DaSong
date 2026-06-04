@@ -131,15 +131,13 @@ body {
   Avoid using "will-change: scroll-position" in Chrome as it degrades threaded scrolling optimizations.
 */
 #lyric-sheet,
-#lyrics-scroll-container,
-.overflow-y-auto {
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
+#lyrics-scroll-container {
+  /* Removed transform: translate3d and backface-visibility as they cause rendering bugs on Android */
 }
 
 /* iOS Notch Safety margins */
 .pb-safe {
-  padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 20px);
 }
 
 .pt-safe {
@@ -151,15 +149,13 @@ body {
 }
 
 /* GPU-Accelerated Composite Layers for Constant 60-120 FPS Animations */
+/* Removed translate3d, backface-visibility, and perspective as they cause severe rendering bugs on Android Chrome where content (like lyrics) becomes entirely invisible */
 .bottom-sheet-mobile,
 .animate-slideUp,
 .animate-slideDown,
 .animate-slideInRight,
 .animate-fadeIn {
-  will-change: transform, opacity;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  perspective: 1000px;
+  /* Removed 3D transforms to fix Android Chrome blank screen bugs */
 }
 
 /* Hide scrollbar utility for sleek mobile carousels */

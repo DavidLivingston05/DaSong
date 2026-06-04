@@ -186,10 +186,29 @@ export default function WorshipEvents({
     return events.filter(e => e.date === selectedDateStr);
   }, [events, selectedDateStr]);
 
-  // Song catalogs sorted alphabetically by title
+  const [songSearchInput, setSongSearchInput] = useState<string>('');
+  const [songSearchQuery, setSongSearchQuery] = useState<string>('');
+
+  // Debounce search input by 150ms to prevent lag when typing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSongSearchQuery(songSearchInput);
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [songSearchInput]);
+
+  // Song catalogs sorted alphabetically by title and optionally filtered by search query
   const filteredSongs = useMemo(() => {
-    return [...songs].sort((a, b) => a.title.localeCompare(b.title));
-  }, [songs]);
+    let sorted = [...songs].sort((a, b) => a.title.localeCompare(b.title));
+    if (songSearchQuery.trim()) {
+      const q = songSearchQuery.toLowerCase();
+      sorted = sorted.filter(s => 
+        s.title.toLowerCase().includes(q) || 
+        (s.author && s.author.toLowerCase().includes(q))
+      );
+    }
+    return sorted;
+  }, [songs, songSearchQuery]);
 
   const handleCreateEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -454,15 +473,17 @@ export default function WorshipEvents({
                           onClick={() => setEditingEventId(isExpanded ? null : ev.id)}
                           className="text-[11px] font-bold text-slate-400 hover:text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-full cursor-pointer transition-colors"
                         >
-                          {isExpanded ? 'Fold List' : `Manage Setup (${(ev.songIds || []).length})`}
+                          {isExpanded ? 'Fold List' : currentRole === 'admin' ? `Manage Setup (${(ev.songIds || []).length})` : `View Setlist (${(ev.songIds || []).length})`}
                         </button>
-                        <button 
-                          onClick={(e) => handleDeleteEvent(ev.id, e)}
-                          className="p-2 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 rounded-xl cursor-pointer transition-colors"
-                          title="Wipe Schedule block"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {currentRole === 'admin' && (
+                          <button 
+                            onClick={(e) => handleDeleteEvent(ev.id, e)}
+                            className="p-2 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 rounded-xl cursor-pointer transition-colors"
+                            title="Wipe Schedule block"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -522,31 +543,37 @@ export default function WorshipEvents({
                                   </div>
 
                                   {/* Reordering controllers inside the setlist */}
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    <button
-                                      disabled={index === 0}
-                                      onClick={() => moveSongInEvent(ev.id, index, 'up')}
-                                      className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
-                                      title="Shift Up"
-                                    >
-                                      <MoveUp className="h-3 w-3" />
-                                    </button>
-                                    <button
-                                      disabled={index === (ev.songIds || []).length - 1}
-                                      onClick={() => moveSongInEvent(ev.id, index, 'down')}
-                                      className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
-                                      title="Shift Down"
-                                    >
-                                      <MoveDown className="h-3 w-3" />
-                                    </button>
-                                    <button
-                                      onClick={() => toggleSongInEvent(ev.id, matchSong.id)}
-                                      className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
-                                      title="De-list"
-                                    >
-                                      <X className="h-3.5 w-3.5" />
-                                    </button>
-                                  </div>
+                                  {currentRole === 'admin' ? (
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <button
+                                        disabled={index === 0}
+                                        onClick={() => moveSongInEvent(ev.id, index, 'up')}
+                                        className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
+                                        title="Shift Up"
+                                      >
+                                        <MoveUp className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        disabled={index === (ev.songIds || []).length - 1}
+                                        onClick={() => moveSongInEvent(ev.id, index, 'down')}
+                                        className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
+                                        title="Shift Down"
+                                      >
+                                        <MoveDown className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => toggleSongInEvent(ev.id, matchSong.id)}
+                                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                                        title="De-list"
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-[10px] text-amber-500 font-mono font-bold uppercase tracking-wider select-none shrink-0 opacity-80">
+                                      View Lyrics ➔
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
@@ -557,7 +584,7 @@ export default function WorshipEvents({
                         <div className="pt-3 border-t border-white/5 space-y-3">
                           <div className="flex items-center justify-between">
                             <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
-                              Link Catalog Songs:
+                              {currentRole === 'admin' ? 'Link Catalog Songs:' : 'Search Catalog Songs:'}
                             </label>
                             {currentRole === 'admin' && (
                               <div className="flex items-center gap-1.5 select-none">
@@ -578,6 +605,18 @@ export default function WorshipEvents({
                               </div>
                             )}
                           </div>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                              <Search className="h-3 w-3 text-slate-500" />
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Search songs..."
+                              value={songSearchInput}
+                              onChange={(e) => setSongSearchInput(e.target.value)}
+                              className="block w-full pl-8 pr-3 py-1.5 border border-white/10 rounded-lg bg-black/40 text-slate-300 placeholder-slate-500 focus:outline-none focus:border-amber-500/50 text-[11px] transition-all"
+                            />
+                          </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1">
                             {filteredSongs.length === 0 ? (
                               <div className="col-span-full py-2 text-center text-slate-650 text-[11px] italic">
@@ -589,7 +628,13 @@ export default function WorshipEvents({
                                 return (
                                   <button
                                     key={song.id}
-                                    onClick={() => toggleSongInEvent(ev.id, song.id)}
+                                    onClick={() => {
+                                      if (currentRole === 'admin') {
+                                        toggleSongInEvent(ev.id, song.id);
+                                      } else {
+                                        onSelectSong(song.id, ev.songIds || []);
+                                      }
+                                    }}
                                     className={`p-2 rounded-xl text-left border text-[11px] transition-all flex items-center justify-between gap-2 cursor-pointer ${
                                       isAdded 
                                         ? 'border-emerald-500/30 bg-emerald-500/[0.03] text-emerald-400 font-bold' 
@@ -598,10 +643,14 @@ export default function WorshipEvents({
                                   >
                                     <span className="truncate">{song.title}</span>
                                     <span className="shrink-0 text-[10px]">
-                                      {isAdded ? (
-                                        <Check className="h-3.5 w-3.5 text-emerald-400 stroke-[3]" />
+                                      {currentRole === 'admin' ? (
+                                        isAdded ? (
+                                          <Check className="h-3.5 w-3.5 text-emerald-400 stroke-[3]" />
+                                        ) : (
+                                          <ListPlus className="h-3.5 w-3.5 text-slate-500 hover:text-white" />
+                                        )
                                       ) : (
-                                        <ListPlus className="h-3.5 w-3.5 text-slate-500 hover:text-white" />
+                                        <span className="text-amber-500 font-medium font-sans">View ➔</span>
                                       )}
                                     </span>
                                   </button>
@@ -904,30 +953,42 @@ export default function WorshipEvents({
                     <p className="text-zinc-500 text-xs font-mono">No songs added to this sequence yet.</p>
                   </div>
                 )}
-
-                {/* Inline administrative fast song selection panel for active setups */}
-                {currentRole === 'admin' && activeEvent && (
+                {activeEvent && (
                   <div className="mt-6 pt-5 border-t border-zinc-900 space-y-3 shrink-0">
                     <div className="flex items-center justify-between pl-0.5">
                       <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
-                        Link Catalog Songs:
+                        {currentRole === 'admin' ? 'Link Catalog Songs:' : 'Search Catalog Songs:'}
                       </label>
-                      <div className="flex items-center gap-1.5 select-none">
-                        <button
-                          type="button"
-                          onClick={() => onOpenAddModal?.(activeEvent.id)}
-                          className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
-                        >
-                          <Plus className="h-2.5 w-2.5" /> Create Song
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onOpenUploadModal?.(activeEvent.id)}
-                          className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
-                        >
-                          <Upload className="h-2.5 w-2.5" /> Upload Files
-                        </button>
+                      {currentRole === 'admin' && (
+                        <div className="flex items-center gap-1.5 select-none">
+                          <button
+                            type="button"
+                            onClick={() => onOpenAddModal?.(activeEvent.id)}
+                            className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
+                          >
+                            <Plus className="h-2.5 w-2.5" /> Create Song
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onOpenUploadModal?.(activeEvent.id)}
+                            className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
+                          >
+                            <Upload className="h-2.5 w-2.5" /> Upload Files
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                        <Search className="h-3 w-3 text-zinc-500" />
                       </div>
+                      <input
+                        type="text"
+                        placeholder="Search songs..."
+                        value={songSearchInput}
+                        onChange={(e) => setSongSearchInput(e.target.value)}
+                        className="block w-full pl-8 pr-3 py-1.5 border border-zinc-800 rounded-lg bg-zinc-900/50 text-zinc-300 placeholder-zinc-500 focus:outline-none focus:border-amber-500/50 text-[11px] transition-all"
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-1">
                       {filteredSongs.slice(0, 30).map(song => {
@@ -935,7 +996,13 @@ export default function WorshipEvents({
                         return (
                           <button
                             key={song.id}
-                            onClick={() => toggleSongInEvent(activeEvent.id, song.id)}
+                            onClick={() => {
+                              if (currentRole === 'admin') {
+                                toggleSongInEvent(activeEvent.id, song.id);
+                              } else {
+                                handleSongClick(song);
+                              }
+                            }}
                             className={`p-2 rounded-xl text-left border text-[11px] transition-all flex items-center justify-between gap-1 cursor-pointer ${
                               isAdded 
                                 ? 'border-emerald-500/30 bg-emerald-500/[0.04] text-emerald-400 font-bold' 
@@ -943,10 +1010,14 @@ export default function WorshipEvents({
                             }`}
                           >
                             <span className="truncate">{song.title}</span>
-                            {isAdded ? (
-                              <Check className="h-3 w-3 text-emerald-400 shrink-0" />
+                            {currentRole === 'admin' ? (
+                              isAdded ? (
+                                <Check className="h-3 w-3 text-emerald-400 shrink-0" />
+                              ) : (
+                                <Plus className="h-3 w-3 text-zinc-500 shrink-0" />
+                              )
                             ) : (
-                              <Plus className="h-3 w-3 text-zinc-500 shrink-0" />
+                              <span className="text-[10px] text-amber-500 font-medium font-sans">View ➔</span>
                             )}
                           </button>
                         );

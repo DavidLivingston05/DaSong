@@ -3,7 +3,7 @@ import {
   Music, Sparkles, Layers, Sliders, Play, Settings, Plus, Star, Heart, 
   Trash2, X, AlertCircle, RefreshCw, Check, BookOpen, Database, Award, 
   ChevronRight, Compass, HelpCircle, Calendar, Download, Smartphone,
-  Home
+  Home, Search
 } from 'lucide-react';
 import { Song, UserRole, WorshipEvent } from './types';
 import { 
@@ -197,6 +197,31 @@ export default function App() {
   // App view toggle states
   const [activeTab, setActiveTab] = useState<'dashboard' | 'search' | 'calendar'>('dashboard');
   const [songSourceTab, setSongSourceTab] = useState<'search' | 'calendar' | 'dashboard'>('search');
+
+  // Quick Search Dashboard State
+  const [quickSearchInput, setQuickSearchInput] = useState<string>('');
+  const [quickSearchQuery, setQuickSearchQuery] = useState<string>('');
+
+  // Debounce dashboard quick search input by 150ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setQuickSearchQuery(quickSearchInput);
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [quickSearchInput]);
+
+  // Compute matched songs for quick search
+  const quickSearchMatches = useMemo(() => {
+    const query = quickSearchQuery.trim().toLowerCase();
+    if (!query) return [];
+    
+    const filtered = songs.filter(s => 
+      s.title.toLowerCase().includes(query) || 
+      (s.author && s.author.toLowerCase().includes(query)) ||
+      (s.lyricsSnippet && s.lyricsSnippet.toLowerCase().includes(query))
+    );
+    return [...filtered].sort((a, b) => a.title.localeCompare(b.title)).slice(0, 6);
+  }, [songs, quickSearchQuery]);
 
   // ── Android Back Button / History API ──────────────────────────────────────
   // Push a history entry on every meaningful navigation so Android's back button
@@ -1235,6 +1260,73 @@ export default function App() {
               </div>
             )}
 
+            {/* ⚡ Quick Song Access (Phonetic Search Engine) */}
+            <div className="w-full mb-6 relative">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="h-4.5 w-4.5 text-zinc-500" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="⚡ Quick song access... (Type title, author, or lyrics)"
+                  value={quickSearchInput}
+                  onChange={(e) => setQuickSearchInput(e.target.value)}
+                  className="block w-full pl-11 pr-10 py-3.5 border border-zinc-800 rounded-2xl leading-5 bg-zinc-900 text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 text-sm transition-all shadow-md"
+                />
+                {quickSearchInput && (
+                  <button
+                    onClick={() => setQuickSearchInput('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-500 hover:text-zinc-350 cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Autocomplete Popup List */}
+              {quickSearchInput.trim() && (
+                <div className="absolute left-0 right-0 mt-2 bg-zinc-950 border border-zinc-850 rounded-2xl shadow-2xl z-30 overflow-hidden max-h-[350px] overflow-y-auto divide-y divide-zinc-900 animate-in fade-in slide-in-from-top-2 duration-150">
+                  {quickSearchMatches.length === 0 ? (
+                    <div className="p-4 text-center text-zinc-500 text-xs font-sans italic">
+                      No matching songs found
+                    </div>
+                  ) : (
+                    quickSearchMatches.map((song) => (
+                      <button
+                        key={song.id}
+                        onClick={() => {
+                          setQuickSearchInput('');
+                          setSongSourceTab('search');
+                          setActiveTab('search');
+                          handleSelectSong(song.id);
+                        }}
+                        className="w-full p-3.5 hover:bg-zinc-900/60 transition-colors flex items-center justify-between text-left cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-3 truncate">
+                          <div className="h-8 w-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
+                            <Music className="h-4 w-4" />
+                          </div>
+                          <div className="truncate">
+                            <div className="text-xs font-bold text-zinc-200 group-hover:text-amber-450 transition-colors truncate">
+                              {song.title}
+                            </div>
+                            <div className="text-[10px] text-zinc-550 font-mono mt-0.5">
+                              {song.author || 'Traditional'}
+                            </div>
+                          </div>
+                        </div>
+                        {song.category && (
+                          <span className="text-[9px] font-extrabold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2 py-0.5 rounded shrink-0">
+                            {song.category}
+                          </span>
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Quick Metrics Cards — 2 cols on mobile, 3 on sm+ */}
             <div className="grid grid-cols-3 gap-2 md:gap-3 w-full mb-5 select-none">
               <div className="bg-zinc-900/60 border border-zinc-850 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
@@ -1452,7 +1544,7 @@ export default function App() {
             >
             {selectedSongId ? (
               /* Dedicated full-page lyric reading panel */
-              <div className="w-full flex-1 flex flex-col min-h-0 animate-in slide-in-from-right-5 duration-200 h-full">
+              <div className="w-full flex-1 flex flex-col min-h-0 h-full">
                 <SongDetail 
                   songId={selectedSongId}
                   onClose={() => {
