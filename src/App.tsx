@@ -1473,11 +1473,11 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18 }}
-              className="w-full min-h-0"
+              className={`w-full min-h-0 ${selectedSongId ? 'flex-1 flex flex-col h-full' : ''}`}
             >
             {selectedSongId ? (
               /* Dedicated full-page lyric reading panel */
-              <div className="w-full flex flex-col min-h-0 animate-in slide-in-from-right-5 duration-200">
+              <div className="w-full flex-1 flex flex-col min-h-0 animate-in slide-in-from-right-5 duration-200 h-full">
                 <SongDetail 
                   songId={selectedSongId}
                   onClose={() => {
