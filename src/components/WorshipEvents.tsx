@@ -7,7 +7,6 @@ import {
 import { WorshipEvent, UserRole, Song } from '../types';
 import { SongMetadata, getSongById, getLocalWorshipEvents, saveWorshipEvent, deleteWorshipEvent } from '../lib/db';
 import { transposeLyrics, stripChords } from '../utils/chordTransposer';
-import { matchSong } from '../lib/search';
 
 interface WorshipEventsProps {
   songs: SongMetadata[];
@@ -48,9 +47,6 @@ export default function WorshipEvents({
   const [createTime, setCreateTime] = useState<string>('09:00');
   const [createDesc, setCreateDesc] = useState<string>('');
   const [createSongIds, setCreateSongIds] = useState<string[]>([]);
-  
-  // Search state inside song selection
-  const [songSearch, setSongSearch] = useState<string>('');
 
   // Active viewing/editing event on agenda for desktop
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -190,11 +186,10 @@ export default function WorshipEvents({
     return events.filter(e => e.date === selectedDateStr);
   }, [events, selectedDateStr]);
 
-  // Filtered song catalogs for interactive playlist additions with phonetic Tamil/Tanglish support
+  // Song catalogs sorted alphabetically by title
   const filteredSongs = useMemo(() => {
-    if (!songSearch.trim()) return songs;
-    return songs.filter(s => matchSong(s, songSearch));
-  }, [songs, songSearch]);
+    return [...songs].sort((a, b) => a.title.localeCompare(b.title));
+  }, [songs]);
 
   const handleCreateEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,7 +217,6 @@ export default function WorshipEvents({
       setCreateTitle('');
       setCreateDesc('');
       setCreateSongIds([]);
-      setSongSearch('');
       setShowCreateDialog(false);
     }
   };
@@ -318,7 +312,6 @@ export default function WorshipEvents({
                 onClick={() => {
                   setCreateDate(selectedDateStr);
                   setCreateSongIds([]);
-                  setSongSearch('');
                   setCreateTitle('Sunday Worship');
                   setShowCreateDialog(true);
                 }}
