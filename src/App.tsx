@@ -1193,50 +1193,27 @@ export default function App() {
               </div>
             </div>
 
-            {/* === JUMP BACK IN — Recent Songs (mobile horizontal carousel, top priority) === */}
+            {/* === MOBILE JUMP BACK IN (hidden on desktop) === */}
             {recentSongs.length > 0 && (
-              <div className="w-full mb-4 md:mb-6">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black block mb-3 md:mb-3.5 px-0 md:px-0">
+              <div className="w-full mb-4 md:hidden">
+                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black block mb-3 px-1">
                   ⚡ Jump Back In
                 </span>
-                {/* Mobile: horizontal scroll pill strip */}
-                <div className="md:hidden flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
+                <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
                   {recentSongs.map(song => (
                     <button
                       key={song.id}
-                      onClick={() => handleSelectSong(song.id)}
+                      onClick={() => {
+                        setSongSourceTab('search');
+                        handleSelectSong(song.id);
+                        setActiveTab('search');
+                      }}
                       className="recent-song-pill active-touch text-left"
                     >
                       <div className="text-[13px] font-bold text-white truncate leading-tight">{song.title}</div>
                       <div className="text-[10px] text-zinc-500 font-mono mt-1 truncate">{song.author || 'Traditional'}</div>
                       {song.category && (
                         <div className="text-[9px] font-extrabold uppercase text-amber-500/90 mt-1">{song.category}</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                {/* Desktop: vertical list */}
-                <div className="hidden md:block space-y-2 bg-zinc-900/60 p-5 md:p-6 rounded-3xl border border-zinc-850 shadow-md relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/[0.02] rounded-full blur-2xl"></div>
-                  {recentSongs.map(song => (
-                    <button
-                      key={song.id}
-                      onClick={() => handleSelectSong(song.id)}
-                      className="w-full p-3.5 bg-zinc-950/50 hover:bg-zinc-950 hover:border-amber-500/30 border border-zinc-850 rounded-2xl flex items-center justify-between gap-3 text-left transition-all cursor-pointer group active-touch"
-                    >
-                      <div className="flex items-center gap-3 truncate">
-                        <div className="h-7 w-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
-                          <Music className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="truncate">
-                          <div className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors truncate">{song.title}</div>
-                          <div className="text-[10px] text-zinc-500 font-mono mt-0.5">{song.author || 'Traditional'}</div>
-                        </div>
-                      </div>
-                      {song.category && (
-                        <span className="text-[9px] font-extrabold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2 py-0.5 rounded shrink-0">
-                          {song.category}
-                        </span>
                       )}
                     </button>
                   ))}
@@ -1363,6 +1340,44 @@ export default function App() {
                 </div>
               </button>
             </div>
+
+            {/* === DESKTOP JUMP BACK IN (hidden on mobile) === */}
+            {recentSongs.length > 0 && (
+              <div className="hidden md:block w-full mt-6">
+                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black block mb-3 pl-0.5">
+                  ⚡ Jump Back In
+                </span>
+                <div className="space-y-2 bg-zinc-900/60 p-5 md:p-6 rounded-3xl border border-zinc-850 shadow-md relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/[0.02] rounded-full blur-2xl"></div>
+                  {recentSongs.map(song => (
+                    <button
+                      key={song.id}
+                      onClick={() => {
+                        setSongSourceTab('search');
+                        handleSelectSong(song.id);
+                        setActiveTab('search');
+                      }}
+                      className="w-full p-3.5 bg-zinc-950/50 hover:bg-zinc-950 hover:border-amber-500/30 border border-zinc-850 rounded-2xl flex items-center justify-between gap-3 text-left transition-all cursor-pointer group active-touch"
+                    >
+                      <div className="flex items-center gap-3 truncate">
+                        <div className="h-7 w-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
+                          <Music className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="truncate">
+                          <div className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors truncate">{song.title}</div>
+                          <div className="text-[10px] text-zinc-500 font-mono mt-0.5">{song.author || 'Traditional'}</div>
+                        </div>
+                      </div>
+                      {song.category && (
+                        <span className="text-[9px] font-extrabold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2 py-0.5 rounded shrink-0">
+                          {song.category}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Administrative Quick Actions Console */}
             {session?.role === 'admin' && (
