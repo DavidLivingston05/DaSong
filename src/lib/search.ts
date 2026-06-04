@@ -178,8 +178,84 @@ export interface FilterableSong {
   lyricsSnippet?: string; // First ~300 chars included for full-text lyric search
 }
 
-// Thread-safe memory cache of pre-cleaned song tokens to keep searches under 1ms
-const songWordsCache = new Map<string, string[]>();
+export interface CachedLyricLine {
+  original: string;
+  clean: string;
+  transliterated: string;
+  words: string[];
+}
+
+export interface CachedSongData {
+  cleanTitle: string;
+  transliteratedTitle: string;
+  titleWords: string[];
+  cleanAuthor: string;
+  cleanCategory: string;
+  cleanSnippet: string;
+  transliteratedSnippet: string;
+  lyricWords: string[];
+  songWords: string[];
+  lyricLines: CachedLyricLine[];
+}
+
+const songMetadataCache = new Map<string, CachedSongData>();
+
+export function getCachedSongData(song: FilterableSong): CachedSongData {
+  const cacheKey = `${song.id}_${song.title}_${song.author || ''}_${song.category || ''}_${song.lyricsSnippet || ''}`;
+  let cached = songMetadataCache.get(cacheKey);
+  if (!cached) {
+    const cleanTitle = cleanForSearch(song.title);
+    const transliteratedTitle = cleanForSearch(transliterateTamilToTanglish(cleanTitle));
+    const titleWords = `${cleanTitle} ${transliteratedTitle}`.split(' ').filter(Boolean);
+    const cleanAuthor = song.author ? cleanForSearch(song.author) : '';
+    const cleanCategory = song.category ? cleanForSearch(song.category) : '';
+    
+    let cleanSnippet = '';
+    let transliteratedSnippet = '';
+    let lyricWords: string[] = [];
+    let lyricLines: CachedLyricLine[] = [];
+    
+    if (song.lyricsSnippet) {
+      cleanSnippet = cleanForSearch(song.lyricsSnippet);
+      transliteratedSnippet = cleanForSearch(transliterateTamilToTanglish(cleanSnippet));
+      lyricWords = `${cleanSnippet} ${transliteratedSnippet}`.split(' ').filter(Boolean);
+      
+      const lines = song.lyricsSnippet.split(/\r?\n/);
+      lyricLines = lines.map(line => {
+        const clean = cleanForSearch(line);
+        const transliterated = cleanForSearch(transliterateTamilToTanglish(clean));
+        const words = `${clean} ${transliterated}`.split(' ').filter(Boolean);
+        return {
+          original: line,
+          clean,
+          transliterated,
+          words
+        };
+      });
+    }
+
+    const cleanId = cleanForSearch(song.id);
+    const songWords = `${cleanId} ${cleanTitle} ${transliteratedTitle} ${cleanAuthor} ${cleanCategory} ${cleanSnippet} ${transliteratedSnippet}`
+      .split(' ').filter(Boolean);
+
+    cached = {
+      cleanTitle,
+      transliteratedTitle,
+      titleWords,
+      cleanAuthor,
+      cleanCategory,
+      cleanSnippet,
+      transliteratedSnippet,
+      lyricWords,
+      songWords,
+      lyricLines
+    };
+
+    if (songMetadataCache.size > 2000) songMetadataCache.clear();
+    songMetadataCache.set(cacheKey, cached);
+  }
+  return cached;
+}
 
 /**
  * Returns how many query words match the song (0 to queryWords.length).
@@ -193,25 +269,11 @@ export function matchSongScore(song: FilterableSong, searchQuery: string): numbe
   const queryWords = cleanQuery.split(' ').filter(Boolean);
   if (queryWords.length === 0) return 1;
 
-  const cacheKey = `${song.id}_${song.title}_${song.author || ''}_${song.category || ''}`;
-  let songWords = songWordsCache.get(cacheKey);
-  if (!songWords) {
-    const cleanId = cleanForSearch(song.id);
-    const cleanTitle = cleanForSearch(song.title);
-    const cleanAuthor = song.author ? cleanForSearch(song.author) : '';
-    const cleanCategory = song.category ? cleanForSearch(song.category) : '';
-    const cleanSnippet = song.lyricsSnippet ? cleanForSearch(song.lyricsSnippet) : '';
-    const transliteratedTitle = transliterateTamilToTanglish(cleanTitle);
-    const transliteratedSnippet = transliterateTamilToTanglish(cleanSnippet);
-    songWords = `${cleanId} ${cleanTitle} ${transliteratedTitle} ${cleanAuthor} ${cleanCategory} ${cleanSnippet} ${transliteratedSnippet}`
-      .split(' ').filter(Boolean);
-    if (songWordsCache.size > 2000) songWordsCache.clear();
-    songWordsCache.set(cacheKey, songWords);
-  }
+  const cached = getCachedSongData(song);
 
   let matched = 0;
   for (const qWord of queryWords) {
-    if (isWordMatch(qWord, songWords)) matched++;
+    if (isWordMatch(qWord, cached.songWords)) matched++;
   }
   return matched;
 }
@@ -243,7 +305,7 @@ export function matchSong(song: FilterableSong, searchQuery: string): boolean {
  * to ensure stale tokens don't persist across mutations.
  */
 export function clearSearchCache(): void {
-  songWordsCache.clear();
+  songMetadataCache.clear();
   singleWordMatchCache.clear();
 }
 
@@ -324,24 +386,22 @@ export function getSearchRelevanceScore(song: FilterableSong, searchQuery: strin
   const queryWords = cleanQuery.split(' ').filter(Boolean);
   if (queryWords.length === 0) return 0;
 
-  const cleanTitle = cleanForSearch(song.title);
-  const transliteratedTitle = cleanForSearch(transliterateTamilToTanglish(song.title));
+  const cached = getCachedSongData(song);
 
   let score = 0;
 
   // 1. Exact phrase title matches
-  if (cleanTitle === cleanQuery || transliteratedTitle === cleanQuery) {
+  if (cached.cleanTitle === cleanQuery || cached.transliteratedTitle === cleanQuery) {
     score += 2000;
-  } else if (cleanTitle.startsWith(cleanQuery) || transliteratedTitle.startsWith(cleanQuery)) {
+  } else if (cached.cleanTitle.startsWith(cleanQuery) || cached.transliteratedTitle.startsWith(cleanQuery)) {
     score += 1500;
-  } else if (cleanTitle.includes(cleanQuery) || transliteratedTitle.includes(cleanQuery)) {
+  } else if (cached.cleanTitle.includes(cleanQuery) || cached.transliteratedTitle.includes(cleanQuery)) {
     score += 1000;
   }
 
   // 2. First word match bonus (prioritize items matching the first searched word at the start)
-  const titleWords = `${cleanTitle} ${transliteratedTitle}`.split(' ').filter(Boolean);
-  const songFirstWord = cleanTitle.split(' ')[0];
-  const songFirstTransliteratedWord = transliteratedTitle.split(' ')[0];
+  const songFirstWord = cached.cleanTitle.split(' ')[0];
+  const songFirstTransliteratedWord = cached.transliteratedTitle.split(' ')[0];
   const queryFirstWord = queryWords[0];
 
   if (songFirstWord && queryFirstWord) {
@@ -361,16 +421,16 @@ export function getSearchRelevanceScore(song: FilterableSong, searchQuery: strin
   for (const qWord of queryWords) {
     let wordMatched = false;
 
-    if (titleWords.includes(qWord)) {
+    if (cached.titleWords.includes(qWord)) {
       wordMatchesScore += 150;
       wordMatched = true;
-    } else if (titleWords.some(tw => tw.startsWith(qWord))) {
+    } else if (cached.titleWords.some(tw => tw.startsWith(qWord))) {
       wordMatchesScore += 120;
       wordMatched = true;
-    } else if (titleWords.some(tw => tw.includes(qWord) || qWord.includes(tw))) {
+    } else if (cached.titleWords.some(tw => tw.includes(qWord) || qWord.includes(tw))) {
       wordMatchesScore += 80;
       wordMatched = true;
-    } else if (isWordMatch(qWord, titleWords)) {
+    } else if (isWordMatch(qWord, cached.titleWords)) {
       wordMatchesScore += 60;
       wordMatched = true;
     }
@@ -391,11 +451,7 @@ export function getSearchRelevanceScore(song: FilterableSong, searchQuery: strin
 
   // 4. Lyrics matching from snippet
   if (song.lyricsSnippet) {
-    const cleanLyrics = cleanForSearch(song.lyricsSnippet);
-    const transliteratedLyrics = cleanForSearch(transliterateTamilToTanglish(song.lyricsSnippet));
-    const lyricWords = `${cleanLyrics} ${transliteratedLyrics}`.split(' ').filter(Boolean);
-
-    if (cleanLyrics.includes(cleanQuery) || transliteratedLyrics.includes(cleanQuery)) {
+    if (cached.cleanSnippet.includes(cleanQuery) || cached.transliteratedSnippet.includes(cleanQuery)) {
       score += 300;
     }
 
@@ -405,13 +461,13 @@ export function getSearchRelevanceScore(song: FilterableSong, searchQuery: strin
     for (const qWord of queryWords) {
       let wordMatched = false;
 
-      if (lyricWords.includes(qWord)) {
+      if (cached.lyricWords.includes(qWord)) {
         lyricMatchesScore += 30;
         wordMatched = true;
-      } else if (lyricWords.some(lw => lw.includes(qWord) || qWord.includes(lw))) {
+      } else if (cached.lyricWords.some(lw => lw.includes(qWord) || qWord.includes(lw))) {
         lyricMatchesScore += 20;
         wordMatched = true;
-      } else if (isWordMatch(qWord, lyricWords)) {
+      } else if (isWordMatch(qWord, cached.lyricWords)) {
         lyricMatchesScore += 15;
         wordMatched = true;
       }
@@ -432,16 +488,14 @@ export function getSearchRelevanceScore(song: FilterableSong, searchQuery: strin
 
   // 5. Author & Category matching
   if (song.author) {
-    const cleanAuthor = cleanForSearch(song.author);
-    if (cleanAuthor === cleanQuery) {
+    if (cached.cleanAuthor === cleanQuery) {
       score += 200;
-    } else if (cleanAuthor.includes(cleanQuery)) {
+    } else if (cached.cleanAuthor.includes(cleanQuery)) {
       score += 100;
     }
   }
   if (song.category) {
-    const cleanCategory = cleanForSearch(song.category);
-    if (cleanCategory === cleanQuery) {
+    if (cached.cleanCategory === cleanQuery) {
       score += 150;
     }
   }
@@ -455,48 +509,39 @@ export function getSearchRelevanceScore(song: FilterableSong, searchQuery: strin
 /**
  * Finds the first lyric line in the song snippet that contains search matches.
  */
-export function findMatchingLyricLine(lyrics: string | undefined, searchQuery: string): string | undefined {
-  if (!lyrics || !searchQuery.trim()) return undefined;
+export function findMatchingLyricLine(song: FilterableSong, searchQuery: string): string | undefined {
+  if (!searchQuery.trim()) return undefined;
 
   const cleanQuery = cleanForSearch(searchQuery);
   const queryWords = cleanQuery.split(' ').filter(Boolean);
   if (queryWords.length === 0) return undefined;
 
-  const lines = lyrics.split(/\r?\n/);
+  const cached = getCachedSongData(song);
+  if (!cached.lyricLines || cached.lyricLines.length === 0) return undefined;
 
   // Pass 1: exact match on query phrase
-  for (const line of lines) {
-    const cleanLine = cleanForSearch(line);
-    const transliteratedLine = cleanForSearch(transliterateTamilToTanglish(line));
-    if (cleanLine.includes(cleanQuery) || transliteratedLine.includes(cleanQuery)) {
-      return line.trim();
+  for (const line of cached.lyricLines) {
+    if (line.clean.includes(cleanQuery) || line.transliterated.includes(cleanQuery)) {
+      return line.original.trim();
     }
   }
 
   // Pass 2: line containing all query words
-  for (const line of lines) {
-    const cleanLine = cleanForSearch(line);
-    const transliteratedLine = cleanForSearch(transliterateTamilToTanglish(line));
-    const combinedWords = `${cleanLine} ${transliteratedLine}`.split(' ').filter(Boolean);
-
+  for (const line of cached.lyricLines) {
     const allWordsMatch = queryWords.every(qWord =>
-      combinedWords.some(w => w.includes(qWord) || qWord.includes(w))
+      line.words.some(w => w.includes(qWord) || qWord.includes(w))
     );
     if (allWordsMatch) {
-      return line.trim();
+      return line.original.trim();
     }
   }
 
   // Pass 3: line matching longest query word (min length 3)
   const sortedWords = [...queryWords].sort((a, b) => b.length - a.length);
-  for (const line of lines) {
-    const cleanLine = cleanForSearch(line);
-    const transliteratedLine = cleanForSearch(transliterateTamilToTanglish(line));
-    const combinedWords = `${cleanLine} ${transliteratedLine}`.split(' ').filter(Boolean);
-
+  for (const line of cached.lyricLines) {
     for (const qWord of sortedWords) {
-      if (qWord.length >= 3 && combinedWords.some(w => w.includes(qWord) || qWord.includes(w))) {
-        return line.trim();
+      if (qWord.length >= 3 && line.words.some(w => w.includes(qWord) || qWord.includes(w))) {
+        return line.original.trim();
       }
     }
   }
