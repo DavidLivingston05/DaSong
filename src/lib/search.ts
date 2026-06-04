@@ -1,6 +1,7 @@
 /**
  * Utility matching engine for Tamil and Romanized Tamil (Tanglish) song search,
  * supporting word isolation, order flexibility, sanitization, and phonetic typo tolerance.
+ * Includes highlight support via getHighlightRanges() for amber match highlighting in the UI.
  */
 
 /**
@@ -141,4 +142,86 @@ export function matchSong(song: FilterableSong, searchQuery: string): boolean {
 
   // Return true if every individual query word matches at least one contextual song word
   return queryWords.every(qWord => isWordMatch(qWord, songWords));
+}
+
+/**
+ * Clears both internal caches — call this after any song is created, updated, or deleted
+ * to ensure stale tokens don't persist across mutations.
+ */
+export function clearSearchCache(): void {
+  songWordsCache.clear();
+  singleWordMatchCache.clear();
+}
+
+/**
+ * Returns an array of non-overlapping {start, end} character index ranges where
+ * any query word matches inside `text`. Used by <HighlightText> to wrap matched
+ * substrings in amber <mark> spans without re-running the full matchSong pipeline.
+ *
+ * Strategy:
+ * - Clean and split the query into words.
+ * - For each query word, scan the display text for the first substring that the
+ *   isSingleWordMatch heuristic would accept (prefix/substr/fuzzy).
+ * - Collect all such ranges, then merge overlapping ones.
+ * - Short or numeric query words use only exact substring matching to avoid
+ *   false highlights from the fuzzy tier.
+ */
+export function getHighlightRanges(
+  text: string,
+  query: string
+): { start: number; end: number }[] {
+  if (!text || !query.trim()) return [];
+
+  const cleanQuery = cleanForSearch(query);
+  const queryWords = cleanQuery.split(' ').filter(Boolean);
+  if (queryWords.length === 0) return [];
+
+  const lowerText = text.toLowerCase();
+  const ranges: { start: number; end: number }[] = [];
+
+  for (const qWord of queryWords) {
+    if (!qWord) continue;
+    const isShortOrNumeric = qWord.length < 4 || /^\d+$/.test(qWord);
+
+    // 1. Exact substring scan — always attempted first
+    let idx = lowerText.indexOf(qWord);
+    while (idx !== -1) {
+      ranges.push({ start: idx, end: idx + qWord.length });
+      idx = lowerText.indexOf(qWord, idx + 1);
+    }
+
+    if (ranges.length > 0 || isShortOrNumeric) continue;
+
+    // 2. Word-level fuzzy scan — only for longer words with no exact match
+    // Split display text into word tokens with their char positions
+    const wordTokenRegex = /\S+/g;
+    let match: RegExpExecArray | null;
+    while ((match = wordTokenRegex.exec(lowerText)) !== null) {
+      const token = match[0];
+      const tokenStart = match.index;
+      const cleanToken = cleanForSearch(token);
+      if (!cleanToken) continue;
+
+      // Re-use the isSingleWordMatch cache
+      if (isSingleWordMatch(qWord, cleanToken)) {
+        ranges.push({ start: tokenStart, end: tokenStart + token.length });
+      }
+    }
+  }
+
+  if (ranges.length === 0) return [];
+
+  // Merge overlapping / adjacent ranges so we don't double-wrap
+  ranges.sort((a, b) => a.start - b.start);
+  const merged: { start: number; end: number }[] = [ranges[0]];
+  for (let i = 1; i < ranges.length; i++) {
+    const last = merged[merged.length - 1];
+    const cur = ranges[i];
+    if (cur.start <= last.end) {
+      last.end = Math.max(last.end, cur.end);
+    } else {
+      merged.push({ start: cur.start, end: cur.end });
+    }
+  }
+  return merged;
 }

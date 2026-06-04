@@ -383,7 +383,7 @@ export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
           favorite: !!val.favorite,
           createdAt: val.createdAt,
           updatedAt: val.updatedAt,
-          lyricsSnippet: val.lyrics ? (val.lyrics as string).slice(0, 300) : undefined
+          lyricsSnippet: val.lyrics ? (val.lyrics as string).slice(0, 1500) : undefined
         });
         cursor.continue();
       } else {

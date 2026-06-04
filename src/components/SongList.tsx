@@ -1,8 +1,36 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Search, Heart, Music, Star, Trash2, PlusCircle, ArrowLeft, Layers, Compass, BarChart2, ShieldAlert, ChevronRight } from 'lucide-react';
+import { Search, Heart, Music, Star, Trash2, PlusCircle, ArrowLeft, Layers, Compass, BarChart2, ShieldAlert, ChevronRight, BookOpen } from 'lucide-react';
 import { SongMetadata } from '../lib/db';
 import { UserRole } from '../types';
-import { matchSong } from '../lib/search';
+import { matchSong, getHighlightRanges } from '../lib/search';
+
+/**
+ * Highlights portions of `text` that match `query` with an amber glow.
+ * Falls back to plain text when query is empty or there are no matches.
+ */
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const ranges = getHighlightRanges(text, query);
+  if (ranges.length === 0) return <>{text}</>;
+
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  for (const { start, end } of ranges) {
+    if (start > cursor) parts.push(text.slice(cursor, start));
+    parts.push(
+      <mark
+        key={start}
+        className="bg-amber-400/20 text-amber-300 rounded-sm px-0.5 not-italic font-inherit"
+        style={{ fontWeight: 'inherit' }}
+      >
+        {text.slice(start, end)}
+      </mark>
+    );
+    cursor = end;
+  }
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return <>{parts}</>;
+}
 
 interface SongListProps {
   songs: SongMetadata[];
@@ -238,61 +266,82 @@ function SongList({
           </div>
         </div>
 
-        {/* Sort Controls */}
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 font-bold shrink-0">Sort:</span>
-          <select
-            value={sortBy}
-            onChange={e => { setSortBy(e.target.value as typeof sortBy); setVisibleCount(20); }}
-            className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[10px] font-mono font-bold px-2 py-1.5 rounded-xl outline-none focus:border-amber-500 cursor-pointer"
-          >
-            <option value="title-asc">Title A → Z</option>
-            <option value="title-desc">Title Z → A</option>
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="bpm-asc">BPM Low → High</option>
-            <option value="bpm-desc">BPM High → Low</option>
-          </select>
-        </div>
-
-        {/* Filters Select boxes & options */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Favorite Filter Toggle - Styled like a physical tactile latching keyboard switch */}
-            <button
-              id="filter-favorites-toggle"
-              onClick={() => {
-                setShowOnlyFavorites(!showOnlyFavorites);
-                setVisibleCount(20);
-              }}
-              className={`flex items-center gap-2 px-4 py-2 text-[10px] uppercase tracking-widest font-mono rounded-xl border transition-all cursor-pointer select-none ${
-                showOnlyFavorites
-                  ? 'bg-zinc-950 border-amber-500 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-black'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-850'
-              }`}
+        {/* Sort Controls — hidden for guests (no noise) */}
+        {currentRole !== 'guest' && (
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 font-bold shrink-0">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={e => { setSortBy(e.target.value as typeof sortBy); setVisibleCount(20); }}
+              className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[10px] font-mono font-bold px-2 py-1.5 rounded-xl outline-none focus:border-amber-500 cursor-pointer"
             >
-              {showOnlyFavorites ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_#ef4444]" />
-              ) : (
-                <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-              )}
-              <Heart className={`h-3 w-3 ${showOnlyFavorites ? 'fill-amber-500 text-amber-500' : ''}`} />
-              Favorites Only
-            </button>
+              <option value="title-asc">Title A → Z</option>
+              <option value="title-desc">Title Z → A</option>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="bpm-asc">BPM Low → High</option>
+              <option value="bpm-desc">BPM High → Low</option>
+            </select>
           </div>
+        )}
 
-          {/* Quick Action Buttons for resetting & bulk ops */}
-          {currentRole === 'admin' && (
-            <div className="flex gap-2">
+        {/* Guest Browse Mode badge + song count */}
+        {currentRole === 'guest' && (
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-3.5 w-3.5 text-amber-500/80" />
+              <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-amber-500/80">
+                Browse Mode
+              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_6px_rgba(245,158,11,0.5)]" />
+            </div>
+            <span className="text-[10px] font-mono text-zinc-500">
+              <strong className="text-zinc-300">{filteredSongs.length}</strong>
+              {searchQuery.trim() ? ' songs matched' : ` songs in library`}
+            </span>
+          </div>
+        )}
+
+        {/* Filters: Favorites + Admin actions — hidden for guests */}
+        {currentRole !== 'guest' && (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Favorite Filter Toggle - Styled like a physical tactile latching keyboard switch */}
               <button
-                onClick={onOpenUploadModal}
-                className="cursor-pointer bg-amber-500 hover:bg-amber-400 active:scale-95 text-black px-4 py-2 rounded-xl text-[10px] uppercase font-mono tracking-wider font-extrabold transition-all flex items-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
+                id="filter-favorites-toggle"
+                onClick={() => {
+                  setShowOnlyFavorites(!showOnlyFavorites);
+                  setVisibleCount(20);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 text-[10px] uppercase tracking-widest font-mono rounded-xl border transition-all cursor-pointer select-none ${
+                  showOnlyFavorites
+                    ? 'bg-zinc-950 border-amber-500 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-black'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-850'
+                }`}
               >
-                <PlusCircle className="h-3.5 w-3.5 stroke-[3]" /> Import Lyrics File
+                {showOnlyFavorites ? (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_#ef4444]" />
+                ) : (
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                )}
+                <Heart className={`h-3 w-3 ${showOnlyFavorites ? 'fill-amber-500 text-amber-500' : ''}`} />
+                Favorites Only
               </button>
             </div>
-          )}
-        </div>
+
+            {/* Quick Action Buttons for resetting & bulk ops */}
+            {currentRole === 'admin' && (
+              <div className="flex gap-2">
+                <button
+                  onClick={onOpenUploadModal}
+                  className="cursor-pointer bg-amber-500 hover:bg-amber-400 active:scale-95 text-black px-4 py-2 rounded-xl text-[10px] uppercase font-mono tracking-wider font-extrabold transition-all flex items-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
+                >
+                  <PlusCircle className="h-3.5 w-3.5 stroke-[3]" /> Import Lyrics File
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Song Grid / Lists layout */}
@@ -348,13 +397,15 @@ function SongList({
                             <div className="w-1.5 h-1.5 rounded-full bg-zinc-800 text-zinc-550" />
                           )}
                           <Music className={`h-3.5 w-3.5 ${isSelected ? 'text-amber-500' : 'text-zinc-650'}`} />
-                          <span className={`${isSelected ? 'text-amber-500 font-black' : 'text-zinc-200 group-hover:text-amber-400/90'}`}>{song.title}</span>
+                          <span className={`${isSelected ? 'text-amber-500 font-black' : 'text-zinc-200 group-hover:text-amber-400/90'}`}>
+                            <HighlightText text={song.title} query={searchQuery} />
+                          </span>
                         </div>
                       </td>
 
                       {/* Author column (lg+) */}
                       <td className="p-4 text-xs text-zinc-500 hidden lg:table-cell font-mono">
-                        {song.author || 'Traditional'}
+                        <HighlightText text={song.author || 'Traditional'} query={searchQuery} />
                       </td>
 
                       {/* Category column */}
@@ -390,9 +441,16 @@ function SongList({
                   <td colSpan={currentRole === 'admin' ? 5 : 4} className="text-center py-16 px-4 bg-zinc-950/40">
                     <Layers className="h-10 w-10 text-zinc-800 mx-auto mb-3" />
                     <p className="font-bold text-zinc-400 text-xs font-mono uppercase tracking-widest">No Songs Found</p>
-                    <p className="text-[10px] text-zinc-600 mt-1 uppercase font-mono">
-                      Adjust your search query or add a song to begin.
-                    </p>
+                    {searchQuery.trim() ? (
+                      <p className="text-[10px] text-zinc-500 mt-2 font-mono max-w-xs mx-auto leading-relaxed">
+                        No match for <span className="text-amber-500/80 font-bold">&quot;{searchQuery}&quot;</span>.<br />
+                        Try the first few words of the Tamil lyrics in English spelling.
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-zinc-600 mt-1 uppercase font-mono">
+                        Adjust your filters or add a song to begin.
+                      </p>
+                    )}
                   </td>
                 </tr>
               )}
@@ -427,10 +485,12 @@ function SongList({
                   {/* Center: song info */}
                   <div className="flex-1 truncate text-left min-w-0">
                     <div className={`text-[15px] font-bold truncate leading-snug ${isSelected ? 'text-amber-500 font-black' : 'text-zinc-100'}`}>
-                      {song.title}
+                      <HighlightText text={song.title} query={searchQuery} />
                     </div>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-[11px] font-semibold text-zinc-400 truncate max-w-[130px] font-sans">{song.author || 'Traditional'}</span>
+                      <span className="text-[11px] font-semibold text-zinc-400 truncate max-w-[130px] font-sans">
+                        <HighlightText text={song.author || 'Traditional'} query={searchQuery} />
+                      </span>
                       {song.category && (
                         <span className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded border font-mono ${getCategoryStyle(song.category)}`}>{song.category}</span>
                       )}
@@ -481,9 +541,16 @@ function SongList({
             <div className="text-center py-16 px-4">
               <Layers className="h-10 w-10 text-zinc-800 mx-auto mb-3" />
               <p className="font-bold text-zinc-400 text-xs font-mono uppercase tracking-widest">No Songs Found</p>
-              <p className="text-[10px] text-zinc-600 mt-1 uppercase font-mono">
-                Adjust search query or import lyrics to begin.
-              </p>
+              {searchQuery.trim() ? (
+                <p className="text-[11px] text-zinc-500 mt-2 font-mono max-w-[260px] mx-auto leading-relaxed">
+                  No match for <span className="text-amber-500/80 font-bold">&quot;{searchQuery}&quot;</span>.<br />
+                  Try the first few words of the lyrics in English spelling.
+                </p>
+              ) : (
+                <p className="text-[10px] text-zinc-600 mt-1 uppercase font-mono">
+                  Adjust filters or import lyrics to begin.
+                </p>
+              )}
             </div>
           )}
         </div>

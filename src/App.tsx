@@ -19,6 +19,7 @@ import {
   getLocalWorshipEvents,
   saveWorshipEvent
 } from './lib/db';
+import { clearSearchCache } from './lib/search';
 import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
 import SongList from './components/SongList';
@@ -503,6 +504,7 @@ export default function App() {
       if (fullSong) {
         fullSong.favorite = !currentFav;
         await saveSong(fullSong);
+        clearSearchCache(); // invalidate stale tokens after mutation
       }
     } catch (err) {
       console.error('Failed toggling favorited state:', err);
@@ -515,6 +517,7 @@ export default function App() {
   const handleDeleteSong = useCallback(async (id: string) => {
     try {
       await deleteSong(id);
+      clearSearchCache(); // invalidate stale tokens after deletion
       if (selectedSongId === id) {
         setSelectedSongId(null);
       }
