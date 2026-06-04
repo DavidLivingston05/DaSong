@@ -578,22 +578,10 @@ export default function WorshipEvents({
                               </div>
                             )}
                           </div>
-                          
-                          <div className="relative">
-                            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
-                            <input
-                              type="text"
-                              placeholder="Search songs in indexed library..."
-                              value={songSearch}
-                              onChange={e => setSongSearch(e.target.value)}
-                              className="w-full pl-9 pr-4 py-1.5 bg-[#09090b] border border-white/10 rounded-xl text-xs placeholder-slate-500 text-white focus:outline-none focus:border-amber-500/50"
-                            />
-                          </div>
-
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1">
                             {filteredSongs.length === 0 ? (
                               <div className="col-span-full py-2 text-center text-slate-650 text-[11px] italic">
-                                No matching catalog sheets found
+                                No songs in library catalog
                               </div>
                             ) : (
                               filteredSongs.slice(0, 30).map(song => {
@@ -665,7 +653,6 @@ export default function WorshipEvents({
                   onClick={() => {
                     setCreateDate(selectedDateStr);
                     setCreateSongIds([]);
-                    setSongSearch('');
                     setCreateTitle('Worship Session');
                     setShowCreateDialog(true);
                   }}
@@ -942,16 +929,6 @@ export default function WorshipEvents({
                         </button>
                       </div>
                     </div>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
-                      <input
-                        type="text"
-                        placeholder="Search list catalog..."
-                        value={songSearch}
-                        onChange={e => setSongSearch(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 bg-zinc-950 border border-zinc-900 rounded-xl text-xs placeholder-zinc-650 text-white focus:outline-none focus:border-amber-500/50"
-                      />
-                    </div>
                     <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-1">
                       {filteredSongs.slice(0, 30).map(song => {
                         const isAdded = (activeEvent.songIds || []).includes(song.id);
@@ -990,7 +967,6 @@ export default function WorshipEvents({
                   onClick={() => {
                     setCreateDate(selectedDateStr);
                     setCreateSongIds([]);
-                    setSongSearch('');
                     setCreateTitle('Sunday Worship Service');
                     setShowCreateDialog(true);
                   }}

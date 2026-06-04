@@ -100,20 +100,39 @@ body {
 }
 
 /* Momentum Kinetic Scrolling and smooth scrolling for PWA feel */
+/* Momentum Kinetic Scrolling for native/PWA touch experience */
 body, 
 #lyrics-scroll-container,
 #mobile-stage-lyrics-canvas,
 #lyric-sheet,
 .overflow-y-auto {
   -webkit-overflow-scrolling: touch;
+}
+
+/* 
+  Avoid setting global "scroll-behavior: smooth" on scroll containers that are 
+  programmatically scrolled via requestAnimationFrame (e.g. #lyric-sheet, #lyrics-scroll-container).
+  This prevents Chrome's browser smooth-scrolling interpolation from fighting 
+  with incremental JS scrollTop updates, which causes heavy stuttering/lag.
+*/
+body {
   scroll-behavior: smooth;
 }
 
-/* Force GPU Composite Layers for buttery-smooth 60/120fps scrolling in Chrome */
+#lyrics-scroll-container,
+#mobile-stage-lyrics-canvas,
+#lyric-sheet,
+.overflow-y-auto {
+  scroll-behavior: auto !important;
+}
+
+/* 
+  GPU Composition optimizations for buttery-smooth 60/120fps scrolling.
+  Avoid using "will-change: scroll-position" in Chrome as it degrades threaded scrolling optimizations.
+*/
 #lyric-sheet,
 #lyrics-scroll-container,
 .overflow-y-auto {
-  will-change: scroll-position, transform;
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
 }

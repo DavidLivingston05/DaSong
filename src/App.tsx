@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Music, Sparkles, Layers, Sliders, Play, Settings, Plus, Star, Heart, 
   Trash2, X, AlertCircle, RefreshCw, Check, BookOpen, Database, Award, 
-  ChevronRight, Compass, HelpCircle, Calendar, Download, Smartphone, Search,
+  ChevronRight, Compass, HelpCircle, Calendar, Download, Smartphone,
   Home
 } from 'lucide-react';
 import { Song, UserRole, WorshipEvent } from './types';
@@ -20,7 +20,6 @@ import {
   saveWorshipEvent,
   deleteSuggestion
 } from './lib/db';
-import { clearSearchCache } from './lib/search';
 import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
 import SongList from './components/SongList';
@@ -501,7 +500,6 @@ export default function App() {
       if (fullSong) {
         fullSong.favorite = !currentFav;
         await saveSong(fullSong);
-        clearSearchCache(); // invalidate stale tokens after mutation
       }
     } catch (err) {
       console.error('Failed toggling favorited state:', err);
@@ -514,7 +512,6 @@ export default function App() {
   const handleDeleteSong = useCallback(async (id: string) => {
     try {
       await deleteSong(id);
-      clearSearchCache(); // invalidate stale tokens after deletion
       if (selectedSongId === id) {
         setSelectedSongId(null);
       }
@@ -525,18 +522,6 @@ export default function App() {
     }
   }, [selectedSongId, syncSongsList]);
 
-  // Mobile Quick Search for Guest users
-  const handleMobileGuestQuickSearch = useCallback(() => {
-    setActiveTab('search');
-    setSelectedSongId(null);
-    setTimeout(() => {
-      const input = document.getElementById('song-search');
-      if (input) {
-        input.focus();
-        (input as HTMLInputElement).select();
-      }
-    }, 120);
-  }, []);
 
   // Connect to the Cloud WebSocket Relay room using the 6-digit sync code
   const connectToDaLyric = useCallback((roomCode: string) => {
@@ -1018,16 +1003,6 @@ export default function App() {
                   </button>
 
 
-                  {/* Mobile Guest Quick Search Icon */}
-                  {session.role === 'guest' && (
-                    <button
-                      onClick={handleMobileGuestQuickSearch}
-                      className="md:hidden flex items-center justify-center w-9 h-9 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 rounded-xl transition-all cursor-pointer active-touch mr-1 shrink-0 animate-in fade-in"
-                      title="Quick Search Songs"
-                    >
-                      <Search className="w-4.5 h-4.5 stroke-[3]" />
-                    </button>
-                  )}
                   
                   {/* Secondary Header PWA Install Shortcut Badge */}
                   {showInstallBanner && !isInstalled && (
@@ -1114,7 +1089,7 @@ export default function App() {
               ) : (
                 <span className="w-2 h-2 rounded-full bg-zinc-800 mr-0.5 shrink-0" />
               )}
-              🔍 Song Library
+              📖 Song Library
             </button>
 
             {/* Worship Setlists Navigation (Hidden for Guests) */}
@@ -1799,8 +1774,8 @@ That [G] saved a wretch like [D] me!`}
             }`}
           >
             {activeTab === 'search' && <span className="nav-tab-active-bar" />}
-            <Search className={`w-6 h-6 transition-transform duration-200 ${activeTab === 'search' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
-            <span className={`text-[11px] font-bold uppercase tracking-wider ${activeTab === 'search' ? 'font-black' : ''}`}>Find</span>
+            <BookOpen className={`w-6 h-6 transition-transform duration-200 ${activeTab === 'search' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${activeTab === 'search' ? 'font-black' : ''}`}>Library</span>
           </button>
 
           {/* ADMIN FAB — center elevated button for quick actions */}
