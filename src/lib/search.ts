@@ -321,74 +321,135 @@ export function getSearchRelevanceScore(song: FilterableSong, searchQuery: strin
   const cleanQuery = cleanForSearch(query);
   if (!cleanQuery) return 0;
 
+  const queryWords = cleanQuery.split(' ').filter(Boolean);
+  if (queryWords.length === 0) return 0;
+
   const cleanTitle = cleanForSearch(song.title);
   const transliteratedTitle = cleanForSearch(transliterateTamilToTanglish(song.title));
 
-  // 1. Exact title match (original or transliterated)
+  let score = 0;
+
+  // 1. Exact phrase title matches
   if (cleanTitle === cleanQuery || transliteratedTitle === cleanQuery) {
-    return 100;
+    score += 2000;
+  } else if (cleanTitle.startsWith(cleanQuery) || transliteratedTitle.startsWith(cleanQuery)) {
+    score += 1500;
+  } else if (cleanTitle.includes(cleanQuery) || transliteratedTitle.includes(cleanQuery)) {
+    score += 1000;
   }
 
-  // 2. Title starts with query
-  if (cleanTitle.startsWith(cleanQuery) || transliteratedTitle.startsWith(cleanQuery)) {
-    return 90;
-  }
-
-  // 3. Title contains query
-  if (cleanTitle.includes(cleanQuery) || transliteratedTitle.includes(cleanQuery)) {
-    return 80;
-  }
-
-  // 4. Word-level title match
-  const queryWords = cleanQuery.split(' ').filter(Boolean);
+  // 2. First word match bonus (prioritize items matching the first searched word at the start)
   const titleWords = `${cleanTitle} ${transliteratedTitle}`.split(' ').filter(Boolean);
-  const allWordsInTitle = queryWords.every(qw => titleWords.some(tw => tw.includes(qw) || qw.includes(tw)));
-  if (allWordsInTitle) {
-    return 70;
+  const songFirstWord = cleanTitle.split(' ')[0];
+  const songFirstTransliteratedWord = transliteratedTitle.split(' ')[0];
+  const queryFirstWord = queryWords[0];
+
+  if (songFirstWord && queryFirstWord) {
+    if (songFirstWord === queryFirstWord || songFirstTransliteratedWord === queryFirstWord) {
+      score += 150;
+    } else if (songFirstWord.startsWith(queryFirstWord) || songFirstTransliteratedWord.startsWith(queryFirstWord)) {
+      score += 100;
+    } else if (isSingleWordMatch(queryFirstWord, songFirstWord) || (songFirstTransliteratedWord && isSingleWordMatch(queryFirstWord, songFirstTransliteratedWord))) {
+      score += 80;
+    }
   }
 
-  // 5. Author match
-  if (song.author) {
-    const cleanAuthor = cleanForSearch(song.author);
-    if (cleanAuthor === cleanQuery) return 60;
-    if (cleanAuthor.includes(cleanQuery)) return 55;
+  // 3. Word-level title matching (fuzzy/phonetic)
+  let matchedTitleWordsCount = 0;
+  let wordMatchesScore = 0;
+
+  for (const qWord of queryWords) {
+    let wordMatched = false;
+
+    if (titleWords.includes(qWord)) {
+      wordMatchesScore += 150;
+      wordMatched = true;
+    } else if (titleWords.some(tw => tw.startsWith(qWord))) {
+      wordMatchesScore += 120;
+      wordMatched = true;
+    } else if (titleWords.some(tw => tw.includes(qWord) || qWord.includes(tw))) {
+      wordMatchesScore += 80;
+      wordMatched = true;
+    } else if (isWordMatch(qWord, titleWords)) {
+      wordMatchesScore += 60;
+      wordMatched = true;
+    }
+
+    if (wordMatched) {
+      matchedTitleWordsCount++;
+    }
   }
 
-  // 6. Category match
-  if (song.category) {
-    const cleanCategory = cleanForSearch(song.category);
-    if (cleanCategory === cleanQuery) return 50;
+  score += wordMatchesScore;
+
+  // Bonus for title matching coverage
+  if (matchedTitleWordsCount === queryWords.length && queryWords.length > 0) {
+    score += 500; // Perfect match for all query words in title
+  } else if (matchedTitleWordsCount > 0) {
+    score += Math.round((matchedTitleWordsCount / queryWords.length) * 200);
   }
 
-  // 7. Lyrics match
+  // 4. Lyrics matching from snippet
   if (song.lyricsSnippet) {
     const cleanLyrics = cleanForSearch(song.lyricsSnippet);
     const transliteratedLyrics = cleanForSearch(transliterateTamilToTanglish(song.lyricsSnippet));
+    const lyricWords = `${cleanLyrics} ${transliteratedLyrics}`.split(' ').filter(Boolean);
 
     if (cleanLyrics.includes(cleanQuery) || transliteratedLyrics.includes(cleanQuery)) {
-      return 40;
+      score += 300;
     }
 
-    const lyricWords = `${cleanLyrics} ${transliteratedLyrics}`.split(' ').filter(Boolean);
-    const allWordsInLyrics = queryWords.every(qw => lyricWords.some(lw => lw.includes(qw) || qw.includes(lw)));
-    if (allWordsInLyrics) {
-      return 35;
+    let matchedLyricWordsCount = 0;
+    let lyricMatchesScore = 0;
+
+    for (const qWord of queryWords) {
+      let wordMatched = false;
+
+      if (lyricWords.includes(qWord)) {
+        lyricMatchesScore += 30;
+        wordMatched = true;
+      } else if (lyricWords.some(lw => lw.includes(qWord) || qWord.includes(lw))) {
+        lyricMatchesScore += 20;
+        wordMatched = true;
+      } else if (isWordMatch(qWord, lyricWords)) {
+        lyricMatchesScore += 15;
+        wordMatched = true;
+      }
+
+      if (wordMatched) {
+        matchedLyricWordsCount++;
+      }
     }
 
-    const someWordsInLyrics = queryWords.some(qw => lyricWords.some(lw => lw.includes(qw) || qw.includes(lw)));
-    if (someWordsInLyrics) {
-      return 20;
+    score += lyricMatchesScore;
+
+    if (matchedLyricWordsCount === queryWords.length && queryWords.length > 0) {
+      score += 100;
+    } else if (matchedLyricWordsCount > 0) {
+      score += Math.round((matchedLyricWordsCount / queryWords.length) * 50);
     }
   }
 
-  // 8. Partial word match via matchSongScore (forgiving fallback — shows song even with bad typing)
-  const wordScore = matchSongScore(song, searchQuery);
-  if (wordScore > 0) {
-    return Math.round((wordScore / queryWords.length) * 15); // 1–15 based on % of words matched
+  // 5. Author & Category matching
+  if (song.author) {
+    const cleanAuthor = cleanForSearch(song.author);
+    if (cleanAuthor === cleanQuery) {
+      score += 200;
+    } else if (cleanAuthor.includes(cleanQuery)) {
+      score += 100;
+    }
+  }
+  if (song.category) {
+    const cleanCategory = cleanForSearch(song.category);
+    if (cleanCategory === cleanQuery) {
+      score += 150;
+    }
   }
 
-  // 9. No meaningful match
-  return 0;
+  // 6. Shorter title tie-breaker
+  score -= song.title.length * 0.01;
+
+  return score;
 }
 
 /**
