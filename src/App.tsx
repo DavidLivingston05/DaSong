@@ -17,7 +17,8 @@ import {
   SongMetadata,
   syncWithMongoDB,
   getLocalWorshipEvents,
-  saveWorshipEvent
+  saveWorshipEvent,
+  deleteSuggestion
 } from './lib/db';
 import { clearSearchCache } from './lib/search';
 import BulkUpload from './components/BulkUpload';
@@ -103,18 +104,14 @@ export default function App() {
     }
   }, []);
 
-  const handleDismissSuggestion = useCallback((id: string) => {
-    const saved = localStorage.getItem('lyrasync_guideline_suggestions');
-    if (saved) {
-      try {
-        const list = JSON.parse(saved);
-        const filtered = list.filter((s: any) => s.id !== id);
-        localStorage.setItem('lyrasync_guideline_suggestions', JSON.stringify(filtered));
-        setSuggestions(filtered);
-      } catch (err) {
-        console.error(err);
-      }
+  const handleDismissSuggestion = useCallback(async (id: string) => {
+    try {
+      await deleteSuggestion(id);
+    } catch (err) {
+      console.error('Failed to sync suggestion deletion to MongoDB:', err);
     }
+    const saved = localStorage.getItem('lyrasync_guideline_suggestions');
+    setSuggestions(saved ? JSON.parse(saved) : []);
   }, []);
 
   // Authentication session tracking
