@@ -66,10 +66,11 @@ function isSingleWordMatch(queryWord: string, songWord: string): boolean {
       const lengthDiff = Math.abs(queryWord.length - songWord.length);
       const maxLength = Math.max(queryWord.length, songWord.length);
       
-      if (lengthDiff <= Math.floor(maxLength * 0.25)) {
+      // Lowered threshold from 0.75 to 0.60 for more forgiving typo tolerance
+      if (lengthDiff <= Math.floor(maxLength * 0.40)) {
         const distance = getLevenshteinDistance(queryWord, songWord);
         const similarity = 1 - distance / maxLength;
-        if (similarity >= 0.75) {
+        if (similarity >= 0.60) {
           match = true;
         }
       }
@@ -180,6 +181,45 @@ export interface FilterableSong {
 // Thread-safe memory cache of pre-cleaned song tokens to keep searches under 1ms
 const songWordsCache = new Map<string, string[]>();
 
+/**
+ * Returns how many query words match the song (0 to queryWords.length).
+ * This replaces the old boolean matchSong and enables partial/forgiving search.
+ */
+export function matchSongScore(song: FilterableSong, searchQuery: string): number {
+  const query = searchQuery.trim();
+  if (!query) return 1;
+
+  const cleanQuery = cleanForSearch(query);
+  const queryWords = cleanQuery.split(' ').filter(Boolean);
+  if (queryWords.length === 0) return 1;
+
+  const cacheKey = `${song.id}_${song.title}_${song.author || ''}_${song.category || ''}`;
+  let songWords = songWordsCache.get(cacheKey);
+  if (!songWords) {
+    const cleanId = cleanForSearch(song.id);
+    const cleanTitle = cleanForSearch(song.title);
+    const cleanAuthor = song.author ? cleanForSearch(song.author) : '';
+    const cleanCategory = song.category ? cleanForSearch(song.category) : '';
+    const cleanSnippet = song.lyricsSnippet ? cleanForSearch(song.lyricsSnippet) : '';
+    const transliteratedTitle = transliterateTamilToTanglish(cleanTitle);
+    const transliteratedSnippet = transliterateTamilToTanglish(cleanSnippet);
+    songWords = `${cleanId} ${cleanTitle} ${transliteratedTitle} ${cleanAuthor} ${cleanCategory} ${cleanSnippet} ${transliteratedSnippet}`
+      .split(' ').filter(Boolean);
+    if (songWordsCache.size > 2000) songWordsCache.clear();
+    songWordsCache.set(cacheKey, songWords);
+  }
+
+  let matched = 0;
+  for (const qWord of queryWords) {
+    if (isWordMatch(qWord, songWords)) matched++;
+  }
+  return matched;
+}
+
+/**
+ * Returns true if at least HALF of the query words match the song.
+ * This is the forgiving "Google-style" filter — partial matches still show up.
+ */
 export function matchSong(song: FilterableSong, searchQuery: string): boolean {
   const query = searchQuery.trim();
   if (!query) return true;
@@ -188,31 +228,14 @@ export function matchSong(song: FilterableSong, searchQuery: string): boolean {
   const queryWords = cleanQuery.split(' ').filter(Boolean);
   if (queryWords.length === 0) return true;
 
-  // Generate a stable composite cache key incorporating all textual attributes
-  const cacheKey = `${song.id}_${song.title}_${song.author || ''}_${song.category || ''}`;
-  
-  let songWords = songWordsCache.get(cacheKey);
-  if (!songWords) {
-    const cleanId = cleanForSearch(song.id);
-    const cleanTitle = cleanForSearch(song.title);
-    const cleanAuthor = song.author ? cleanForSearch(song.author) : '';
-    const cleanCategory = song.category ? cleanForSearch(song.category) : '';
-    const cleanSnippet = song.lyricsSnippet ? cleanForSearch(song.lyricsSnippet) : '';
+  const score = matchSongScore(song, searchQuery);
 
-    const transliteratedTitle = transliterateTamilToTanglish(cleanTitle);
-    const transliteratedSnippet = transliterateTamilToTanglish(cleanSnippet);
+  // Single-word query: must match (no partial for 1 word)
+  if (queryWords.length === 1) return score >= 1;
 
-    songWords = `${cleanId} ${cleanTitle} ${transliteratedTitle} ${cleanAuthor} ${cleanCategory} ${cleanSnippet} ${transliteratedSnippet}`
-      .split(' ')
-      .filter(Boolean);
-
-    // Cap cache size to prevent unbounded memory growth in long sessions
-    if (songWordsCache.size > 2000) songWordsCache.clear();
-    songWordsCache.set(cacheKey, songWords);
-  }
-
-  // Return true if every individual query word matches at least one contextual song word
-  return queryWords.every(qWord => isWordMatch(qWord, songWords));
+  // Multi-word query: need at least 50% of words to match (minimum 1)
+  const threshold = Math.max(1, Math.ceil(queryWords.length * 0.5));
+  return score >= threshold;
 }
 
 /**
@@ -358,8 +381,14 @@ export function getSearchRelevanceScore(song: FilterableSong, searchQuery: strin
     }
   }
 
-  // 8. General fallback match
-  return 10;
+  // 8. Partial word match via matchSongScore (forgiving fallback — shows song even with bad typing)
+  const wordScore = matchSongScore(song, searchQuery);
+  if (wordScore > 0) {
+    return Math.round((wordScore / queryWords.length) * 15); // 1–15 based on % of words matched
+  }
+
+  // 9. No meaningful match
+  return 0;
 }
 
 /**

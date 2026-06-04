@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Search, Heart, Music, Star, Trash2, PlusCircle, ArrowLeft, Layers, Compass, BarChart2, ShieldAlert, ChevronRight, BookOpen } from 'lucide-react';
+import { Search, Music, Star, Trash2, PlusCircle, Layers, ChevronRight, BookOpen, SlidersHorizontal, X } from 'lucide-react';
 import { SongMetadata } from '../lib/db';
 import { UserRole } from '../types';
 import { matchSong, getHighlightRanges, getSearchRelevanceScore, findMatchingLyricLine } from '../lib/search';
@@ -59,8 +59,9 @@ function SongList({
 }: SongListProps) {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [tempSearch, setTempSearch] = useState<string>('');
+  const [showFilters, setShowFilters] = useState<boolean>(false);
 
-  // Debounce the typing query to prevent input lag (40ms for Holyrics-style instant feedback)
+  // Debounce: 40ms for Holyrics-style instant feedback
   React.useEffect(() => {
     const handler = setTimeout(() => {
       setSearchQuery(tempSearch);
@@ -77,6 +78,9 @@ function SongList({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const deleteTimerRef = useRef<number | null>(null);
 
+  // Clear search
+  const clearSearch = () => { setTempSearch(''); setSelectedCategory('All'); setShowOnlyFavorites(false); };
+
   // Derive unique categories for filtering dropdown
   const categories = useMemo(() => {
     const list = new Set<string>();
@@ -86,7 +90,7 @@ function SongList({
     return ['All', ...Array.from(list)];
   }, [songs]);
 
-  // High performance filter loop matching multiple constraints with phonetic Tamil/Tanglish support
+  // High-performance filter — partial match (Google-style: show songs even with incomplete typing)
   const filteredSongs = useMemo(() => {
     let result = songs;
     if (searchQuery.trim() || selectedCategory !== 'All' || showOnlyFavorites) {
@@ -97,15 +101,12 @@ function SongList({
         return matchesText && matchesCategory && matchesFav;
       });
     }
-
-    // Apply sort (Holyrics relevance scoring takes priority when search is active)
+    // Sort: relevance when searching, otherwise user-selected sort
     return [...result].sort((a, b) => {
       if (searchQuery.trim()) {
         const scoreA = getSearchRelevanceScore(a, searchQuery);
         const scoreB = getSearchRelevanceScore(b, searchQuery);
-        if (scoreA !== scoreB) {
-          return scoreB - scoreA;
-        }
+        if (scoreA !== scoreB) return scoreB - scoreA;
       }
       switch (sortBy) {
         case 'title-asc': return a.title.localeCompare(b.title);
@@ -118,6 +119,9 @@ function SongList({
       }
     });
   }, [songs, searchQuery, selectedCategory, showOnlyFavorites, sortBy]);
+
+  // Is this a partial-match situation (user typed something but results are fewer than all songs)?
+  const isPartialMatch = searchQuery.trim().length > 0 && filteredSongs.length > 0 && filteredSongs.length < songs.length;
 
 
   // Slice list up to visible count for ultra fast layout rendering
@@ -227,123 +231,135 @@ function SongList({
   };
 
   return (
-    <div id="song-list-module" className="flex flex-col space-y-4 text-zinc-300">
+    <div id="song-list-module" className="flex flex-col space-y-3 text-zinc-300">
       
-      {/* Search and Filters panel */}
-      <div className="bg-zinc-900 rounded-2xl border border-zinc-800/80 p-5 shadow-[0_4px_30px_rgba(0,0,0,0.4)] space-y-4 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
-        {/* Dynamic Search Box */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-          <input
-            id="song-search"
-            type="text"
-            className="w-full pl-11 pr-5 py-3.5 text-[16px] md:text-xs font-mono rounded-xl border border-zinc-800 bg-zinc-950 text-white placeholder-zinc-600 outline-none focus:border-amber-500 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"
-            placeholder="Search by title, category, or lyrics..."
-            value={tempSearch}
-            onChange={(e) => {
-              setTempSearch(e.target.value);
-            }}
-          />
+      {/* ── CLEAN SEARCH BAR ── */}
+      <div className="bg-zinc-900 rounded-2xl border border-zinc-800/80 p-4 shadow-[0_4px_30px_rgba(0,0,0,0.4)] relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
+
+        {/* Search input row */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 pointer-events-none" />
+            <input
+              id="song-search"
+              type="text"
+              autoComplete="off"
+              className="w-full pl-11 pr-10 py-3.5 text-[16px] md:text-sm rounded-xl border border-zinc-800 bg-zinc-950 text-white placeholder-zinc-600 outline-none focus:border-amber-500 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
+              placeholder="Search songs, lyrics, Tamil or English…"
+              value={tempSearch}
+              onChange={(e) => setTempSearch(e.target.value)}
+            />
+            {tempSearch.length > 0 && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-zinc-500 hover:text-zinc-200 transition-colors active-touch"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter toggle button */}
+          <button
+            onClick={() => setShowFilters(f => !f)}
+            title="Filters"
+            className={`shrink-0 p-3 rounded-xl border transition-all cursor-pointer active-touch ${
+              showFilters || selectedCategory !== 'All' || showOnlyFavorites
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </button>
+
+          {/* Admin: import button */}
+          {currentRole === 'admin' && (
+            <button
+              onClick={onOpenUploadModal}
+              className="shrink-0 cursor-pointer bg-amber-500 hover:bg-amber-400 active:scale-95 text-black p-3 rounded-xl text-[10px] font-mono font-extrabold transition-all flex items-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
+              title="Import Lyrics File"
+            >
+              <PlusCircle className="h-4 w-4 stroke-[3]" />
+              <span className="hidden sm:inline">Import</span>
+            </button>
+          )}
         </div>
 
-        {/* Category Selector Carousel - Horizontal Scroll Pills */}
-        <div className="flex flex-col space-y-1.5">
-          <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 font-bold pl-0.5">Filter by Category:</span>
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
-            {categories.map((cat) => {
-              const isActive = selectedCategory === cat;
-              return (
+        {/* Result count + guest badge */}
+        <div className="flex items-center justify-between mt-2 px-1">
+          <span className="text-[11px] text-zinc-500 font-mono">
+            {searchQuery.trim() ? (
+              <>
+                <strong className="text-zinc-300">{filteredSongs.length}</strong>
+                {filteredSongs.length === 1 ? ' song found' : ' songs found'}
+                {isPartialMatch && <span className="text-amber-500/70 ml-1">(best matches)</span>}
+              </>
+            ) : (
+              <><strong className="text-zinc-300">{songs.length}</strong> songs in library</>
+            )}
+          </span>
+          {currentRole === 'guest' && (
+            <span className="flex items-center gap-1.5">
+              <BookOpen className="h-3 w-3 text-amber-500/70" />
+              <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-amber-500/70">Browse Mode</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_6px_rgba(245,158,11,0.5)]" />
+            </span>
+          )}
+        </div>
+
+        {/* Collapsible Filters Panel */}
+        {showFilters && (
+          <div className="mt-3 pt-3 border-t border-zinc-800/60 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+
+            {/* Category pills */}
+            <div className="flex flex-col space-y-1.5">
+              <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 font-bold pl-0.5">Category</span>
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => { setSelectedCategory(cat); setVisibleCount(20); }}
+                    className={`px-3 py-1.5 text-[10px] uppercase font-mono tracking-wider font-extrabold rounded-xl border transition-all shrink-0 cursor-pointer select-none active-touch ${
+                      selectedCategory === cat
+                        ? 'bg-amber-500 border-amber-500 text-black shadow-[0_4px_12px_rgba(245,158,11,0.2)]'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                    }`}
+                  >
+                    {cat === 'All' ? 'All Songs' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Sort + Favorites row (hidden for guests) */}
+            {currentRole !== 'guest' && (
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 font-bold shrink-0">Sort</span>
+                  <select
+                    value={sortBy}
+                    onChange={e => { setSortBy(e.target.value as typeof sortBy); setVisibleCount(20); }}
+                    className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[10px] font-mono font-bold px-2 py-1.5 rounded-xl outline-none focus:border-amber-500 cursor-pointer"
+                  >
+                    <option value="title-asc">Title A → Z</option>
+                    <option value="title-desc">Title Z → A</option>
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="bpm-asc">BPM Low → High</option>
+                    <option value="bpm-desc">BPM High → Low</option>
+                  </select>
+                </div>
                 <button
-                  key={cat}
-                  onClick={() => {
-                    setSelectedCategory(cat);
-                    setVisibleCount(20);
-                  }}
-                  className={`px-4 py-2 text-[10px] uppercase font-mono tracking-wider font-extrabold rounded-xl border transition-all shrink-0 cursor-pointer select-none active-touch ${
-                    isActive
-                      ? 'bg-amber-500 border-amber-500 text-black shadow-[0_4px_12px_rgba(245,158,11,0.2)]'
-                      : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                  onClick={() => { setShowOnlyFavorites(!showOnlyFavorites); setVisibleCount(20); }}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-[10px] uppercase tracking-widest font-mono rounded-xl border transition-all cursor-pointer select-none ${
+                    showOnlyFavorites
+                      ? 'bg-zinc-950 border-amber-500 text-amber-500 font-black'
+                      : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
-                  {cat === 'All' ? '⚡ All Songs' : cat}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Sort Controls — hidden for guests (no noise) */}
-        {currentRole !== 'guest' && (
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 font-bold shrink-0">Sort:</span>
-            <select
-              value={sortBy}
-              onChange={e => { setSortBy(e.target.value as typeof sortBy); setVisibleCount(20); }}
-              className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[10px] font-mono font-bold px-2 py-1.5 rounded-xl outline-none focus:border-amber-500 cursor-pointer"
-            >
-              <option value="title-asc">Title A → Z</option>
-              <option value="title-desc">Title Z → A</option>
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="bpm-asc">BPM Low → High</option>
-              <option value="bpm-desc">BPM High → Low</option>
-            </select>
-          </div>
-        )}
-
-        {/* Guest Browse Mode badge + song count */}
-        {currentRole === 'guest' && (
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-3.5 w-3.5 text-amber-500/80" />
-              <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-amber-500/80">
-                Browse Mode
-              </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_6px_rgba(245,158,11,0.5)]" />
-            </div>
-            <span className="text-[10px] font-mono text-zinc-500">
-              <strong className="text-zinc-300">{filteredSongs.length}</strong>
-              {searchQuery.trim() ? ' songs matched' : ` songs in library`}
-            </span>
-          </div>
-        )}
-
-        {/* Filters: Favorites + Admin actions — hidden for guests */}
-        {currentRole !== 'guest' && (
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Favorite Filter Toggle - Styled like a physical tactile latching keyboard switch */}
-              <button
-                id="filter-favorites-toggle"
-                onClick={() => {
-                  setShowOnlyFavorites(!showOnlyFavorites);
-                  setVisibleCount(20);
-                }}
-                className={`flex items-center gap-2 px-4 py-2 text-[10px] uppercase tracking-widest font-mono rounded-xl border transition-all cursor-pointer select-none ${
-                  showOnlyFavorites
-                    ? 'bg-zinc-950 border-amber-500 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-black'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-850'
-                }`}
-              >
-                {showOnlyFavorites ? (
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_#ef4444]" />
-                ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-                )}
-                <Heart className={`h-3 w-3 ${showOnlyFavorites ? 'fill-amber-500 text-amber-500' : ''}`} />
-                Favorites Only
-              </button>
-            </div>
-
-            {/* Quick Action Buttons for resetting & bulk ops */}
-            {currentRole === 'admin' && (
-              <div className="flex gap-2">
-                <button
-                  onClick={onOpenUploadModal}
-                  className="cursor-pointer bg-amber-500 hover:bg-amber-400 active:scale-95 text-black px-4 py-2 rounded-xl text-[10px] uppercase font-mono tracking-wider font-extrabold transition-all flex items-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
-                >
-                  <PlusCircle className="h-3.5 w-3.5 stroke-[3]" /> Import Lyrics File
+                  <Star className={`h-3 w-3 ${showOnlyFavorites ? 'fill-amber-500 text-amber-500' : ''}`} />
+                  Favorites
                 </button>
               </div>
             )}
