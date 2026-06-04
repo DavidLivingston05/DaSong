@@ -37,6 +37,20 @@ const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
+// --- AUTH ---
+
+// POST /api/auth — verify admin password server-side (keeps password out of client bundle)
+app.post('/api/auth', asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  if (!password) return res.status(400).json({ success: false, error: 'Password required' });
+  if (password === adminPassword) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ success: false, error: 'Incorrect password' });
+  }
+}));
+
 // --- API ENDPOINTS ---
 
 // GET /api/songs

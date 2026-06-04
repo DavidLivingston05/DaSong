@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Search, Heart, Music, Star, Trash2, PlusCircle, ArrowLeft, Layers, Compass, BarChart2, ShieldAlert, ChevronRight } from 'lucide-react';
 import { SongMetadata } from '../lib/db';
 import { UserRole } from '../types';
@@ -45,6 +45,9 @@ function SongList({
   const [showOnlyFavorites, setShowOnlyFavorites] = useState<boolean>(false);
   const [visibleCount, setVisibleCount] = useState<number>(20);
   const [kbdIndex, setKbdIndex] = useState<number>(-1);
+  const [sortBy, setSortBy] = useState<'title-asc' | 'title-desc' | 'newest' | 'oldest' | 'bpm-asc' | 'bpm-desc'>('title-asc');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const deleteTimerRef = useRef<number | null>(null);
 
   // Derive unique categories for filtering dropdown
   const categories = useMemo(() => {
@@ -57,25 +60,29 @@ function SongList({
 
   // High performance filter loop matching multiple constraints with phonetic Tamil/Tanglish support
   const filteredSongs = useMemo(() => {
-    if (!searchQuery.trim() && selectedCategory === 'All' && !showOnlyFavorites) {
-      return songs;
+    let result = songs;
+    if (searchQuery.trim() || selectedCategory !== 'All' || showOnlyFavorites) {
+      result = songs.filter(song => {
+        const matchesText = !searchQuery.trim() || matchSong(song, searchQuery);
+        const matchesCategory = selectedCategory === 'All' || song.category === selectedCategory;
+        const matchesFav = !showOnlyFavorites || !!song.favorite;
+        return matchesText && matchesCategory && matchesFav;
+      });
     }
-    const result = songs.filter(song => {
-      // 1. Phonetic & Dual-Script Text Filter
-      const matchesText = !searchQuery.trim() || matchSong(song, searchQuery);
-      
-      // 2. Category filter
-      const matchesCategory = selectedCategory === 'All' || song.category === selectedCategory;
-      
-      // 3. Favorites filter
-      const matchesFav = !showOnlyFavorites || !!song.favorite;
 
-      return matchesText && matchesCategory && matchesFav;
+    // Apply sort
+    return [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'title-asc': return a.title.localeCompare(b.title);
+        case 'title-desc': return b.title.localeCompare(a.title);
+        case 'newest': return (b.createdAt || 0) - (a.createdAt || 0);
+        case 'oldest': return (a.createdAt || 0) - (b.createdAt || 0);
+        case 'bpm-asc': return (a.bpm || 0) - (b.bpm || 0);
+        case 'bpm-desc': return (b.bpm || 0) - (a.bpm || 0);
+        default: return 0;
+      }
     });
-
-    // Reset page if filters change
-    return result;
-  }, [songs, searchQuery, selectedCategory, showOnlyFavorites]);
+  }, [songs, searchQuery, selectedCategory, showOnlyFavorites, sortBy]);
 
 
   // Slice list up to visible count for ultra fast layout rendering
@@ -159,6 +166,31 @@ function SongList({
     }
   }, [kbdIndex, paginatedSongs]);
 
+  // Color-coded category badge styles
+  const getCategoryStyle = (category?: string): string => {
+    switch ((category || '').toLowerCase()) {
+      case 'worship': return 'bg-amber-500/10 border-amber-500/20 text-amber-500';
+      case 'gospel': return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+      case 'christmas': return 'bg-blue-400/10 border-blue-400/20 text-blue-400';
+      case 'classic': return 'bg-rose-500/10 border-rose-500/20 text-rose-400';
+      case 'praise & thanksgiving': return 'bg-violet-500/10 border-violet-500/20 text-violet-400';
+      default: return 'bg-zinc-700/30 border-zinc-600/30 text-zinc-400';
+    }
+  };
+
+  // Two-step delete handler
+  const handleDeleteClick = (songId: string) => {
+    if (pendingDeleteId === songId) {
+      onDeleteSong(songId);
+      setPendingDeleteId(null);
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    } else {
+      setPendingDeleteId(songId);
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = window.setTimeout(() => setPendingDeleteId(null), 3000);
+    }
+  };
+
   return (
     <div id="song-list-module" className="flex flex-col space-y-4 text-zinc-300">
       
@@ -204,6 +236,23 @@ function SongList({
               );
             })}
           </div>
+        </div>
+
+        {/* Sort Controls */}
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 font-bold shrink-0">Sort:</span>
+          <select
+            value={sortBy}
+            onChange={e => { setSortBy(e.target.value as typeof sortBy); setVisibleCount(20); }}
+            className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[10px] font-mono font-bold px-2 py-1.5 rounded-xl outline-none focus:border-amber-500 cursor-pointer"
+          >
+            <option value="title-asc">Title A → Z</option>
+            <option value="title-desc">Title Z → A</option>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="bpm-asc">BPM Low → High</option>
+            <option value="bpm-desc">BPM High → Low</option>
+          </select>
         </div>
 
         {/* Filters Select boxes & options */}
@@ -255,8 +304,10 @@ function SongList({
               <tr className="bg-zinc-950 border-b border-zinc-800/80">
                 <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 w-14 text-center font-bold">Fav</th>
                 <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">Song Title</th>
+                <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold hidden lg:table-cell">Author</th>
+                <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">Category</th>
                 {currentRole === 'admin' && (
-                  <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 w-16 text-center font-bold">Delete</th>
+                  <th className="p-4 text-[10px] font-mono uppercase tracking-widest text-zinc-500 w-28 text-center font-bold">Delete</th>
                 )}
               </tr>
             </thead>
@@ -301,19 +352,33 @@ function SongList({
                         </div>
                       </td>
 
-                      {/* Delete actions */}
+                      {/* Author column (lg+) */}
+                      <td className="p-4 text-xs text-zinc-500 hidden lg:table-cell font-mono">
+                        {song.author || 'Traditional'}
+                      </td>
+
+                      {/* Category column */}
+                      <td className="p-4">
+                        {song.category && (
+                          <span className={`text-[9px] font-extrabold uppercase font-mono px-2 py-0.5 rounded border ${getCategoryStyle(song.category)}`}>
+                            {song.category}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Delete actions — two-step confirm */}
                       {currentRole === 'admin' && (
                         <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={() => {
-                              if (confirm(`Are you sure you want to delete "${song.title}"?`)) {
-                                onDeleteSong(song.id);
-                              }
-                            }}
-                            className="text-zinc-600 hover:text-red-400 p-1.5 rounded-lg hover:bg-zinc-950 transition-all cursor-pointer active:scale-95"
-                            title="Delete song"
+                            onClick={() => handleDeleteClick(song.id)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer active:scale-95 ${
+                              pendingDeleteId === song.id
+                                ? 'bg-red-500/15 border border-red-500/30 text-red-400'
+                                : 'text-zinc-600 hover:text-red-400 hover:bg-zinc-950 border border-transparent'
+                            }`}
+                            title={pendingDeleteId === song.id ? 'Click again to confirm delete' : 'Delete song'}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            {pendingDeleteId === song.id ? 'Confirm?' : <Trash2 className="h-3.5 w-3.5" />}
                           </button>
                         </td>
                       )}
@@ -322,7 +387,7 @@ function SongList({
                 })
               ) : (
                 <tr>
-                  <td colSpan={currentRole === 'admin' ? 3 : 2} className="text-center py-16 px-4 bg-zinc-950/40">
+                  <td colSpan={currentRole === 'admin' ? 5 : 4} className="text-center py-16 px-4 bg-zinc-950/40">
                     <Layers className="h-10 w-10 text-zinc-800 mx-auto mb-3" />
                     <p className="font-bold text-zinc-400 text-xs font-mono uppercase tracking-widest">No Songs Found</p>
                     <p className="text-[10px] text-zinc-600 mt-1 uppercase font-mono">
@@ -367,7 +432,7 @@ function SongList({
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-[11px] font-semibold text-zinc-400 truncate max-w-[130px] font-sans">{song.author || 'Traditional'}</span>
                       {song.category && (
-                        <span className="text-[10px] font-extrabold uppercase text-amber-500/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono">{song.category}</span>
+                        <span className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded border font-mono ${getCategoryStyle(song.category)}`}>{song.category}</span>
                       )}
                       {song.bpm && (
                         <span className="text-[10px] font-bold text-zinc-500 bg-zinc-800/80 px-1.5 py-0.5 rounded font-mono">{song.bpm}bpm</span>
@@ -390,15 +455,19 @@ function SongList({
                     </button>
                     {currentRole === 'admin' && (
                       <button
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to delete "${song.title}"?`)) {
-                            onDeleteSong(song.id);
-                          }
-                        }}
-                        className="p-3 text-zinc-700 hover:text-red-400 transition-colors cursor-pointer active-touch rounded-xl"
-                        title="Delete Song"
+                        onClick={() => handleDeleteClick(song.id)}
+                        className={`p-3 transition-colors cursor-pointer active-touch rounded-xl ${
+                          pendingDeleteId === song.id
+                            ? 'text-red-400 bg-red-500/10'
+                            : 'text-zinc-700 hover:text-red-400'
+                        }`}
+                        title={pendingDeleteId === song.id ? 'Tap again to confirm' : 'Delete Song'}
                       >
-                        <Trash2 className="h-4.5 w-4.5" />
+                        {pendingDeleteId === song.id ? (
+                          <span className="text-[10px] font-bold font-mono">Del?</span>
+                        ) : (
+                          <Trash2 className="h-4.5 w-4.5" />
+                        )}
                       </button>
                     )}
                     {!isSelected && (

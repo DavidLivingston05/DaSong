@@ -520,24 +520,39 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
         </div>
       </div>
 
-      {/* Floating Presentation Info/Keyboard Shortcuts overlay */}
-      <div className="absolute bottom-4 left-4 z-20 px-3 py-1.5 rounded-lg bg-black/60 border border-white/5 text-[10px] text-stone-400 flex items-center gap-3 backdrop-blur-xs select-none pointer-events-none md:flex">
-        {viewMode === 'scroll' ? (
-          <>
-            <span><kbd className="bg-white/10 px-1 rounded">Space</kbd> Play/Pause Scroll</span>
-            <span>•</span>
-            <span><kbd className="bg-white/10 px-1 rounded">↑/↓</kbd> Scroll</span>
-          </>
-        ) : (
-          <>
-            <span><kbd className="bg-white/10 px-1 rounded">Space</kbd> / <kbd className="bg-white/10 px-1 rounded">Enter</kbd> / <kbd className="bg-white/10 px-1 rounded">→</kbd> Next Slide</span>
-            <span>•</span>
-            <span><kbd className="bg-white/10 px-1 rounded">←</kbd> / <kbd className="bg-white/10 px-1 rounded">Backspace</kbd> Prev Slide</span>
-          </>
-        )}
-        <span>•</span>
-        <span><kbd className="bg-white/10 px-1 rounded">ESC</kbd> Close</span>
-      </div>
+      {/* Hint bar — keyboard shortcuts on desktop, touch gestures on mobile */}
+      {isLargeScreen ? (
+        <div className="absolute bottom-4 left-4 z-20 px-3 py-1.5 rounded-lg bg-black/60 border border-white/5 text-[10px] text-stone-400 flex items-center gap-3 backdrop-blur-xs select-none pointer-events-none">
+          {viewMode === 'scroll' ? (
+            <>
+              <span><kbd className="bg-white/10 px-1 rounded">Space</kbd> Play/Pause Scroll</span>
+              <span>•</span>
+              <span><kbd className="bg-white/10 px-1 rounded">↑/↓</kbd> Scroll</span>
+            </>
+          ) : (
+            <>
+              <span><kbd className="bg-white/10 px-1 rounded">Space</kbd> / <kbd className="bg-white/10 px-1 rounded">Enter</kbd> / <kbd className="bg-white/10 px-1 rounded">→</kbd> Next Slide</span>
+              <span>•</span>
+              <span><kbd className="bg-white/10 px-1 rounded">←</kbd> / <kbd className="bg-white/10 px-1 rounded">Backspace</kbd> Prev Slide</span>
+            </>
+          )}
+          <span>•</span>
+          <span><kbd className="bg-white/10 px-1 rounded">ESC</kbd> Close</span>
+        </div>
+      ) : (
+        /* Mobile: touch gesture hints instead of keyboard shortcuts */
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-full bg-black/60 border border-white/8 text-[10px] text-stone-400 flex items-center gap-2.5 backdrop-blur-sm select-none pointer-events-none whitespace-nowrap">
+          <span>👆 Tap – controls</span>
+          <span className="text-white/20">·</span>
+          <span>👆👆 Double-tap – scroll</span>
+          {viewMode === 'slides' && (
+            <>
+              <span className="text-white/20">·</span>
+              <span>◀ ▶ Swipe slides</span>
+            </>
+          )}
+        </div>
+      )}
 
       {viewMode === 'scroll' ? (
         /* Immersive Scroll container */
@@ -545,7 +560,7 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
           id="lyrics-scroll-container"
           ref={scrollContainerRef}
           onClick={handleLyricsTouch}
-          className="flex-1 overflow-y-auto px-6 py-12 md:px-16 cursor-pointer"
+          className="flex-1 overflow-y-auto px-6 py-12 md:px-16 cursor-pointer relative"
         >
           <div
             className={`mx-auto transition-all ${
@@ -559,6 +574,30 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
             {/* Scroll bottom spacer padding */}
             <div className="h-[40vh]" />
           </div>
+
+          {/* Mobile floating speed controls — visible during auto-scroll */}
+          {!isLargeScreen && scrolling && (
+            <div className="fixed right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+              <button
+                onClick={() => setConfig(p => ({ ...p, autoScrollSpeed: Math.min(10, p.autoScrollSpeed + 1) }))}
+                className="w-10 h-10 rounded-xl bg-black/70 border border-white/15 text-white text-lg font-bold flex items-center justify-center active:scale-90 transition-all backdrop-blur-sm shadow-lg"
+                title="Faster"
+              >＋</button>
+              <div className="w-10 h-8 rounded-lg bg-black/50 border border-white/10 text-amber-400 text-[10px] font-mono font-bold flex items-center justify-center">
+                {config.autoScrollSpeed}x
+              </div>
+              <button
+                onClick={() => setConfig(p => ({ ...p, autoScrollSpeed: Math.max(1, p.autoScrollSpeed - 1) }))}
+                className="w-10 h-10 rounded-xl bg-black/70 border border-white/15 text-white text-lg font-bold flex items-center justify-center active:scale-90 transition-all backdrop-blur-sm shadow-lg"
+                title="Slower"
+              >－</button>
+              <button
+                onClick={() => setScrolling(false)}
+                className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold flex items-center justify-center active:scale-90 transition-all backdrop-blur-sm shadow-lg mt-1"
+                title="Stop scroll"
+              >⏹</button>
+            </div>
+          )}
         </div>
       ) : (
         /* Immersive Slides Presentation Stage */
@@ -620,6 +659,17 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
           </div>
 
         </div>
+      )}
+      {/* Mobile close button — large tap target at the very bottom, always visible */}
+      {!isLargeScreen && (
+        <button
+          onClick={onClose}
+          className="absolute bottom-20 right-4 z-30 flex items-center gap-2 px-5 py-3 bg-zinc-900/90 border border-zinc-700 text-white text-xs font-bold rounded-2xl shadow-xl backdrop-blur-sm active:scale-95 transition-all cursor-pointer"
+          title="Close Presentation"
+        >
+          <span className="text-base leading-none">✕</span>
+          <span>Close</span>
+        </button>
       )}
 
     </div>

@@ -4,14 +4,24 @@ const DB_NAME = 'ChristianLyricsDB';
 const STORE_NAME = 'songs';
 const DB_VERSION = 1;
 
+// Module-level IDB connection cache — opened once, reused for all operations (#14)
+let _cachedDB: IDBDatabase | null = null;
+
 export function initDB(): Promise<IDBDatabase> {
+  if (_cachedDB) return Promise.resolve(_cachedDB);
+
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      _cachedDB = request.result;
+      // Clear cache if the connection closes unexpectedly
+      _cachedDB.onclose = () => { _cachedDB = null; };
+      resolve(_cachedDB);
+    };
 
-    request.onupgradeneeded = (event) => {
+    request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -346,6 +356,7 @@ export interface SongMetadata {
   favorite?: boolean;
   createdAt?: number;
   updatedAt?: number;
+  lyricsSnippet?: string; // First 300 chars of lyrics for full-text search (#2)
 }
 
 export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
@@ -371,7 +382,8 @@ export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
           category: val.category,
           favorite: !!val.favorite,
           createdAt: val.createdAt,
-          updatedAt: val.updatedAt
+          updatedAt: val.updatedAt,
+          lyricsSnippet: val.lyrics ? (val.lyrics as string).slice(0, 300) : undefined
         });
         cursor.continue();
       } else {

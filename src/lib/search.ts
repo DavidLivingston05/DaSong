@@ -105,6 +105,7 @@ export interface FilterableSong {
   title: string;
   author?: string;
   category?: string;
+  lyricsSnippet?: string; // First ~300 chars included for full-text lyric search
 }
 
 // Thread-safe memory cache of pre-cleaned song tokens to keep searches under 1ms
@@ -127,11 +128,14 @@ export function matchSong(song: FilterableSong, searchQuery: string): boolean {
     const cleanTitle = cleanForSearch(song.title);
     const cleanAuthor = song.author ? cleanForSearch(song.author) : '';
     const cleanCategory = song.category ? cleanForSearch(song.category) : '';
+    const cleanSnippet = song.lyricsSnippet ? cleanForSearch(song.lyricsSnippet) : '';
 
-    songWords = `${cleanId} ${cleanTitle} ${cleanAuthor} ${cleanCategory}`
+    songWords = `${cleanId} ${cleanTitle} ${cleanAuthor} ${cleanCategory} ${cleanSnippet}`
       .split(' ')
       .filter(Boolean);
-      
+
+    // Cap cache size to prevent unbounded memory growth in long sessions
+    if (songWordsCache.size > 2000) songWordsCache.clear();
     songWordsCache.set(cacheKey, songWords);
   }
 

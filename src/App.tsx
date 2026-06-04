@@ -143,19 +143,32 @@ export default function App() {
   const [authError, setAuthError] = useState('');
 
   // Authentication handler logic
-  const handleSignIn = (role: UserRole) => {
+  const handleSignIn = async (role: UserRole) => {
     setAuthError('');
 
     if (role === 'admin') {
-      if (inputPassword === 'admin123') {
-        const adminSession: UserSession = { role: 'admin', name: 'Administrator' };
-        setSession(adminSession);
-        localStorage.setItem('lyrasync_user_role', 'admin');
-        localStorage.setItem('lyrasync_user_name', 'Administrator');
-        setSelectedPortal(null);
-        setInputPassword('');
-      } else {
-        setAuthError('Incorrect Admin Password! Please try again.');
+      try {
+        const response = await fetch('/api/auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ password: inputPassword })
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          const adminSession: UserSession = { role: 'admin', name: 'Administrator' };
+          setSession(adminSession);
+          localStorage.setItem('lyrasync_user_role', 'admin');
+          localStorage.setItem('lyrasync_user_name', 'Administrator');
+          setSelectedPortal(null);
+          setInputPassword('');
+        } else {
+          setAuthError(data.error || 'Incorrect Admin Password! Please try again.');
+        }
+      } catch (err) {
+        console.error('Auth error:', err);
+        setAuthError('Authentication server offline. Please try again later.');
       }
     } else if (role === 'choir') {
       if (inputName.trim().length >= 2) {
@@ -248,6 +261,7 @@ export default function App() {
   const [addForm, setAddForm] = useState({
     title: '',
     author: '',
+    key: 'G',
     bpm: 72,
     category: 'Worship',
     lyrics: ''
@@ -295,20 +309,26 @@ export default function App() {
     triggerMongoSync();
   };
 
-  // Perform full database sync on load, focus, and every 10 seconds
+  // Perform full database sync on load, focus, and every 60 seconds
   useEffect(() => {
     triggerMongoSync();
 
-    // Sync on window focus for immediate live refresh
+    // Throttle window-focus sync: at most once every 30 seconds to avoid
+    // hammering the API when the user switches tabs or unlocks their phone.
+    let lastFocusSync = 0;
     const handleFocus = () => {
-      triggerMongoSync();
+      const now = Date.now();
+      if (now - lastFocusSync > 30_000) {
+        lastFocusSync = now;
+        triggerMongoSync();
+      }
     };
     window.addEventListener('focus', handleFocus);
 
-    // Polling interval every 10 seconds
+    // Polling interval every 60 seconds (was 10s — reduces background traffic)
     const interval = setInterval(() => {
       triggerMongoSync();
-    }, 10000);
+    }, 60_000);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
@@ -625,7 +645,7 @@ export default function App() {
       id: `manual-song-${Date.now()}`,
       title: addForm.title,
       author: addForm.author || 'Traditional',
-      key: '',
+      key: addForm.key || 'G',
       bpm: Number(addForm.bpm) || 72,
       category: addForm.category,
       lyrics: addForm.lyrics,
@@ -646,6 +666,7 @@ export default function App() {
       setAddForm({
         title: '',
         author: '',
+        key: 'G',
         bpm: 72,
         category: 'Worship',
         lyrics: ''
@@ -711,7 +732,7 @@ export default function App() {
 
   if (!session) {
     return (
-      <div id="login-portal" className="flex items-center justify-center min-h-screen bg-[#070708] text-white p-4 font-sans relative overflow-hidden">
+      <div id="login-portal" className="flex items-center justify-center min-h-[100dvh] bg-[#070708] text-white p-4 font-sans relative overflow-hidden">
         {/* Dynamic synth matrix grid line visualizer in backdrop */}
         <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px]"></div>
         
@@ -848,7 +869,7 @@ export default function App() {
   }
 
   return (
-    <div id="app-root" className={`h-screen md:h-auto overflow-hidden md:overflow-visible bg-[#08080a] text-zinc-300 transition-colors duration-300 flex flex-col font-sans relative`}>
+    <div id="app-root" className={`h-[100dvh] md:h-auto overflow-hidden md:overflow-visible bg-[#08080a] text-zinc-300 transition-colors duration-300 flex flex-col font-sans relative`}>
       {/* Dynamic hardware grid pattern */}
       <div className="absolute inset-0 pointer-events-none opacity-2 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
       
@@ -1585,6 +1606,18 @@ export default function App() {
                 </div>
 
                 <div>
+                  <label className="text-xs font-semibold text-slate-400">Original Key</label>
+                  <input
+                    id="add-key"
+                    type="text"
+                    value={addForm.key}
+                    onChange={(e) => setAddForm(p => ({ ...p, key: e.target.value }))}
+                    className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
+                    placeholder="e.g. G"
+                  />
+                </div>
+
+                <div>
                   <label className="text-xs font-semibold text-slate-400">Tempo Speed (BPM)</label>
                   <input
                     id="add-bpm"
@@ -1595,7 +1628,7 @@ export default function App() {
                   />
                 </div>
 
-                <div className="md:col-span-2">
+                <div>
                   <label className="text-xs font-semibold text-slate-400">Song Category</label>
                   <select
                     id="add-category"
@@ -1837,7 +1870,7 @@ That [G] saved a wretch like [D] me!`}
               <div className="p-3 bg-amber-500/5 rounded-2xl border border-amber-500/10 text-[11px] text-amber-400 font-medium leading-relaxed flex gap-2">
                 <span className="text-sm shrink-0">💡</span>
                 <p>
-                  To install, you must open this website in the iOS **Safari** browser. Third-party in-app browsers do not support direct addition.
+                  To install, you must open this website in the iOS <strong className="text-white">Safari</strong> browser. Third-party in-app browsers do not support direct addition.
                 </p>
               </div>
 
@@ -1889,7 +1922,7 @@ That [G] saved a wretch like [D] me!`}
                   <div className="flex-1 text-xs">
                     <p className="text-white font-bold">Confirm App Details</p>
                     <p className="text-zinc-400 mt-0.5 leading-relaxed">
-                      Tap the **Add** button in the top-right corner to complete the installation process. The icon will appear instantly on your home screen!
+                      Tap the <strong className="text-white">Add</strong> button in the top-right corner to complete the installation process. The icon will appear instantly on your home screen!
                     </p>
                   </div>
                 </div>
