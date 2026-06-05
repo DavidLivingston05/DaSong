@@ -995,7 +995,7 @@ export default function App() {
                     id="mongodb-sync-status-badge"
                     onClick={handleForceSync}
                     disabled={mongoStatus === 'connecting'}
-                    className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
                       mongoStatus === 'connected'
                         ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
                         : mongoStatus === 'connecting'
@@ -1009,11 +1009,11 @@ export default function App() {
                     <span className="text-xs leading-none">🍃</span>
                     <span>
                       {mongoStatus === 'connected'
-                        ? 'Cloud Saved'
+                        ? <><span className="hidden xs:inline">Cloud Saved</span><span className="xs:hidden">Saved</span></>
                         : mongoStatus === 'connecting'
                           ? 'Syncing...'
                           : mongoStatus === 'error'
-                            ? 'Sync Error'
+                            ? <><span className="hidden xs:inline">Sync Error</span><span className="xs:hidden">Error</span></>
                             : 'Offline'}
                     </span>
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
