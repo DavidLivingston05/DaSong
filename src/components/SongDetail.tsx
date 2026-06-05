@@ -1013,7 +1013,7 @@ export default function SongDetail({
 
           {/* Related / Suggested Songs sidebar */}
           {relatedSongs.length > 0 && (
-            <div className="w-full md:w-64 border-t md:border-t-0 md:border-l border-white/10 p-5 bg-[#050506] flex flex-col min-h-0 font-sans select-none">
+            <div className="hidden md:flex md:w-64 border-t md:border-t-0 md:border-l border-white/10 p-5 bg-[#050506] flex-col min-h-0 font-sans select-none">
               <h5 className="font-bold text-xs text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-white/10 pb-2">
                 <Music className="h-3.5 w-3.5 text-amber-500 animate-pulse" /> Related Songs
               </h5>
