@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dasong-v12';
+const CACHE_NAME = 'dasong-v13';
 const ASSETS = [
   '/',
   '/index.html',
@@ -31,6 +31,11 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  // Bypass service worker for API calls and non-GET requests
+  if (e.request.url.includes('/api/') || e.request.method !== 'GET') {
+    return;
+  }
+
   // Use Network-First strategy for the entry page and navigation requests
   if (e.request.mode === 'navigate' || e.request.url.endsWith('/') || e.request.url.endsWith('/index.html')) {
     e.respondWith(
