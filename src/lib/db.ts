@@ -246,7 +246,25 @@ export async function syncWithMongoDB(): Promise<void> {
   }
 
   // 1. Sync Songs in an optimized Delta fashion to scale to 15,000+ songs
-  const cloudMetadata: SongMetadata[] = await apiRequest('/api/songs/metadata');
+  const localCheck = await getLocalSongsCountAndMaxTimestamp();
+  
+  // Try to query count check to see if a deletion happened
+  let isDeletionPossible = false;
+  try {
+    const syncCheck: { count: number; lastUpdated: number } = await apiRequest('/api/songs/sync-check');
+    if (syncCheck.count < localCheck.count) {
+      isDeletionPossible = true;
+    }
+  } catch (err) {
+    console.warn('Sync check query failed:', err);
+    // If it fails, fallback to full sync to be safe
+    isDeletionPossible = true;
+  }
+
+  // If a deletion is possible (or count check failed), since must be 0 to fetch all metadata
+  // Otherwise, we only fetch metadata for songs updated since our last local max timestamp!
+  const since = isDeletionPossible ? 0 : localCheck.lastUpdated;
+  const cloudMetadata: SongMetadata[] = await apiRequest(`/api/songs/metadata?since=${since}`);
   const localMetadata = await getAllSongsMetadata();
 
   const localMetadataMap = new Map<string, SongMetadata>();
@@ -257,7 +275,7 @@ export async function syncWithMongoDB(): Promise<void> {
   const cloudIds = new Set<string>();
   const missingOrOutdatedIds: string[] = [];
 
-  let maxCloudTime = 0;
+  let maxCloudTime = since;
   for (const cloudSong of cloudMetadata) {
     cloudIds.add(cloudSong.id);
     const localSong = localMetadataMap.get(cloudSong.id);
@@ -278,10 +296,13 @@ export async function syncWithMongoDB(): Promise<void> {
   }
 
   // Delete local songs that were deleted from the cloud database, unless they are unsynced new additions
-  const currentUnsynced = new Set(getUnsyncedSongIds());
-  for (const localSong of localMetadata) {
-    if (!cloudIds.has(localSong.id) && !currentUnsynced.has(localSong.id)) {
-      await deleteSongIndexedDB(localSong.id);
+  // BUT only perform this delete check if we fetched the FULL metadata (since === 0)!
+  if (since === 0) {
+    const currentUnsynced = new Set(getUnsyncedSongIds());
+    for (const localSong of localMetadata) {
+      if (!cloudIds.has(localSong.id) && !currentUnsynced.has(localSong.id)) {
+        await deleteSongIndexedDB(localSong.id);
+      }
     }
   }
 

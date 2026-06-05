@@ -87,7 +87,9 @@ app.get('/api/songs/sync-check', asyncHandler(async (req, res) => {
 // GET /api/songs/metadata
 app.get('/api/songs/metadata', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  const metadata = await db.collection('songs').find({}, {
+  const since = parseInt(req.query.since, 10) || 0;
+  const query = since > 0 ? { $or: [{ updatedAt: { $gt: since } }, { createdAt: { $gt: since } }] } : {};
+  const metadata = await db.collection('songs').find(query, {
     projection: {
       id: 1,
       title: 1,
