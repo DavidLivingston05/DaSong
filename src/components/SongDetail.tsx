@@ -448,6 +448,29 @@ export default function SongDetail({
 
   // Pre-process and render sheet lyrics
   let processedLyrics = song.lyrics || '';
+
+  // Strip metadata headers from raw lyrics block to prevent duplication
+  const rawLines = processedLyrics.split('\n');
+  const cleanLyricsLines: string[] = [];
+  let lyricsStarted = false;
+  for (const line of rawLines) {
+    const trimmed = line.trim();
+    if (!lyricsStarted) {
+      const isMetadata = 
+        /^(?:Title|Name|Author|Artist|Composer|Writer|Key|Chord\s*Key|Bpm|Tempo|Category|Genre|Theme)\s*:/i.test(trimmed) ||
+        /^lyrics\s*:/i.test(trimmed);
+      if (isMetadata) {
+        continue;
+      }
+      if (trimmed === '') {
+        continue;
+      }
+      lyricsStarted = true;
+    }
+    cleanLyricsLines.push(line);
+  }
+  processedLyrics = cleanLyricsLines.join('\n').trim();
+
   if (transposeStep !== 0) {
     processedLyrics = transposeLyrics(processedLyrics, transposeStep);
   }
@@ -469,33 +492,19 @@ export default function SongDetail({
       )}
       
       {/* Detail Header Strip - Masterfully designed for both Desktop (Windows) and Mobile (iOS/Android) */}
-      <div className="p-4 border-b border-zinc-800/80 bg-[#050506] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="p-4 border-b border-zinc-800/80 bg-[#050506] flex items-center justify-between gap-4">
         
-        {/* Left Side: Back Trigger + Metadata Information */}
-        <div className="flex items-start sm:items-center gap-3">
-          <button
-            onClick={onClose}
-            className="h-12 px-4 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-amber-500 hover:text-amber-400 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
-            title={backLabel || "Back to Search"}
-          >
-            ← <span className="hidden xs:inline">{backLabel || "Back to Search"}</span>
-          </button>
-          
-          <div className="min-w-0">
-            <span className="text-[9px] font-mono font-black tracking-widest text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 uppercase">
-              {song.category || 'Uploaded General'}
-            </span>
-            <h2 className="text-lg md:text-xl font-bold text-white leading-tight mt-1.5 truncate">
-              {song.title}
-            </h2>
-            <p className="text-xs text-zinc-500 truncate">
-              Author: <span className="text-zinc-400 font-semibold">{song.author || 'Traditional'}</span>
-            </p>
-          </div>
-        </div>
+        {/* Left Side: Back Trigger */}
+        <button
+          onClick={onClose}
+          className="h-12 px-4 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-amber-500 hover:text-amber-400 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
+          title={backLabel || "Back to Search"}
+        >
+          ← <span className="hidden xs:inline">{backLabel || "Back to Search"}</span>
+        </button>
 
         {/* Right Side: Primary Responsive Actions Control Panel */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2">
           {/* Favorite Indicator Action Button */}
           <button
             onClick={() => onToggleFavorite(song.id, !song.favorite)}
