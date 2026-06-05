@@ -87,6 +87,30 @@ async function clearAllSongsIndexedDB(): Promise<void> {
     request.onerror = () => reject(request.error);
   });
 }
+export async function cleanupCorruptedLocalSongs(): Promise<void> {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.openCursor();
+
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>).result;
+      if (cursor) {
+        const val = cursor.value;
+        if (!val || !val.id || !val.title || String(val.title).trim() === '') {
+          console.warn('Deleting corrupted local song from IndexedDB:', val);
+          cursor.delete();
+        }
+        cursor.continue();
+      } else {
+        resolve();
+      }
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+}
 
 // -------------------------------------------------------------------------
 // BACKEND API INTEGRATION HELPERS
@@ -118,7 +142,13 @@ function removeUnsyncedSongIds(ids: string[]): void {
 }
 
 async function apiRequest(path: string, options?: RequestInit): Promise<any> {
-  const response = await fetch(path, {
+  let url = path;
+  const method = options?.method || 'GET';
+  if (method.toUpperCase() === 'GET') {
+    const buster = `t=${Date.now()}`;
+    url = url.includes('?') ? `${url}&${buster}` : `${url}?${buster}`;
+  }
+  const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -204,6 +234,13 @@ async function syncEventsBiDirectional(cloudEvents: WorshipEvent[]): Promise<voi
 
 // Synchronizes the cloud MongoDB state back to local IndexedDB and localStorage using Delta/Timestamp Sync
 export async function syncWithMongoDB(): Promise<void> {
+  // Clean up any corrupted local songs (e.g. empty/missing titles) to prevent runtime sorting/rendering crashes
+  try {
+    await cleanupCorruptedLocalSongs();
+  } catch (err) {
+    console.warn('Cleanup of corrupted local songs failed:', err);
+  }
+
   // 0. Sync unsynced songs to cloud first
   const unsyncedIds = getUnsyncedSongIds();
   if (unsyncedIds.length > 0) {
@@ -248,22 +285,22 @@ export async function syncWithMongoDB(): Promise<void> {
   // 1. Sync Songs in an optimized Delta fashion to scale to 15,000+ songs
   const localCheck = await getLocalSongsCountAndMaxTimestamp();
   
-  // Try to query count check to see if a deletion happened
-  let isDeletionPossible = false;
+  // Try to query count check to see if we are out of sync or if a deletion happened
+  let isFullReconciliationRequired = false;
   try {
     const syncCheck: { count: number; lastUpdated: number } = await apiRequest('/api/songs/sync-check');
-    if (syncCheck.count < localCheck.count) {
-      isDeletionPossible = true;
+    if (syncCheck.count !== localCheck.count) {
+      isFullReconciliationRequired = true;
     }
   } catch (err) {
     console.warn('Sync check query failed:', err);
     // If it fails, fallback to full sync to be safe
-    isDeletionPossible = true;
+    isFullReconciliationRequired = true;
   }
 
-  // If a deletion is possible (or count check failed), since must be 0 to fetch all metadata
+  // If full reconciliation is required (or count check failed), since must be 0 to fetch all metadata.
   // Otherwise, we only fetch metadata for songs updated since our last local max timestamp!
-  const since = isDeletionPossible ? 0 : localCheck.lastUpdated;
+  const since = isFullReconciliationRequired ? 0 : localCheck.lastUpdated;
   const cloudMetadata: SongMetadata[] = await apiRequest(`/api/songs/metadata?since=${since}`);
   const localMetadata = await getAllSongsMetadata();
 

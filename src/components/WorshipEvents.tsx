@@ -199,11 +199,11 @@ export default function WorshipEvents({
 
   // Song catalogs sorted alphabetically by title and optionally filtered by search query
   const filteredSongs = useMemo(() => {
-    let sorted = [...songs].sort((a, b) => a.title.localeCompare(b.title));
+    let sorted = [...songs].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     if (songSearchQuery.trim()) {
       const q = songSearchQuery.toLowerCase();
       sorted = sorted.filter(s => 
-        s.title.toLowerCase().includes(q) || 
+        (s.title || '').toLowerCase().includes(q) || 
         (s.author && s.author.toLowerCase().includes(q))
       );
     }

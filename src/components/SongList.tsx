@@ -46,12 +46,12 @@ function SongList({
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = songs.filter(s => 
-        s.title.toLowerCase().includes(q) || 
+        (s.title || '').toLowerCase().includes(q) || 
         (s.author && s.author.toLowerCase().includes(q)) ||
         (s.lyricsSnippet && s.lyricsSnippet.toLowerCase().includes(q))
       );
     }
-    return [...filtered].sort((a, b) => a.title.localeCompare(b.title));
+    return [...filtered].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
   }, [songs, searchQuery]);
 
   // Slice list up to visible count for performance

@@ -201,10 +201,10 @@ export interface CachedSongData {
 const songMetadataCache = new Map<string, CachedSongData>();
 
 export function getCachedSongData(song: FilterableSong): CachedSongData {
-  const cacheKey = `${song.id}_${song.title}_${song.author || ''}_${song.category || ''}_${song.lyricsSnippet || ''}`;
+  const cacheKey = `${song.id}_${song.title || ''}_${song.author || ''}_${song.category || ''}_${song.lyricsSnippet || ''}`;
   let cached = songMetadataCache.get(cacheKey);
   if (!cached) {
-    const cleanTitle = cleanForSearch(song.title);
+    const cleanTitle = cleanForSearch(song.title || '');
     const transliteratedTitle = cleanForSearch(transliterateTamilToTanglish(cleanTitle));
     const titleWords = `${cleanTitle} ${transliteratedTitle}`.split(' ').filter(Boolean);
     const cleanAuthor = song.author ? cleanForSearch(song.author) : '';
@@ -501,7 +501,7 @@ export function getSearchRelevanceScore(song: FilterableSong, searchQuery: strin
   }
 
   // 6. Shorter title tie-breaker
-  score -= song.title.length * 0.01;
+  score -= (song.title || '').length * 0.01;
 
   return score;
 }

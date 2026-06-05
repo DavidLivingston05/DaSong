@@ -216,11 +216,11 @@ export default function App() {
     if (!query) return [];
     
     const filtered = songs.filter(s => 
-      s.title.toLowerCase().includes(query) || 
+      (s.title || '').toLowerCase().includes(query) || 
       (s.author && s.author.toLowerCase().includes(query)) ||
       (s.lyricsSnippet && s.lyricsSnippet.toLowerCase().includes(query))
     );
-    return [...filtered].sort((a, b) => a.title.localeCompare(b.title)).slice(0, 6);
+    return [...filtered].sort((a, b) => (a.title || '').localeCompare(b.title || '')).slice(0, 6);
   }, [songs, quickSearchQuery]);
 
   // ── Android Back Button / History API ──────────────────────────────────────
@@ -299,7 +299,7 @@ export default function App() {
       const sorted = [...list].sort((a, b) => {
         if (a.favorite && !b.favorite) return -1;
         if (!a.favorite && b.favorite) return 1;
-        return a.title.localeCompare(b.title);
+        return (a.title || '').localeCompare(b.title || '');
       });
       setSongs(sorted);
     } catch (err) {
