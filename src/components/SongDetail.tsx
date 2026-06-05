@@ -990,7 +990,7 @@ export default function SongDetail({
               </div>
             ) : (
               /* Simple general catalog bottom bar */
-              <div className="p-4 border-t border-zinc-800/80 bg-zinc-950 flex flex-col sm:flex-row items-center justify-between gap-4 select-none relative">
+              <div className="hidden md:flex p-4 border-t border-zinc-800/80 bg-zinc-950 flex-col sm:flex-row items-center justify-between gap-4 select-none relative">
                 <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-zinc-500">
                   <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
                   <span>General Catalog Explorer Mode</span>
