@@ -3,7 +3,7 @@ import {
   Music, Sparkles, Layers, Sliders, Play, Settings, Plus, Star, Heart, 
   Trash2, X, AlertCircle, RefreshCw, Check, BookOpen, Database, Award, 
   ChevronRight, Compass, HelpCircle, Calendar, Download, Smartphone,
-  Home, Search
+  Home, Search, LogOut
 } from 'lucide-react';
 import { Song, UserRole, WorshipEvent } from './types';
 import { 
@@ -47,15 +47,7 @@ export default function App() {
     return localStorage.getItem('dasong_dismiss_install') === 'true';
   });
 
-  // DaLyric TV Cloud WebSocket Sync States
-  const [ws, setWs] = useState<WebSocket | null>(null);
-  const [wsStatus, setWsStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
-  const [wsRoomCode, setWsRoomCode] = useState<string>(() => localStorage.getItem('dasong_dalyric_room_code') || '');
-  const [autoFollowTV, setAutoFollowTV] = useState<boolean>(true);
-  const [tvActiveTitle, setTvActiveTitle] = useState<string>('');
-  const [tvActiveSlide, setTvActiveSlide] = useState<number>(0);
-  const [tempBroadcastSong, setTempBroadcastSong] = useState<Song | null>(null);
-  const [showSyncModal, setShowSyncModal] = useState<boolean>(false);
+
 
   // Choir Suggestions Review State & Helpers
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -548,102 +540,6 @@ export default function App() {
     }
   }, [selectedSongId, syncSongsList]);
 
-
-  // Connect to the Cloud WebSocket Relay room using the 6-digit sync code
-  const connectToDaLyric = useCallback((roomCode: string) => {
-    const trimmedCode = roomCode.trim();
-    if (!trimmedCode || trimmedCode.length !== 6) {
-      alert('Please enter a valid 6-digit session code to sync.');
-      return;
-    }
-
-    // If there is an existing socket open, disconnect it first
-    if (ws) {
-      ws.close();
-    }
-
-    setWsStatus('connecting');
-    localStorage.setItem('dasong_dalyric_room_code', trimmedCode);
-    setWsRoomCode(trimmedCode);
-
-    // Establish socket connection to Sockets Bay public room
-    const targetUrl = `wss://socketsbay.com/wss/v2/dasong-room-${trimmedCode}/`;
-    const socket = new WebSocket(targetUrl);
-
-    socket.onopen = () => {
-      setWsStatus('connected');
-      console.log(`Successfully connected to DaLyric TV Cloud Sync Room: ${trimmedCode}`);
-    };
-
-    socket.onclose = () => {
-      setWsStatus('disconnected');
-      setWs(null);
-      console.log('DaLyric TV sync connection closed.');
-    };
-
-    socket.onerror = (err) => {
-      console.error('Sync socket error:', err);
-      setWsStatus('disconnected');
-      setWs(null);
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        console.log('Sync broadcast received:', payload);
-        
-        // Skip messages that do not contain the slide changed signature
-        if (payload.event !== 'SLIDE_CHANGED' || !payload.title) return;
-
-        setTvActiveTitle(payload.title);
-        setTvActiveSlide(payload.slideIndex || 0);
-
-        if (autoFollowTV) {
-          // Perform local case-insensitive search by song title in the loaded songs
-          const searchTitle = payload.title.trim().toLowerCase();
-          const match = songs.find(s => s.title.trim().toLowerCase() === searchTitle);
-
-          if (match) {
-            // Found locally: clear any temp broadcast, select matching song, and route tab
-            setTempBroadcastSong(null);
-            handleSelectSong(match.id);
-            setActiveTab('search');
-          } else {
-            // Not found in local index: construct a temporary Song sheet in memory
-            const tempSong: Song = {
-              id: 'dalyric-broadcast-temp',
-              title: payload.title,
-              author: payload.author || 'DaLyric Broadcast',
-              lyrics: payload.lyrics || payload.rawLyrics || '',
-              bpm: payload.bpm || 72,
-              category: payload.category || 'Worship',
-              key: payload.key || '',
-              createdAt: Date.now()
-            };
-            setTempBroadcastSong(tempSong);
-            handleSelectSong('dalyric-broadcast-temp');
-            setActiveTab('search');
-          }
-        }
-      } catch (err) {
-        console.error('Error parsing sync message:', err);
-      }
-    };
-
-    setWs(socket);
-  }, [ws, songs, autoFollowTV, handleSelectSong]);
-
-  const disconnectFromDaLyric = useCallback(() => {
-    if (ws) {
-      ws.close();
-      setWs(null);
-    }
-    setWsStatus('disconnected');
-    setTempBroadcastSong(null);
-    setTvActiveTitle('');
-    setTvActiveSlide(0);
-  }, [ws]);
-
   // Triggered when a song is manually populated inside Add Dialog
   const handleAddSongSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -988,43 +884,6 @@ export default function App() {
               {/* Display User Profile & Logout Link in Header */}
               {session && (
                 <div className="flex items-center gap-2 sm:gap-3">
-                  {/* TV Sync Badge Status Button */}
-                  <button
-                    id="tv-sync-status-badge"
-                    onClick={() => setShowSyncModal(true)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
-                      wsStatus === 'connected'
-                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
-                        : wsStatus === 'connecting'
-                          ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 animate-pulse'
-                          : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                    }`}
-                    title="Live Projection Sync Console"
-                  >
-                    <span className="text-xs leading-none">📺</span>
-                    <span>
-                      {wsStatus === 'connected' ? (
-                        <>
-                          <span className="hidden xs:inline">TV Linked </span>
-                          <span>({wsRoomCode})</span>
-                        </>
-                      ) : wsStatus === 'connecting' ? (
-                        'Connecting...'
-                      ) : (
-                        <>
-                          <span className="hidden xs:inline">TV Link </span>
-                          <span>Offline</span>
-                        </>
-                      )}
-                    </span>
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                      wsStatus === 'connected'
-                        ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]'
-                        : wsStatus === 'connecting'
-                          ? 'bg-amber-500 animate-pulse shadow-[0_0_6px_#f59e0b]'
-                          : 'bg-zinc-600'
-                    }`} />
-                  </button>
 
                   {/* MongoDB Cloud Sync Status Badge */}
                   <button
@@ -1101,11 +960,11 @@ export default function App() {
                   {/* Compact Sign Out - Elegant power icon trigger on mobile, full label on desktop */}
                   <button 
                     onClick={handleLogout}
-                    className="flex items-center justify-center w-8 h-8 sm:w-auto sm:h-auto sm:px-3.5 sm:py-1.5 text-xs font-bold bg-zinc-900 hover:bg-rose-950/20 text-zinc-400 hover:text-rose-400 rounded-full border border-zinc-800 hover:border-rose-900/40 transition-all cursor-pointer active:scale-95 active-touch shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-1.5 text-xs font-bold bg-zinc-900 hover:bg-rose-950/20 text-zinc-400 hover:text-rose-400 rounded-full border border-zinc-800 hover:border-rose-900/45 transition-all cursor-pointer active:scale-95 active-touch shrink-0"
                     title="Sign Out / Exit"
                   >
-                    <span className="sm:hidden text-[11px] leading-none">🚪</span>
-                    <span className="hidden sm:inline">Sign Out</span>
+                    <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                    <span className="hidden xs:inline">Sign Out</span>
                   </button>
                 </div>
               )}
@@ -1226,6 +1085,13 @@ export default function App() {
                 }`}>
                   {mongoStatus === 'connected' ? '● Live' : mongoStatus === 'connecting' ? '◌ Sync' : '○ Local'}
                 </span>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-zinc-900 hover:bg-rose-950/20 text-rose-400 border border-zinc-800 hover:border-rose-950/40 rounded-lg transition-all text-[11px] font-mono font-bold cursor-pointer active-touch"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Exit</span>
+                </button>
               </div>
             </div>
 
@@ -1597,7 +1463,6 @@ export default function App() {
                   currentRole={currentRole}
                   backLabel={songSourceTab === 'calendar' ? 'Back to Setlist' : 'Back to Search'}
                   setlistSongIds={activeSetlistIds}
-                  tempBroadcastSong={tempBroadcastSong}
                   songsMetadata={songs}
                 />
 
@@ -1870,7 +1735,6 @@ That [G] saved a wretch like [D] me!`}
           song={stageModeSong.song}
           activeTranspose={stageModeSong.transpose}
           onClose={() => setStageModeSong(null)}
-          broadcastSlideIndex={tvActiveSlide}
         />
       )}
 
@@ -2057,212 +1921,7 @@ That [G] saved a wretch like [D] me!`}
         )}
       </AnimatePresence>
 
-      {/* DaLyric TV Cloud Sync Console Drawer Modal */}
-      <AnimatePresence>
-        {showSyncModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-end md:items-center justify-center p-0 md:p-4"
-            onClick={() => setShowSyncModal(false)}
-          >
-            <motion.div 
-              id="tv-sync-modal" 
-              initial={{ y: '20px', opacity: 0, scale: 0.98 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: '20px', opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="bg-[#070708] w-full h-auto md:max-w-md rounded-t-3xl md:rounded-3xl p-6 space-y-5 shadow-2xl border-t md:border border-white/10 text-slate-350 bottom-sheet-mobile overflow-y-auto pb-safe"
-              onClick={(e) => e.stopPropagation()}
-            >
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                <span className="text-xl">📺</span> DaLyric TV Sync Console
-              </h3>
-              <button
-                onClick={() => setShowSyncModal(false)}
-                className="p-1.5 hover:bg-white/5 rounded-full text-slate-400 cursor-pointer active-touch transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
 
-            <div className="space-y-4">
-              {/* Dynamic Status Section */}
-              <div className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
-                wsStatus === 'connected'
-                  ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
-                  : wsStatus === 'connecting'
-                    ? 'bg-amber-500/5 border-amber-500/20 text-amber-400'
-                    : 'bg-zinc-950 border-zinc-850 text-zinc-400'
-              }`}>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-mono tracking-widest uppercase font-extrabold text-zinc-500">SYNCHRONIZER STATE</span>
-                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    {wsStatus === 'connected' ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                        Connected & Active
-                      </>
-                    ) : wsStatus === 'connecting' ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                        Acquiring Handshake...
-                      </>
-                    ) : (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-zinc-600" />
-                        Offline Mode
-                      </>
-                    )}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] font-mono tracking-widest uppercase font-extrabold text-zinc-500 block">CHANNEL CODE</span>
-                  <span className="font-mono text-sm font-black text-amber-500 tracking-wider">
-                    {wsRoomCode || '------'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Action Form */}
-              <div className="space-y-3.5 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800">
-                <div>
-                  <label className="block text-[11px] font-semibold text-zinc-400 mb-1.5 uppercase font-mono tracking-wider">Pairing Sync Code</label>
-                  <div className="flex gap-2">
-                    <input 
-                      id="sync-room-input"
-                      type="text"
-                      maxLength={6}
-                      pattern="[0-9]*"
-                      inputMode="numeric"
-                      placeholder="Enter 6-Digit Code"
-                      defaultValue={wsRoomCode}
-                      className="flex-1 p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white outline-none focus:border-amber-500 text-xs font-mono text-center tracking-widest"
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, '');
-                        e.target.value = val;
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const input = document.getElementById('sync-room-input') as HTMLInputElement;
-                          if (input) connectToDaLyric(input.value);
-                        }
-                      }}
-                    />
-                    
-                    {wsStatus === 'connected' ? (
-                      <button
-                        onClick={disconnectFromDaLyric}
-                        className="bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 hover:text-red-300 font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer active-touch shrink-0"
-                      >
-                        Disconnect
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          const input = document.getElementById('sync-room-input') as HTMLInputElement;
-                          if (input) connectToDaLyric(input.value);
-                        }}
-                        className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-5 py-2.5 rounded-xl text-xs transition-all active:scale-95 shadow-md shadow-amber-500/10 cursor-pointer active-touch shrink-0"
-                      >
-                        Connect
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-zinc-500 mt-2 font-mono leading-relaxed font-semibold">
-                    Check the top status bar in the DaLyric desktop app to find your active 6-digit room code.
-                  </p>
-                </div>
-
-                <div className="h-[1px] bg-zinc-800 my-3" />
-
-                {/* Auto-Follow Toggle */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <span className="text-[11px] font-bold text-white font-mono uppercase tracking-wider block">Auto-Follow TV Stream</span>
-                    <span className="text-[10.5px] text-zinc-400 leading-relaxed block mt-0.5 font-medium">
-                      Instantly jump song tabs and advance stanzas to match the active projector screen.
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setAutoFollowTV(prev => !prev)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none mt-1 ${
-                      autoFollowTV ? 'bg-amber-500' : 'bg-zinc-800'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-black shadow-lg ring-0 transition duration-200 ease-in-out ${
-                        autoFollowTV ? 'translate-x-4' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              {/* Feed Monitor */}
-              {wsStatus === 'connected' && (
-                <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900 relative overflow-hidden select-none animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  {/* Backdrop glowing grid overlay */}
-                  <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:8px_8px]"></div>
-                  
-                  <span className="text-[9px] font-mono tracking-widest uppercase font-black text-amber-500 block mb-2 relative z-10 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-                    LIVE PRESENTATION FEED
-                  </span>
-                  
-                  <div className="space-y-2 relative z-10 font-mono text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-zinc-500 font-medium">TV Song:</span>
-                      <span className="text-zinc-200 font-extrabold max-w-[190px] truncate text-right">
-                        {tvActiveTitle || 'Waiting for stream...'}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-zinc-500 font-medium">Active Slide:</span>
-                      <span className="text-zinc-200 font-bold">
-                        {tvActiveTitle ? `Slide ${tvActiveSlide + 1}` : 'N/A'}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between">
-                      <span className="text-zinc-500 font-medium">Resolution:</span>
-                      <span className={`font-bold ${
-                        tvActiveTitle 
-                          ? tempBroadcastSong 
-                            ? 'text-amber-500' 
-                            : 'text-emerald-500' 
-                          : 'text-zinc-650'
-                      }`}>
-                        {tvActiveTitle 
-                          ? tempBroadcastSong 
-                            ? 'Temp Feed (Unindexed Song)' 
-                            : 'Vault Match (Synced)' 
-                          : 'Waiting...'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-2 border-t border-white/5 flex">
-              <button
-                type="button"
-                onClick={() => setShowSyncModal(false)}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer active-touch text-center shadow-md shadow-amber-500/10"
-              >
-                Close Sync Console
-           
-              </button>
-            </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </div>
   );
