@@ -328,6 +328,7 @@ export default function App() {
   }, [syncSongsList, loadSuggestions, loadEvents]);
 
   const handleForceSync = () => {
+    localStorage.removeItem('dasong_local_max_updated_at');
     triggerMongoSync();
   };
 
@@ -813,6 +814,41 @@ export default function App() {
               >
                 Continue as Guest (Browse lyrics only)
               </button>
+
+              <div className="mt-6 pt-4 border-t border-white/5 text-center">
+                <button
+                  id="pwa-force-reset-btn"
+                  onClick={async () => {
+                    if (window.confirm("This will clear all local caches and re-download the entire database from MongoDB. Continue?")) {
+                      localStorage.clear();
+                      try {
+                        const dbs = await window.indexedDB.databases();
+                        for (const dbInfo of dbs) {
+                          if (dbInfo.name) {
+                            window.indexedDB.deleteDatabase(dbInfo.name);
+                          }
+                        }
+                      } catch (err) {
+                        window.indexedDB.deleteDatabase('ChristianLyricsDB');
+                      }
+                      if ('serviceWorker' in navigator) {
+                        try {
+                          const regs = await navigator.serviceWorker.getRegistrations();
+                          for (const reg of regs) {
+                            await reg.unregister();
+                          }
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }
+                      window.location.reload();
+                    }
+                  }}
+                  className="text-[10px] text-zinc-650 hover:text-amber-500 font-mono tracking-tight cursor-pointer transition-colors active-touch py-1.5 px-3 bg-zinc-900/30 hover:bg-zinc-900/80 rounded-lg border border-zinc-900/50"
+                >
+                  ⚡ Force Reset Cache & Sync
+                </button>
+              </div>
             </div>
           ) : (
             /* DYNAMIC FORM VIEWS */
