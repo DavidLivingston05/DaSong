@@ -816,10 +816,10 @@ export default function App() {
       <div className="absolute inset-0 pointer-events-none opacity-2 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
       
       {/* Top Professional Navigation Header - Styled like a premium MIDI master strip */}
-      <header id="main-header" className="bg-zinc-950/95 border-b border-zinc-800/80 text-white shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-20 p-3 md:p-4 flex flex-col gap-3.5 sticky top-0 md:relative backdrop-blur-md">
-        
-        {/* Row 1: Brand Logo & Telemetry Strip */}
-        <div className="flex items-center justify-between w-full gap-4">
+      <header id="main-header" className="bg-zinc-950/95 border-b border-zinc-800/80 text-white shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-20 p-3 md:p-4 sticky top-0 md:relative backdrop-blur-md">
+        <div className="w-full max-w-[1850px] mx-auto flex flex-col gap-3.5">
+          {/* Row 1: Brand Logo & Telemetry Strip */}
+          <div className="flex items-center justify-between w-full gap-4">
           <div className="flex items-center gap-2.5 md:gap-3.5 select-none">
             {/* Ultra-Stylish CSS Gradient Vector Logo */}
             <div className="w-9 h-9 md:w-11 md:h-11 bg-zinc-900/60 border border-zinc-800/85 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.12)] shrink-0 relative overflow-hidden group hover:border-amber-500/35 transition-all duration-300">
@@ -1052,10 +1052,11 @@ export default function App() {
             </div>
           )}
         </div>
+        </div>
       </header>
 
       {/* Main content body grid splits */}
-      <main className={`flex-1 p-4 md:p-6 pb-20 md:pb-6 max-w-[1700px] mx-auto w-full min-h-0 flex flex-col ${selectedSongId ? 'overflow-hidden h-full' : 'overflow-y-auto md:overflow-visible'}`}>
+      <main className={`flex-1 p-4 md:p-6 pb-20 md:pb-6 max-w-[1850px] mx-auto w-full min-h-0 flex flex-col ${selectedSongId ? 'overflow-hidden h-full' : 'overflow-y-auto md:overflow-visible'}`}>
         <AnimatePresence mode="wait">
           {/* VIEW 1: CLEAN LANDING DASHBOARD */}
           {activeTab === 'dashboard' && (
@@ -1065,7 +1066,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18 }}
-              className={session?.role === 'admin' ? "grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-6 items-start w-full py-4 md:py-8 px-0 md:px-4 max-w-6xl mx-auto" : "flex flex-col items-center py-4 md:py-8 px-0 md:px-4 w-full max-w-4xl mx-auto"}
+              className={session?.role === 'admin' ? "grid grid-cols-1 lg:grid-cols-[7.5fr_2.5fr] gap-8 items-start w-full py-4 md:py-8 px-0 md:px-4 max-w-none mx-auto" : "flex flex-col items-center py-4 md:py-8 px-0 md:px-4 w-full max-w-6xl mx-auto"}
             >
               {/* Left Column Wrapper */}
               <div className="flex flex-col gap-5 md:gap-6 w-full">

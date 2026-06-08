@@ -311,7 +311,7 @@ export default function WorshipEvents({
       {/* ----------------------------------------------------
           DESKTOP VIEW: Beautiful dual-pane side-by-side dashboard layout
          ---------------------------------------------------- */}
-      <div className="hidden md:flex bg-[#09090b] rounded-3xl border border-white/10 max-w-4xl w-full flex-row shadow-2xl overflow-hidden min-h-[580px] max-h-[640px] animate-in fade-in zoom-in-95 duration-250">
+      <div className="hidden md:flex bg-[#09090b] rounded-3xl border border-white/10 max-w-[1700px] w-full flex-row shadow-2xl overflow-hidden min-h-[700px] max-h-[850px] animate-in fade-in zoom-in-95 duration-250">
         
         {/* Left Google Calendar sidebar panel: Month visual grid & Create button */}
         <div className="w-80 border-r border-white/10 p-5 bg-[#060608] flex flex-col justify-between select-none">
@@ -489,174 +489,179 @@ export default function WorshipEvents({
 
                     {/* Expandable Worship Playlist manager */}
                     {isExpanded && (
-                      <div className="border-t border-white/10 p-4 space-y-4 bg-black/40">
-                        <div>
-                          <h5 className="text-[10px] font-mono tracking-wider text-amber-400 uppercase font-bold flex items-center gap-1">
-                            <Layers className="h-3 w-3" /> Arrangement Grid Order:
-                          </h5>
-                          <p className="text-[10px] text-slate-500 mt-0.5">
-                            Reorder alignment or click on individual tracks to load lyrics on screen.
-                          </p>
-                        </div>
-
-                        {(ev.songIds || []).length === 0 ? (
-                          <div className="py-6 text-center text-xs text-slate-500 italic bg-white/[0.01] rounded-xl border border-white/5">
-                            No songs currently placed. Link a song from your repertory catalogue below!
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {(ev.songIds || []).map((sId, index) => {
-                              const matchSong = songs.find(s => s.id === sId);
-                              const isPlayActive = sId === selectedSongId;
-                              
-                              if (!matchSong) return null;
-                              
-                              return (
-                                <div 
-                                  key={sId}
-                                  className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all ${
-                                    isPlayActive 
-                                      ? 'border-amber-500/50 bg-amber-500/10' 
-                                      : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.03]'
-                                  }`}
-                                >
-                                  {/* Song title and indicator arrow: Sunday service 1 - Songs --> Ummai Arathipen */}
-                                  <div className="flex items-center gap-2 truncate">
-                                    <span className="text-amber-500 font-extrabold font-mono text-[10px]">
-                                      {index + 1}
-                                    </span>
-                                    <span className="text-slate-500 font-bold">--&gt;</span>
-                                    <button
-                                      onClick={() => {
-                                        onSelectSong(matchSong.id, ev.songIds || []);
-                                      }}
-                                      className="font-bold text-white hover:text-amber-400 text-left truncate cursor-pointer transition-colors"
-                                      title="Load on lyrics screen"
-                                    >
-                                      {matchSong.title}
-                                    </button>
-                                    {matchSong.author && (
-                                      <span className="text-[10px] text-slate-500 font-sans truncate hidden sm:inline">
-                                        ({matchSong.author})
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  {/* Reordering controllers inside the setlist */}
-                                  {currentRole === 'admin' ? (
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      <button
-                                        disabled={index === 0}
-                                        onClick={() => moveSongInEvent(ev.id, index, 'up')}
-                                        className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
-                                        title="Shift Up"
-                                      >
-                                        <MoveUp className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button
-                                        disabled={index === (ev.songIds || []).length - 1}
-                                        onClick={() => moveSongInEvent(ev.id, index, 'down')}
-                                        className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
-                                        title="Shift Down"
-                                      >
-                                        <MoveDown className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => toggleSongInEvent(ev.id, matchSong.id)}
-                                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
-                                        title="De-list"
-                                      >
-                                        <X className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="text-[10px] text-amber-500 font-mono font-bold uppercase tracking-wider select-none shrink-0 opacity-80">
-                                      View Lyrics ➔
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* Fast inline song add search console */}
-                        <div className="pt-3 border-t border-white/5 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
-                              {currentRole === 'admin' ? 'Link Catalog Songs:' : 'Search Catalog Songs:'}
-                            </label>
-                            {currentRole === 'admin' && (
-                              <div className="flex items-center gap-1.5 select-none">
-                                <button
-                                  type="button"
-                                  onClick={() => onOpenAddModal?.(ev.id)}
-                                  className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
-                                >
-                                  <Plus className="h-2.5 w-2.5" /> Create Song
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => onOpenUploadModal?.(ev.id)}
-                                  className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
-                                >
-                                  <Upload className="h-2.5 w-2.5" /> Upload Files
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                              <Search className="h-3 w-3 text-slate-500" />
+                      <div className="border-t border-white/10 p-4 bg-black/40">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                          {/* Left Column: Setlist Arrangement Order */}
+                          <div className="space-y-3">
+                            <div>
+                              <h5 className="text-[10px] font-mono tracking-wider text-amber-400 uppercase font-bold flex items-center gap-1">
+                                <Layers className="h-3 w-3" /> Arrangement Grid Order:
+                              </h5>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                Reorder alignment or click on individual tracks to load lyrics on screen.
+                              </p>
                             </div>
-                            <input
-                              type="text"
-                              placeholder="Search songs..."
-                              value={songSearchInput}
-                              onChange={(e) => setSongSearchInput(e.target.value)}
-                              className="block w-full pl-8 pr-3 py-1.5 border border-white/10 rounded-lg bg-black/40 text-slate-300 placeholder-slate-500 focus:outline-none focus:border-amber-500/50 text-[11px] transition-all"
-                            />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1">
-                            {filteredSongs.length === 0 ? (
-                              <div className="col-span-full py-2 text-center text-slate-650 text-[11px] italic">
-                                No songs in library catalog
+
+                            {(ev.songIds || []).length === 0 ? (
+                              <div className="py-6 text-center text-xs text-slate-500 italic bg-white/[0.01] rounded-xl border border-white/5">
+                                No songs currently placed. Link a song from your repertory catalogue on the right!
                               </div>
                             ) : (
-                              filteredSongs.slice(0, 30).map(song => {
-                                const isAdded = (ev.songIds || []).includes(song.id);
-                                return (
-                                  <button
-                                    key={song.id}
-                                    onClick={() => {
-                                      if (currentRole === 'admin') {
-                                        toggleSongInEvent(ev.id, song.id);
-                                      } else {
-                                        onSelectSong(song.id, ev.songIds || []);
-                                      }
-                                    }}
-                                    className={`p-2 rounded-xl text-left border text-[11px] transition-all flex items-center justify-between gap-2 cursor-pointer ${
-                                      isAdded 
-                                        ? 'border-emerald-500/30 bg-emerald-500/[0.03] text-emerald-400 font-bold' 
-                                        : 'border-white/5 bg-white/[0.01] hover:bg-white/5 text-slate-300'
-                                    }`}
-                                  >
-                                    <span className="truncate">{song.title}</span>
-                                    <span className="shrink-0 text-[10px]">
+                              <div className="space-y-2">
+                                {(ev.songIds || []).map((sId, index) => {
+                                  const matchSong = songs.find(s => s.id === sId);
+                                  const isPlayActive = sId === selectedSongId;
+                                  
+                                  if (!matchSong) return null;
+                                  
+                                  return (
+                                    <div 
+                                      key={sId}
+                                      className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all ${
+                                        isPlayActive 
+                                          ? 'border-amber-500/50 bg-amber-500/10' 
+                                          : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.03]'
+                                      }`}
+                                    >
+                                      {/* Song title and indicator arrow */}
+                                      <div className="flex items-center gap-2 truncate">
+                                        <span className="text-amber-500 font-extrabold font-mono text-[10px]">
+                                          {index + 1}
+                                        </span>
+                                        <span className="text-slate-500 font-bold">--&gt;</span>
+                                        <button
+                                          onClick={() => {
+                                            onSelectSong(matchSong.id, ev.songIds || []);
+                                          }}
+                                          className="font-bold text-white hover:text-amber-400 text-left truncate cursor-pointer transition-colors"
+                                          title="Load on lyrics screen"
+                                        >
+                                          {matchSong.title}
+                                        </button>
+                                        {matchSong.author && (
+                                          <span className="text-[10px] text-slate-500 font-sans truncate hidden sm:inline">
+                                            ({matchSong.author})
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Reordering controllers inside the setlist */}
                                       {currentRole === 'admin' ? (
-                                        isAdded ? (
-                                          <Check className="h-3.5 w-3.5 text-emerald-400 stroke-[3]" />
-                                        ) : (
-                                          <ListPlus className="h-3.5 w-3.5 text-slate-500 hover:text-white" />
-                                        )
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <button
+                                            disabled={index === 0}
+                                            onClick={() => moveSongInEvent(ev.id, index, 'up')}
+                                            className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
+                                            title="Shift Up"
+                                          >
+                                            <MoveUp className="h-3.5 w-3.5" />
+                                          </button>
+                                          <button
+                                            disabled={index === (ev.songIds || []).length - 1}
+                                            onClick={() => moveSongInEvent(ev.id, index, 'down')}
+                                            className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
+                                            title="Shift Down"
+                                          >
+                                            <MoveDown className="h-3.5 w-3.5" />
+                                          </button>
+                                          <button
+                                            onClick={() => toggleSongInEvent(ev.id, matchSong.id)}
+                                            className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                                            title="De-list"
+                                          >
+                                            <X className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
                                       ) : (
-                                        <span className="text-amber-500 font-medium font-sans">View ➔</span>
+                                        <div className="text-[10px] text-amber-500 font-mono font-bold uppercase tracking-wider select-none shrink-0 opacity-80">
+                                          View Lyrics ➔
+                                        </div>
                                       )}
-                                    </span>
-                                  </button>
-                                );
-                              })
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             )}
+                          </div>
+
+                          {/* Right Column: Fast inline song add search console */}
+                          <div className="space-y-3 xl:border-l xl:border-white/5 xl:pl-6 pt-4 xl:pt-0">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+                                {currentRole === 'admin' ? 'Link Catalog Songs:' : 'Search Catalog Songs:'}
+                              </label>
+                              {currentRole === 'admin' && (
+                                <div className="flex items-center gap-1.5 select-none">
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenAddModal?.(ev.id)}
+                                    className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
+                                  >
+                                    <Plus className="h-2.5 w-2.5" /> Create Song
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenUploadModal?.(ev.id)}
+                                    className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/20 cursor-pointer"
+                                  >
+                                    <Upload className="h-2.5 w-2.5" /> Upload Files
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                <Search className="h-3 w-3 text-slate-505" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Search songs to add..."
+                                value={songSearchInput}
+                                onChange={(e) => setSongSearchInput(e.target.value)}
+                                className="block w-full pl-8 pr-3 py-1.5 border border-white/10 rounded-lg bg-black/40 text-slate-300 placeholder-slate-500 focus:outline-none focus:border-amber-500/50 text-[11px] transition-all"
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[160px] overflow-y-auto pr-1">
+                              {filteredSongs.length === 0 ? (
+                                <div className="col-span-full py-2 text-center text-slate-650 text-[11px] italic">
+                                  No songs in library catalog
+                                </div>
+                              ) : (
+                                filteredSongs.slice(0, 30).map(song => {
+                                  const isAdded = (ev.songIds || []).includes(song.id);
+                                  return (
+                                    <button
+                                      key={song.id}
+                                      onClick={() => {
+                                        if (currentRole === 'admin') {
+                                          toggleSongInEvent(ev.id, song.id);
+                                        } else {
+                                          onSelectSong(song.id, ev.songIds || []);
+                                        }
+                                      }}
+                                      className={`p-2 rounded-xl text-left border text-[11px] transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                                        isAdded 
+                                          ? 'border-emerald-500/30 bg-emerald-500/[0.03] text-emerald-400 font-bold' 
+                                          : 'border-white/5 bg-white/[0.01] hover:bg-white/5 text-slate-300'
+                                      }`}
+                                    >
+                                      <span className="truncate">{song.title}</span>
+                                      <span className="shrink-0 text-[10px]">
+                                        {currentRole === 'admin' ? (
+                                          isAdded ? (
+                                            <Check className="h-3.5 w-3.5 text-emerald-400 stroke-[3]" />
+                                          ) : (
+                                            <ListPlus className="h-3.5 w-3.5 text-slate-550 hover:text-white" />
+                                          )
+                                        ) : (
+                                          <span className="text-amber-500 font-medium font-sans">View ➔</span>
+                                        )}
+                                      </span>
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
