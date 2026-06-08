@@ -1288,6 +1288,25 @@ export default function App() {
                 <>
                   {/* Left Column Wrapper */}
                   <div className="flex flex-col gap-5 md:gap-6 w-full">
+                    {songs.length === 0 && mongoStatus === 'connecting' && (
+                      <div className="w-full text-left bg-gradient-to-r from-zinc-900 via-zinc-950 to-amber-950/20 p-5 md:p-6 rounded-3xl border border-amber-500/25 shadow-xl relative overflow-hidden group animate-in slide-in-from-top duration-300">
+                        <div className="absolute top-1/2 -right-4 -translate-y-1/2 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-all duration-500"></div>
+                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                          <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl shrink-0">
+                            <RefreshCw className="h-6 w-6 text-amber-500 animate-spin" />
+                          </div>
+                          <div className="flex-1 text-center sm:text-left">
+                            <h3 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+                              Syncing Workspace Song Library...
+                              <span className="bg-amber-500/10 text-amber-450 text-[9px] font-mono font-black px-1.5 py-0.5 rounded border border-amber-500/20 uppercase tracking-wider">Syncing</span>
+                            </h3>
+                            <p className="text-[11.5px] text-zinc-400 mt-1 select-none font-medium leading-relaxed max-w-xl">
+                              Downloading church songbooks and lyrics from the cloud server. This is only necessary during your first visit and will complete in a few moments. No need to refresh!
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
             {/* === MOBILE COMPACT GREETING BAR (hidden on desktop) === */}
             <div className="md:hidden w-full flex items-center justify-between mb-4 px-1">
@@ -1694,6 +1713,25 @@ export default function App() {
             ) : (
               /* Full-page Core Directory Grid Index List */
               <div className="flex flex-col space-y-5 min-h-[400px]">
+                {songs.length === 0 && mongoStatus === 'connecting' && (
+                  <div className="w-full text-left bg-gradient-to-r from-zinc-900 via-zinc-950 to-amber-955/20 p-5 md:p-6 rounded-3xl border border-amber-500/20 shadow-lg relative overflow-hidden group animate-in slide-in-from-top duration-300">
+                    <div className="absolute top-1/2 -right-4 -translate-y-1/2 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-all duration-500"></div>
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                      <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl shrink-0">
+                        <RefreshCw className="h-6 w-6 text-amber-500 animate-spin" />
+                      </div>
+                      <div className="flex-1 text-center sm:text-left">
+                        <h3 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+                          Syncing Songs From Server...
+                          <span className="bg-amber-500/10 text-amber-450 text-[9px] font-mono font-black px-1.5 py-0.5 rounded border border-amber-500/20 uppercase tracking-wider">Syncing</span>
+                        </h3>
+                        <p className="text-[11.5px] text-zinc-400 mt-1 select-none font-medium leading-relaxed max-w-xl">
+                          We are loading the song catalogue. Your local database cache will update automatically as soon as synchronization is complete.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <SongList 
                   songs={songs}
                   selectedSongId={selectedSongId}

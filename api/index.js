@@ -45,6 +45,32 @@ const MONGODB_URI = process.env.MONGODB_URI;
 let cachedClient = null;
 let cachedDb = null;
 
+// Ensure database indexes for high performance on partitioned multi-tenant collections
+async function ensureIndexes(db) {
+  try {
+    // songs indexes
+    await db.collection('songs').createIndex({ serverId: 1 });
+    await db.collection('songs').createIndex({ serverId: 1, id: 1 });
+    await db.collection('songs').createIndex({ serverId: 1, updatedAt: -1, createdAt: -1 });
+
+    // worship_events indexes
+    await db.collection('worship_events').createIndex({ serverId: 1 });
+    await db.collection('worship_events').createIndex({ serverId: 1, id: 1 });
+
+    // suggestions indexes
+    await db.collection('suggestions').createIndex({ serverId: 1 });
+    await db.collection('suggestions').createIndex({ serverId: 1, id: 1 });
+
+    // servers indexes
+    await db.collection('servers').createIndex({ id: 1 }, { unique: true });
+    await db.collection('servers').createIndex({ showOnPublicList: 1 });
+
+    console.log('MongoDB indexes created/verified successfully.');
+  } catch (err) {
+    console.error('Failed to create MongoDB indexes:', err);
+  }
+}
+
 async function connectToDatabase() {
   if (!MONGODB_URI) {
     throw new Error('MONGODB_URI environment variable is not configured. Please add it in your Vercel Project Settings.');
@@ -54,15 +80,28 @@ async function connectToDatabase() {
     return { client: cachedClient, db: cachedDb };
   }
 
-  // Set up connection options
-  const client = new MongoClient(MONGODB_URI);
+  // Optimize MongoDB client options for serverless environments (limit pool size, enable quick timeout/reuse)
+  const client = new MongoClient(MONGODB_URI, {
+    maxPoolSize: 10,
+    minPoolSize: 0,
+    connectTimeoutMS: 5000,
+    socketTimeoutMS: 15000,
+    serverSelectionTimeoutMS: 5000,
+    maxIdleTimeMS: 15000,
+  });
+  
   await client.connect();
   const db = client.db(); // Default database name from the connection string path
 
   cachedClient = client;
   cachedDb = db;
+
+  // Verify and create indexes in the background
+  ensureIndexes(db);
+
   return { client, db };
 }
+
 
 // Global middleware to handle errors
 const asyncHandler = (fn) => (req, res, next) => {
