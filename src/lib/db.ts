@@ -1,8 +1,31 @@
-import { Song, WorshipEvent, SuggestedSong } from '../types';
+import { Song, WorshipEvent, SuggestedSong, ServerInfo } from '../types';
 
 const DB_NAME = 'ChristianLyricsDB';
 const STORE_NAME = 'songs';
 const DB_VERSION = 1;
+
+export function getActiveServerId(): string {
+  return localStorage.getItem('dasong_active_server_id') || 'default';
+}
+
+export function switchActiveServer(serverId: string): void {
+  localStorage.setItem('dasong_active_server_id', serverId);
+  if (_cachedDB) {
+    _cachedDB.close();
+    _cachedDB = null;
+  }
+}
+
+export function getServerStorageKey(key: string): string {
+  const serverId = getActiveServerId();
+  return `${key}_${serverId}`;
+}
+
+const serverLocalStorage = {
+  getItem: (key: string) => localStorage.getItem(getServerStorageKey(key)),
+  setItem: (key: string, value: string) => localStorage.setItem(getServerStorageKey(key), value),
+  removeItem: (key: string) => localStorage.removeItem(getServerStorageKey(key))
+};
 
 // Module-level IDB connection cache — opened once, reused for all operations (#14)
 let _cachedDB: IDBDatabase | null = null;
@@ -11,7 +34,9 @@ export function initDB(): Promise<IDBDatabase> {
   if (_cachedDB) return Promise.resolve(_cachedDB);
 
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const serverId = getActiveServerId();
+    const dbName = `${DB_NAME}_${serverId}`;
+    const request = indexedDB.open(dbName, DB_VERSION);
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
@@ -117,7 +142,7 @@ export async function cleanupCorruptedLocalSongs(): Promise<void> {
 // -------------------------------------------------------------------------
 
 function getUnsyncedSongIds(): string[] {
-  const saved = localStorage.getItem('dasong_unsynced_song_ids');
+  const saved = serverLocalStorage.getItem('dasong_unsynced_song_ids');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -132,17 +157,17 @@ function getUnsyncedSongIds(): string[] {
 function addUnsyncedSongIds(ids: string[]): void {
   const current = new Set(getUnsyncedSongIds());
   ids.forEach(id => current.add(id));
-  localStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
+  serverLocalStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
 }
 
 function removeUnsyncedSongIds(ids: string[]): void {
   const current = new Set(getUnsyncedSongIds());
   ids.forEach(id => current.delete(id));
-  localStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
+  serverLocalStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
 }
 
 function getUnsyncedEventIds(): string[] {
-  const saved = localStorage.getItem('dasong_unsynced_event_ids');
+  const saved = serverLocalStorage.getItem('dasong_unsynced_event_ids');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -157,17 +182,17 @@ function getUnsyncedEventIds(): string[] {
 function addUnsyncedEventIds(ids: string[]): void {
   const current = new Set(getUnsyncedEventIds());
   ids.forEach(id => current.add(id));
-  localStorage.setItem('dasong_unsynced_event_ids', JSON.stringify(Array.from(current)));
+  serverLocalStorage.setItem('dasong_unsynced_event_ids', JSON.stringify(Array.from(current)));
 }
 
 function removeUnsyncedEventIds(ids: string[]): void {
   const current = new Set(getUnsyncedEventIds());
   ids.forEach(id => current.delete(id));
-  localStorage.setItem('dasong_unsynced_event_ids', JSON.stringify(Array.from(current)));
+  serverLocalStorage.setItem('dasong_unsynced_event_ids', JSON.stringify(Array.from(current)));
 }
 
 function getUnsyncedDeletedEventIds(): string[] {
-  const saved = localStorage.getItem('dasong_unsynced_deleted_event_ids');
+  const saved = serverLocalStorage.getItem('dasong_unsynced_deleted_event_ids');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -182,17 +207,17 @@ function getUnsyncedDeletedEventIds(): string[] {
 function addUnsyncedDeletedEventIds(ids: string[]): void {
   const current = new Set(getUnsyncedDeletedEventIds());
   ids.forEach(id => current.add(id));
-  localStorage.setItem('dasong_unsynced_deleted_event_ids', JSON.stringify(Array.from(current)));
+  serverLocalStorage.setItem('dasong_unsynced_deleted_event_ids', JSON.stringify(Array.from(current)));
 }
 
 function removeUnsyncedDeletedEventIds(ids: string[]): void {
   const current = new Set(getUnsyncedDeletedEventIds());
   ids.forEach(id => current.delete(id));
-  localStorage.setItem('dasong_unsynced_deleted_event_ids', JSON.stringify(Array.from(current)));
+  serverLocalStorage.setItem('dasong_unsynced_deleted_event_ids', JSON.stringify(Array.from(current)));
 }
 
 function getUnsyncedSuggestionIds(): string[] {
-  const saved = localStorage.getItem('dasong_unsynced_suggestion_ids');
+  const saved = serverLocalStorage.getItem('dasong_unsynced_suggestion_ids');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -207,17 +232,17 @@ function getUnsyncedSuggestionIds(): string[] {
 function addUnsyncedSuggestionIds(ids: string[]): void {
   const current = new Set(getUnsyncedSuggestionIds());
   ids.forEach(id => current.add(id));
-  localStorage.setItem('dasong_unsynced_suggestion_ids', JSON.stringify(Array.from(current)));
+  serverLocalStorage.setItem('dasong_unsynced_suggestion_ids', JSON.stringify(Array.from(current)));
 }
 
 function removeUnsyncedSuggestionIds(ids: string[]): void {
   const current = new Set(getUnsyncedSuggestionIds());
   ids.forEach(id => current.delete(id));
-  localStorage.setItem('dasong_unsynced_suggestion_ids', JSON.stringify(Array.from(current)));
+  serverLocalStorage.setItem('dasong_unsynced_suggestion_ids', JSON.stringify(Array.from(current)));
 }
 
 function getUnsyncedDeletedSuggestionIds(): string[] {
-  const saved = localStorage.getItem('dasong_unsynced_deleted_suggestion_ids');
+  const saved = serverLocalStorage.getItem('dasong_unsynced_deleted_suggestion_ids');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -232,13 +257,13 @@ function getUnsyncedDeletedSuggestionIds(): string[] {
 function addUnsyncedDeletedSuggestionIds(ids: string[]): void {
   const current = new Set(getUnsyncedDeletedSuggestionIds());
   ids.forEach(id => current.add(id));
-  localStorage.setItem('dasong_unsynced_deleted_suggestion_ids', JSON.stringify(Array.from(current)));
+  serverLocalStorage.setItem('dasong_unsynced_deleted_suggestion_ids', JSON.stringify(Array.from(current)));
 }
 
 function removeUnsyncedDeletedSuggestionIds(ids: string[]): void {
   const current = new Set(getUnsyncedDeletedSuggestionIds());
   ids.forEach(id => current.delete(id));
-  localStorage.setItem('dasong_unsynced_deleted_suggestion_ids', JSON.stringify(Array.from(current)));
+  serverLocalStorage.setItem('dasong_unsynced_deleted_suggestion_ids', JSON.stringify(Array.from(current)));
 }
 
 async function apiRequest(path: string, options?: RequestInit): Promise<any> {
@@ -248,10 +273,12 @@ async function apiRequest(path: string, options?: RequestInit): Promise<any> {
     const buster = `t=${Date.now()}`;
     url = url.includes('?') ? `${url}&${buster}` : `${url}?${buster}`;
   }
+  const serverId = getActiveServerId();
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'x-server-id': serverId,
       ...(options?.headers || {})
     }
   });
@@ -272,7 +299,7 @@ async function getLocalSongsCountAndMaxTimestamp(): Promise<{ count: number, las
     countRequest.onerror = () => reject(countRequest.error);
     countRequest.onsuccess = () => {
       const count = countRequest.result;
-      const cachedTimeStr = localStorage.getItem('dasong_local_max_updated_at');
+      const cachedTimeStr = serverLocalStorage.getItem('dasong_local_max_updated_at');
       const lastUpdated = cachedTimeStr ? parseInt(cachedTimeStr, 10) : 0;
       resolve({ count, lastUpdated });
     };
@@ -541,7 +568,7 @@ export async function syncWithMongoDB(): Promise<void> {
   }
 
   // Save the new max timestamp to localStorage so future checks can hit the cache!
-  localStorage.setItem('dasong_local_max_updated_at', String(maxCloudTime));
+  serverLocalStorage.setItem('dasong_local_max_updated_at', String(maxCloudTime));
 
   // 2. Sync Worship Calendar Events
   const cloudEvents: WorshipEvent[] = await apiRequest('/api/events');
@@ -567,7 +594,7 @@ export async function saveSongsBatch(songs: Song[]): Promise<void> {
     if (t > maxTime) maxTime = t;
   }
   if (maxTime > 0) {
-    localStorage.setItem('dasong_local_max_updated_at', String(maxTime));
+    serverLocalStorage.setItem('dasong_local_max_updated_at', String(maxTime));
   }
   const ids = songs.map(s => s.id);
   addUnsyncedSongIds(ids);
@@ -586,7 +613,7 @@ export async function saveSongsBatch(songs: Song[]): Promise<void> {
 export async function saveSong(song: Song): Promise<void> {
   await saveSongIndexedDB(song);
   const now = song.updatedAt || song.createdAt || Date.now();
-  localStorage.setItem('dasong_local_max_updated_at', String(now));
+  serverLocalStorage.setItem('dasong_local_max_updated_at', String(now));
   addUnsyncedSongIds([song.id]);
   
   // Background cloud sync
@@ -603,7 +630,7 @@ export async function saveSong(song: Song): Promise<void> {
 export async function deleteSong(id: string): Promise<void> {
   await deleteSongIndexedDB(id);
   // Remove last updated cache to force recalculation on next sync check
-  localStorage.removeItem('dasong_local_max_updated_at');
+  serverLocalStorage.removeItem('dasong_local_max_updated_at');
   removeUnsyncedSongIds([id]);
   
   // Background cloud sync
@@ -616,8 +643,8 @@ export async function deleteSong(id: string): Promise<void> {
 
 export async function clearAllSongs(): Promise<void> {
   await clearAllSongsIndexedDB();
-  localStorage.removeItem('dasong_local_max_updated_at');
-  localStorage.removeItem('dasong_unsynced_song_ids');
+  serverLocalStorage.removeItem('dasong_local_max_updated_at');
+  serverLocalStorage.removeItem('dasong_unsynced_song_ids');
   
   // Background cloud sync
   apiRequest('/api/songs', {
@@ -696,7 +723,7 @@ export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
 // -------------------------------------------------------------------------
 
 export function getLocalWorshipEvents(): WorshipEvent[] {
-  const saved = localStorage.getItem('lyrasync_events');
+  const saved = serverLocalStorage.getItem('lyrasync_events');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -729,7 +756,7 @@ export function saveLocalWorshipEvents(events: WorshipEvent[]) {
     ...e,
     songIds: Array.isArray(e.songIds) ? e.songIds : []
   }));
-  localStorage.setItem('lyrasync_events', JSON.stringify(normalized));
+  serverLocalStorage.setItem('lyrasync_events', JSON.stringify(normalized));
 }
 
 export async function saveWorshipEvent(event: WorshipEvent): Promise<void> {
@@ -779,7 +806,7 @@ export async function deleteWorshipEvent(id: string): Promise<void> {
 // -------------------------------------------------------------------------
 
 export function getLocalSuggestions(): SuggestedSong[] {
-  const saved = localStorage.getItem('lyrasync_guideline_suggestions');
+  const saved = serverLocalStorage.getItem('lyrasync_guideline_suggestions');
   if (saved) {
     try {
       return JSON.parse(saved);
@@ -791,7 +818,7 @@ export function getLocalSuggestions(): SuggestedSong[] {
 }
 
 export function saveLocalSuggestions(suggestions: SuggestedSong[]) {
-  localStorage.setItem('lyrasync_guideline_suggestions', JSON.stringify(suggestions));
+  serverLocalStorage.setItem('lyrasync_guideline_suggestions', JSON.stringify(suggestions));
 }
 
 export async function saveSuggestion(suggestion: SuggestedSong): Promise<void> {
@@ -829,3 +856,26 @@ export async function deleteSuggestion(id: string): Promise<void> {
     console.warn('Failed to sync suggestion deletion to MongoDB, queued for background sync:', err);
   });
 }
+
+// -------------------------------------------------------------------------
+// SERVER/TENANT API ACTIONS
+// -------------------------------------------------------------------------
+
+export async function getPublicServers(): Promise<ServerInfo[]> {
+  return apiRequest('/api/servers');
+}
+
+export async function createServer(serverData: { id: string; name: string; adminPassword?: string; showOnPublicList: boolean }): Promise<{ success: boolean; server: ServerInfo }> {
+  return apiRequest('/api/servers', {
+    method: 'POST',
+    body: JSON.stringify(serverData)
+  });
+}
+
+export async function authServerAdmin(serverId: string, password?: string): Promise<{ success: boolean }> {
+  return apiRequest(`/api/servers/${serverId}/auth`, {
+    method: 'POST',
+    body: JSON.stringify({ password })
+  });
+}
+

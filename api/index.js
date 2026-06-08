@@ -17,6 +17,29 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Middleware to extract server ID from headers
+app.use('/api', (req, res, next) => {
+  req.serverId = req.headers['x-server-id'] || 'default';
+  next();
+});
+
+// Helper to partition queries. Matches exact serverId, or if serverId is 'default', matches default or missing serverId.
+function getQueryWithServer(req, customQuery = {}) {
+  if (req.serverId === 'default') {
+    return {
+      ...customQuery,
+      $or: [
+        { serverId: 'default' },
+        { serverId: { $exists: false } }
+      ]
+    };
+  }
+  return {
+    ...customQuery,
+    serverId: req.serverId
+  };
+}
+
 const MONGODB_URI = process.env.MONGODB_URI;
 
 let cachedClient = null;
@@ -65,16 +88,16 @@ app.post('/api/auth', asyncHandler(async (req, res) => {
 // GET /api/songs
 app.get('/api/songs', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  const songs = await db.collection('songs').find({}).toArray();
+  const songs = await db.collection('songs').find(getQueryWithServer(req)).toArray();
   res.json(songs);
 }));
 
 // GET /api/songs/sync-check
 app.get('/api/songs/sync-check', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  const count = await db.collection('songs').countDocuments();
+  const count = await db.collection('songs').countDocuments(getQueryWithServer(req));
   const latestSong = await db.collection('songs')
-    .find({}, { projection: { updatedAt: 1, createdAt: 1 } })
+    .find(getQueryWithServer(req), { projection: { updatedAt: 1, createdAt: 1 } })
     .sort({ updatedAt: -1, createdAt: -1 })
     .limit(1)
     .toArray();
@@ -88,7 +111,7 @@ app.get('/api/songs/sync-check', asyncHandler(async (req, res) => {
 app.get('/api/songs/metadata', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const since = parseInt(req.query.since, 10) || 0;
-  const query = since > 0 ? { $or: [{ updatedAt: { $gt: since } }, { createdAt: { $gt: since } }] } : {};
+  const query = getQueryWithServer(req, since > 0 ? { $or: [{ updatedAt: { $gt: since } }, { createdAt: { $gt: since } }] } : {});
   const metadata = await db.collection('songs').find(query, {
     projection: {
       id: 1,
@@ -112,7 +135,7 @@ app.post('/api/songs/fetch-batch', asyncHandler(async (req, res) => {
   if (!Array.isArray(ids)) {
     return res.status(400).json({ error: 'ids must be an array of IDs' });
   }
-  const songs = await db.collection('songs').find({ id: { $in: ids } }).toArray();
+  const songs = await db.collection('songs').find(getQueryWithServer(req, { id: { $in: ids } })).toArray();
   res.json(songs);
 }));
 
@@ -125,9 +148,10 @@ app.post('/api/songs', asyncHandler(async (req, res) => {
     // Bulk upsert songs
     const bulkOps = body.map(song => {
       const { _id, ...songData } = song; // Strip immutable _id before $set
+      songData.serverId = req.serverId;
       return {
         updateOne: {
-          filter: { id: songData.id },
+          filter: { id: songData.id, serverId: req.serverId },
           update: { $set: songData },
           upsert: true
         }
@@ -145,8 +169,9 @@ app.post('/api/songs', asyncHandler(async (req, res) => {
 
     // Use upsert to insert or update the song (strip _id to avoid immutable field error)
     const { _id: _songId, ...songData } = song;
+    songData.serverId = req.serverId;
     await db.collection('songs').updateOne(
-      { id: songData.id },
+      { id: songData.id, serverId: req.serverId },
       { $set: songData },
       { upsert: true }
     );
@@ -157,7 +182,7 @@ app.post('/api/songs', asyncHandler(async (req, res) => {
 // DELETE /api/songs
 app.delete('/api/songs', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  await db.collection('songs').deleteMany({});
+  await db.collection('songs').deleteMany({ serverId: req.serverId });
   res.json({ success: true });
 }));
 
@@ -166,14 +191,14 @@ app.delete('/api/songs/:id', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const { id } = req.params;
   
-  await db.collection('songs').deleteOne({ id });
+  await db.collection('songs').deleteOne({ id, serverId: req.serverId });
   res.json({ success: true });
 }));
 
 // GET /api/events
 app.get('/api/events', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  const events = await db.collection('worship_events').find({}).toArray();
+  const events = await db.collection('worship_events').find(getQueryWithServer(req)).toArray();
   res.json(events);
 }));
 
@@ -188,8 +213,9 @@ app.post('/api/events', asyncHandler(async (req, res) => {
 
   // Strip MongoDB's immutable _id field to prevent update errors on existing documents
   const { _id, ...eventData } = event;
+  eventData.serverId = req.serverId;
   await db.collection('worship_events').updateOne(
-    { id: eventData.id },
+    { id: eventData.id, serverId: req.serverId },
     { $set: eventData },
     { upsert: true }
   );
@@ -201,14 +227,14 @@ app.delete('/api/events/:id', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const { id } = req.params;
   
-  await db.collection('worship_events').deleteOne({ id });
+  await db.collection('worship_events').deleteOne({ id, serverId: req.serverId });
   res.json({ success: true });
 }));
 
 // GET /api/suggestions
 app.get('/api/suggestions', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  const suggestions = await db.collection('suggestions').find({}).toArray();
+  const suggestions = await db.collection('suggestions').find(getQueryWithServer(req)).toArray();
   res.json(suggestions);
 }));
 
@@ -221,12 +247,14 @@ app.post('/api/suggestions', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Suggestion must contain id and songId' });
   }
 
+  const { _id, ...sugData } = suggestion;
+  sugData.serverId = req.serverId;
   await db.collection('suggestions').updateOne(
-    { id: suggestion.id },
-    { $set: suggestion },
+    { id: sugData.id, serverId: req.serverId },
+    { $set: sugData },
     { upsert: true }
   );
-  res.json({ success: true, suggestion });
+  res.json({ success: true, suggestion: sugData });
 }));
 
 // DELETE /api/suggestions/:id
@@ -234,8 +262,73 @@ app.delete('/api/suggestions/:id', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const { id } = req.params;
   
-  await db.collection('suggestions').deleteOne({ id });
+  await db.collection('suggestions').deleteOne({ id, serverId: req.serverId });
   res.json({ success: true });
+}));
+
+// --- SERVER (TENANT) MANAGEMENT ENDPOINTS ---
+
+// GET /api/servers — list public servers
+app.get('/api/servers', asyncHandler(async (req, res) => {
+  const { db } = await connectToDatabase();
+  const servers = await db.collection('servers')
+    .find({ showOnPublicList: true })
+    .project({ id: 1, name: 1, showOnPublicList: 1, createdAt: 1 })
+    .toArray();
+  res.json(servers);
+}));
+
+// POST /api/servers — register a new server
+app.post('/api/servers', asyncHandler(async (req, res) => {
+  const { db } = await connectToDatabase();
+  const { id, name, adminPassword, showOnPublicList } = req.body;
+  if (!id || !name || !adminPassword) {
+    return res.status(400).json({ error: 'Server ID, name, and adminPassword are required' });
+  }
+
+  // Validate ID format (alphanumeric, dashes, lowercase)
+  const idRegex = /^[a-z0-9-]+$/;
+  if (!idRegex.test(id)) {
+    return res.status(400).json({ error: 'Server ID must be lowercase alphanumeric characters and dashes only.' });
+  }
+
+  // Check uniqueness
+  const existing = await db.collection('servers').findOne({ id });
+  if (existing) {
+    return res.status(400).json({ error: 'Server ID already exists. Please pick a different unique ID.' });
+  }
+
+  const newServer = {
+    id,
+    name,
+    adminPassword, // Note: In a production app, we would hash this, but we store it as is for design simplicity
+    showOnPublicList: !!showOnPublicList,
+    createdAt: Date.now()
+  };
+
+  await db.collection('servers').insertOne(newServer);
+  res.json({ success: true, server: { id, name, showOnPublicList: newServer.showOnPublicList } });
+}));
+
+// POST /api/servers/:id/auth — authenticate server admin access
+app.post('/api/servers/:id/auth', asyncHandler(async (req, res) => {
+  const { db } = await connectToDatabase();
+  const { id } = req.params;
+  const { password } = req.body;
+  if (!password) {
+    return res.status(400).json({ error: 'Password is required' });
+  }
+
+  const server = await db.collection('servers').findOne({ id });
+  if (!server) {
+    return res.status(404).json({ error: 'Server workspace not found' });
+  }
+
+  if (server.adminPassword === password) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ error: 'Incorrect administrative password' });
+  }
 }));
 
 // POST /api/lyrics/scrape-url

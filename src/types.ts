@@ -48,4 +48,11 @@ export interface SuggestedSong {
   note?: string;
 }
 
+export interface ServerInfo {
+  id: string;
+  name: string;
+  showOnPublicList: boolean;
+  createdAt: number;
+}
+
 

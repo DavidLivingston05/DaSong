@@ -18,7 +18,12 @@ import {
   syncWithMongoDB,
   getLocalWorshipEvents,
   saveWorshipEvent,
-  deleteSuggestion
+  deleteSuggestion,
+  getActiveServerId,
+  switchActiveServer,
+  getPublicServers,
+  createServer,
+  authServerAdmin
 } from './lib/db';
 import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
@@ -34,6 +39,75 @@ export default function App() {
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [recentSongIds, setRecentSongIds] = useState<string[]>([]);
   const [mongoStatus, setMongoStatus] = useState<'connecting' | 'connected' | 'error' | 'offline'>('connecting');
+
+  // Authentication session tracking
+  interface UserSession {
+    role: UserRole;
+    name?: string;
+  }
+
+  const [activeServerId, setActiveServerId] = useState<string>(() => getActiveServerId());
+
+  const [session, setSession] = useState<UserSession | null>(() => {
+    const serverId = getActiveServerId();
+    if (serverId === 'default') {
+      return { role: 'guest', name: 'Guest Browser' };
+    }
+    const savedRole = localStorage.getItem(`lyrasync_user_role_${serverId}`);
+    const savedName = localStorage.getItem(`lyrasync_user_name_${serverId}`);
+    if (savedRole === 'admin' || savedRole === 'choir') {
+      return {
+        role: savedRole as UserRole,
+        name: savedName || (savedRole === 'admin' ? 'Administrator' : '')
+      };
+    }
+    return null; // Force login/role selection for this server
+  });
+
+  const currentRole = session ? session.role : 'guest';
+
+  // Server Join and Create State Variables
+  const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [publicServers, setPublicServers] = useState<any[]>([]);
+  const [serverSearchQuery, setServerSearchQuery] = useState<string>('');
+  const [loadingServers, setLoadingServers] = useState<boolean>(false);
+  
+  // Selected server for role selection during join flow
+  const [joiningServer, setJoiningServer] = useState<any | null>(null);
+  const [joinRole, setJoinRole] = useState<'choir' | 'admin' | null>(null);
+  const [joinNameInput, setJoinNameInput] = useState<string>('');
+  const [joinPasswordInput, setJoinPasswordInput] = useState<string>('');
+  const [joinError, setJoinError] = useState<string>('');
+
+  // Create Server Form State
+  const [createForm, setCreateForm] = useState({
+    id: '',
+    name: '',
+    adminPassword: '',
+    showOnPublicList: true
+  });
+  const [createError, setCreateError] = useState<string>('');
+  const [creatingServerStatus, setCreatingServerStatus] = useState<boolean>(false);
+
+  const fetchServers = async () => {
+    setLoadingServers(true);
+    try {
+      const list = await getPublicServers();
+      setPublicServers(list);
+    } catch (err) {
+      console.error('Failed to fetch public servers:', err);
+    } finally {
+      setLoadingServers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showJoinModal) {
+      fetchServers();
+    }
+  }, [showJoinModal]);
+
 
 
 
@@ -83,7 +157,7 @@ export default function App() {
   }, [loadEvents]);
 
   const loadSuggestions = useCallback(() => {
-    const saved = localStorage.getItem('lyrasync_guideline_suggestions');
+    const saved = localStorage.getItem(`lyrasync_guideline_suggestions_${activeServerId}`);
     if (saved) {
       try {
         setSuggestions(JSON.parse(saved));
@@ -93,7 +167,7 @@ export default function App() {
     } else {
       setSuggestions([]);
     }
-  }, []);
+  }, [activeServerId]);
 
   const handleDismissSuggestion = useCallback(async (id: string) => {
     try {
@@ -101,90 +175,13 @@ export default function App() {
     } catch (err) {
       console.error('Failed to sync suggestion deletion to MongoDB:', err);
     }
-    const saved = localStorage.getItem('lyrasync_guideline_suggestions');
+    const saved = localStorage.getItem(`lyrasync_guideline_suggestions_${activeServerId}`);
     setSuggestions(saved ? JSON.parse(saved) : []);
-  }, []);
+  }, [activeServerId]);
 
-  // Authentication session tracking
-  interface UserSession {
-    role: UserRole;
-    name?: string;
-  }
 
-  const [session, setSession] = useState<UserSession | null>(() => {
-    const savedRole = localStorage.getItem('lyrasync_user_role');
-    const savedName = localStorage.getItem('lyrasync_user_name');
-    if (savedRole === 'admin' || savedRole === 'choir' || savedRole === 'guest') {
-      return {
-        role: savedRole as UserRole,
-        name: savedName || (savedRole === 'admin' ? 'Administrator' : savedRole === 'guest' ? 'Guest Browser' : '')
-      };
-    }
-    return null; // Force login at first
-  });
 
-  const currentRole = session ? session.role : 'guest';
 
-  // Temporary input states for the authentication portal
-  const [selectedPortal, setSelectedPortal] = useState<UserRole | null>(null);
-  const [inputName, setInputName] = useState('');
-  const [inputPassword, setInputPassword] = useState('');
-  const [authError, setAuthError] = useState('');
-
-  // Authentication handler logic
-  const handleSignIn = async (role: UserRole) => {
-    setAuthError('');
-
-    if (role === 'admin') {
-      try {
-        const response = await fetch('/api/auth', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ password: inputPassword })
-        });
-        const data = await response.json();
-        if (response.ok && data.success) {
-          const adminSession: UserSession = { role: 'admin', name: 'Administrator' };
-          setSession(adminSession);
-          localStorage.setItem('lyrasync_user_role', 'admin');
-          localStorage.setItem('lyrasync_user_name', 'Administrator');
-          setSelectedPortal(null);
-          setInputPassword('');
-        } else {
-          setAuthError(data.error || 'Incorrect Admin Password! Please try again.');
-        }
-      } catch (err) {
-        console.error('Auth error:', err);
-        setAuthError('Authentication server offline. Please try again later.');
-      }
-    } else if (role === 'choir') {
-      if (inputName.trim().length >= 2) {
-        const choirSession: UserSession = { role: 'choir', name: inputName.trim() };
-        setSession(choirSession);
-        localStorage.setItem('lyrasync_user_role', 'choir');
-        localStorage.setItem('lyrasync_user_name', inputName.trim());
-        setSelectedPortal(null);
-        setInputName('');
-      } else {
-        setAuthError('Please enter a valid full name to log in.');
-      }
-    } else if (role === 'guest') {
-      const guestSession: UserSession = { role: 'guest', name: 'Guest Browser' };
-      setSession(guestSession);
-      localStorage.setItem('lyrasync_user_role', 'guest');
-      localStorage.setItem('lyrasync_user_name', 'Guest Browser');
-      setSelectedPortal(null);
-    }
-  };
-
-  const handleLogout = () => {
-    setSession(null);
-    localStorage.removeItem('lyrasync_user_role');
-    localStorage.removeItem('lyrasync_user_name');
-    setSelectedPortal(null);
-  };
   
   // App view toggle states
   const [activeTab, setActiveTab] = useState<'dashboard' | 'search' | 'calendar'>('dashboard');
@@ -319,8 +316,144 @@ export default function App() {
     }
   }, [syncSongsList, loadSuggestions, loadEvents]);
 
+  const handleSwitchServer = useCallback(async (newServerId: string) => {
+    switchActiveServer(newServerId);
+    setActiveServerId(newServerId);
+
+    const savedRole = localStorage.getItem(`lyrasync_user_role_${newServerId}`);
+    const savedName = localStorage.getItem(`lyrasync_user_name_${newServerId}`);
+
+    if (newServerId === 'default') {
+      setSession({ role: 'guest', name: 'Guest Browser' });
+    } else if (savedRole === 'admin' || savedRole === 'choir') {
+      setSession({
+        role: savedRole as UserRole,
+        name: savedName || (savedRole === 'admin' ? 'Administrator' : '')
+      });
+    } else {
+      setSession(null); // Force role selection for the server
+    }
+
+    // Clear/reload states
+    setSongs([]);
+    setEvents([]);
+    setSuggestions([]);
+    
+    // Trigger database re-initialization and background sync
+    try {
+      await initDB();
+      await syncSongsList();
+      loadSuggestions();
+      loadEvents();
+      triggerMongoSync();
+    } catch (err) {
+      console.error('Error switching server DB:', err);
+    }
+  }, [syncSongsList, loadSuggestions, loadEvents, triggerMongoSync]);
+
+  const handleJoinServerSubmit = async () => {
+    if (!joiningServer) return;
+    setJoinError('');
+
+    if (joinRole === 'choir') {
+      if (joinNameInput.trim().length < 2) {
+        setJoinError('Please enter a valid name (at least 2 characters).');
+        return;
+      }
+      localStorage.setItem(`lyrasync_user_role_${joiningServer.id}`, 'choir');
+      localStorage.setItem(`lyrasync_user_name_${joiningServer.id}`, joinNameInput.trim());
+      
+      await handleSwitchServer(joiningServer.id);
+      
+      setShowJoinModal(false);
+      setJoiningServer(null);
+      setJoinRole(null);
+      setJoinNameInput('');
+    } else if (joinRole === 'admin') {
+      if (!joinPasswordInput) {
+        setJoinError('Password is required.');
+        return;
+      }
+      try {
+        const res = await authServerAdmin(joiningServer.id, joinPasswordInput);
+        if (res.success) {
+          localStorage.setItem(`lyrasync_user_role_${joiningServer.id}`, 'admin');
+          localStorage.setItem(`lyrasync_user_name_${joiningServer.id}`, 'Administrator');
+          
+          await handleSwitchServer(joiningServer.id);
+          
+          setShowJoinModal(false);
+          setJoiningServer(null);
+          setJoinRole(null);
+          setJoinPasswordInput('');
+        } else {
+          setJoinError('Incorrect admin password.');
+        }
+      } catch (err: any) {
+        setJoinError(err.message || 'Verification failed. Please check the password.');
+      }
+    }
+  };
+
+  const handleCreateServerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateError('');
+    if (!createForm.id.trim() || !createForm.name.trim() || !createForm.adminPassword.trim()) {
+      setCreateError('All fields are required.');
+      return;
+    }
+    
+    const idRegex = /^[a-z0-9-]+$/;
+    if (!idRegex.test(createForm.id.trim())) {
+      setCreateError('Server ID must contain lowercase alphanumeric characters and dashes only.');
+      return;
+    }
+
+    setCreatingServerStatus(true);
+    try {
+      const res = await createServer({
+        id: createForm.id.trim().toLowerCase(),
+        name: createForm.name.trim(),
+        adminPassword: createForm.adminPassword,
+        showOnPublicList: createForm.showOnPublicList
+      });
+      if (res.success) {
+        localStorage.setItem(`lyrasync_user_role_${res.server.id}`, 'admin');
+        localStorage.setItem(`lyrasync_user_name_${res.server.id}`, 'Administrator');
+        localStorage.setItem(`dasong_server_name_${res.server.id}`, res.server.name);
+        
+        await handleSwitchServer(res.server.id);
+        
+        setCreateForm({
+          id: '',
+          name: '',
+          adminPassword: '',
+          showOnPublicList: true
+        });
+        setShowCreateModal(false);
+      }
+    } catch (err: any) {
+      setCreateError(err.message || 'Failed to create server workspace.');
+    } finally {
+      setCreatingServerStatus(false);
+    }
+  };
+
+  const handleLeaveServer = async () => {
+    if (confirm('Are you sure you want to exit this server and return to the Guest public library?')) {
+      await handleSwitchServer('default');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(`lyrasync_user_role_${activeServerId}`);
+    localStorage.removeItem(`lyrasync_user_name_${activeServerId}`);
+    setSession(null);
+  };
+
+
   const handleForceSync = () => {
-    localStorage.removeItem('dasong_local_max_updated_at');
+    localStorage.removeItem(`dasong_local_max_updated_at_${activeServerId}`);
     triggerMongoSync();
   };
 
@@ -351,13 +484,15 @@ export default function App() {
     };
   }, [triggerMongoSync]);
 
-  // Initialize DB and load existing songs
+  // Initialize DB and load existing songs per server
   useEffect(() => {
     // Load recently viewed songs
     try {
-      const stored = localStorage.getItem('dasong_recent_songs');
+      const stored = localStorage.getItem(`dasong_recent_songs_${activeServerId}`);
       if (stored) {
         setRecentSongIds(JSON.parse(stored));
+      } else {
+        setRecentSongIds([]);
       }
     } catch (e) {
       console.error('Failed loading recent songs from localStorage:', e);
@@ -370,12 +505,12 @@ export default function App() {
         let list = await getAllSongsMetadata();
         
         // Auto-seed database with default worship songsheets if completely empty and not seeded before
-        const hasSeeded = localStorage.getItem('dasong_has_seeded') === 'true';
+        const hasSeeded = localStorage.getItem(`dasong_has_seeded_${activeServerId}`) === 'true';
         if (list.length === 0 && !hasSeeded) {
-          console.log('Song library is empty. Seeding default worship songbook...');
+          console.log(`Song library for ${activeServerId} is empty. Seeding default worship songbook...`);
           const { SEED_SONGS } = await import('./data/seedSongs');
           await saveSongsBatch(SEED_SONGS);
-          localStorage.setItem('dasong_has_seeded', 'true');
+          localStorage.setItem(`dasong_has_seeded_${activeServerId}`, 'true');
         }
         
         await syncSongsList();
@@ -388,7 +523,7 @@ export default function App() {
       }
     }
     bootApp();
-  }, [syncSongsList, loadSuggestions, loadEvents]);
+  }, [activeServerId, syncSongsList, loadSuggestions, loadEvents]);
 
   // Auto-reload the page when a new Service Worker (Vercel deploy) takes control
   useEffect(() => {
@@ -505,7 +640,7 @@ export default function App() {
       history.pushState({ songId: id }, '', window.location.pathname);
       setRecentSongIds(prev => {
         const next = [id, ...prev.filter(x => x !== id)].slice(0, 5);
-        localStorage.setItem('dasong_recent_songs', JSON.stringify(next));
+        localStorage.setItem(`dasong_recent_songs_${activeServerId}`, JSON.stringify(next));
         return next;
       });
     }
@@ -590,7 +725,7 @@ export default function App() {
     }
     try {
       // Mark as seeded so that empty database does not trigger re-seeding on reload
-      localStorage.setItem('dasong_has_seeded', 'true');
+      localStorage.setItem(`dasong_has_seeded_${activeServerId}`, 'true');
       await clearAllSongs();
       setSelectedSongId(null);
       await syncSongsList();
@@ -637,171 +772,214 @@ export default function App() {
     };
   }, [songs]);
 
-  if (!session) {
+  const renderGuestWelcome = () => {
+    return (
+      <div className="flex flex-col items-center py-8 md:py-16 px-4 w-full max-w-5xl mx-auto select-none">
+        {/* Ambient glow backgrounds */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-amber-500/[0.03] rounded-full blur-3xl pointer-events-none"></div>
+
+        {/* Hero Section */}
+        <div className="text-center max-w-2xl mb-12 relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider mb-4 animate-bounce">
+            <Sparkles className="w-3.5 h-3.5" /> Premium Worship Companion
+          </div>
+          <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
+            DaSong Songbook Portal
+          </h1>
+          <p className="text-sm md:text-base text-zinc-400 mt-4 leading-relaxed font-medium">
+            A secure multi-tenant platform for churches, choirs, and worship groups. Browse public song sheets, sync setlists, and manage team chord libraries.
+          </p>
+        </div>
+
+        {/* Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full relative z-10">
+          {/* Browse Library */}
+          <div 
+            onClick={() => setActiveTab('search')}
+            className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800/80 hover:border-amber-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[240px]"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300">
+              <BookOpen className="w-6 h-6" />
+            </div>
+            <div className="mt-4">
+              <h3 className="text-base font-extrabold text-white group-hover:text-amber-450 transition-colors">Public Library</h3>
+              <p className="text-xs text-zinc-450 mt-2 leading-relaxed">
+                Browse our default collection of worship lyrics and chords in read-only mode.
+              </p>
+            </div>
+            <span className="text-[10px] font-mono font-bold text-amber-500/80 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+              Browse Songs <ChevronRight className="w-3.5 h-3.5" />
+            </span>
+          </div>
+
+          {/* Join Server */}
+          <div 
+            onClick={() => {
+              setShowJoinModal(true);
+              fetchServers();
+            }}
+            className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800/80 hover:border-amber-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[240px]"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-emerald-450 group-hover:scale-110 transition-transform duration-300">
+              <Layers className="w-6 h-6" />
+            </div>
+            <div className="mt-4">
+              <h3 className="text-base font-extrabold text-white group-hover:text-emerald-400 transition-colors">Join Church Server</h3>
+              <p className="text-xs text-zinc-450 mt-2 leading-relaxed">
+                Connect to an existing workspace for your local church choir or worship team.
+              </p>
+            </div>
+            <span className="text-[10px] font-mono font-bold text-emerald-450 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+              Find Server <ChevronRight className="w-3.5 h-3.5" />
+            </span>
+          </div>
+
+          {/* Create Server */}
+          <div 
+            onClick={() => setShowCreateModal(true)}
+            className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800/80 hover:border-amber-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[240px]"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-rose-450 group-hover:scale-110 transition-transform duration-300">
+              <Plus className="w-6 h-6" />
+            </div>
+            <div className="mt-4">
+              <h3 className="text-base font-extrabold text-white group-hover:text-rose-400 transition-colors">Create Server</h3>
+              <p className="text-xs text-zinc-455 mt-2 leading-relaxed">
+                Initialize a clean, dedicated workspace with isolated database and team permissions.
+              </p>
+            </div>
+            <span className="text-[10px] font-mono font-bold text-rose-455 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+              Start Workspace <ChevronRight className="w-3.5 h-3.5" />
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (activeServerId !== 'default' && !session) {
+    const serverName = localStorage.getItem(`dasong_server_name_${activeServerId}`) || activeServerId;
     return (
       <div id="login-portal" className="flex items-center justify-center min-h-[100dvh] bg-[#070708] text-white p-4 font-sans relative overflow-hidden">
-        {/* Dynamic synth matrix grid line visualizer in backdrop */}
+        {/* Backdrop patterns */}
         <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px]"></div>
-        
-        {/* Glowing backdrop ambient background auras */}
         <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl"></div>
         <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-rose-500/5 rounded-full blur-3xl"></div>
 
-        <div className="w-full max-w-sm p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_40px_rgba(245,158,11,0.05)] relative z-10 animate-in fade-in zoom-in-95 duration-350">
+        <div className="w-full max-w-md p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_40px_rgba(245,158,11,0.05)] relative z-10 animate-in fade-in zoom-in-95 duration-350">
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center p-3 bg-amber-500/10 rounded-2xl text-amber-500 mb-4 border border-amber-500/20 relative shadow-[0_0_20px_rgba(245,158,11,0.15)] overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/5 to-rose-500/5"></div>
-              {/* Dynamic pulsing visualizer bars representing station active telemetry */}
-              <div className="flex items-end gap-1 h-6 relative z-10 px-1 select-none pointer-events-none">
-                <div className="w-1 h-3 bg-amber-500 rounded-full animate-pulse" />
-                <div className="w-1 h-5 bg-amber-400 rounded-full animate-pulse" />
-                <div className="w-1 h-6 bg-orange-500 rounded-full animate-pulse" />
-                <div className="w-1 h-4 bg-rose-500 rounded-full animate-pulse" />
-                <div className="w-1 h-2 bg-amber-500 rounded-full animate-pulse" />
-              </div>
-            </div>
-            <h1 className="text-2xl font-black tracking-tight text-white select-none">DaSong <span className="text-amber-500 text-[10px] font-mono tracking-widest border border-amber-500/30 px-2 py-0.5 rounded ml-1.5 uppercase">Songbook</span></h1>
-            <p className="text-zinc-500 text-xs mt-1.5 font-medium leading-relaxed">Choose your login portal to continue</p>
+            <h1 className="text-2xl font-black tracking-tight text-white mb-2">{serverName}</h1>
+            <p className="text-zinc-550 text-xs font-mono uppercase tracking-widest">Workspace ID: {activeServerId}</p>
+            <p className="text-zinc-400 text-xs mt-2">Select your access role to enter this church server workspace.</p>
           </div>
 
-          {authError && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold">
-              ⚠️ {authError}
+          {joinError && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-405 text-[11px] rounded-xl text-center font-bold">
+              ⚠️ {joinError}
             </div>
           )}
 
-          {!selectedPortal ? (
-            /* MAIN ACCESS SELECTOR CONTAINER */
+          {joinRole === null ? (
             <div className="space-y-3">
               <button 
-                id="portal-select-admin"
-                onClick={() => setSelectedPortal('admin')}
+                onClick={() => {
+                  setJoinRole('choir');
+                  setJoinError('');
+                }}
                 className="w-full flex items-center justify-between p-4 bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-900 hover:border-amber-500/30 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
               >
                 <div>
                   <p className="font-bold text-xs text-white flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    System Administrator
+                    Join as Choir Member
                   </p>
-                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Manage song library, import files, and build service schedules</p>
+                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Access songs, worship setlists, and suggest songs sheets.</p>
                 </div>
                 <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
               </button>
 
               <button 
-                id="portal-select-choir"
-                onClick={() => setSelectedPortal('choir')}
+                onClick={() => {
+                  setJoinRole('admin');
+                  setJoinError('');
+                }}
                 className="w-full flex items-center justify-between p-4 bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-900 hover:border-amber-500/30 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
               >
                 <div>
                   <p className="font-bold text-xs text-white flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                    Choir & Musicians
+                    Login as Administrator
                   </p>
-                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Read chord sheets, transpose pitch, and suggest song selections</p>
+                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Enter password to unlock song creation, imports, and full management.</p>
                 </div>
                 <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
               </button>
 
-              <button 
-                id="portal-select-guest"
-                onClick={() => handleSignIn('guest')}
-                className="w-full p-3.5 bg-zinc-950/50 hover:bg-zinc-900/60 text-zinc-400 hover:text-white text-xs font-bold rounded-2xl text-center border border-dashed border-zinc-900 hover:border-zinc-800 transition-all mt-4 cursor-pointer active-touch"
-              >
-                Continue as Guest (Browse lyrics only)
-              </button>
-
-              <div className="mt-6 pt-4 border-t border-white/5 text-center">
-                <button
-                  id="pwa-force-reset-btn"
+              <div className="pt-4 border-t border-white/5 flex gap-2">
+                <button 
                   onClick={async () => {
-                    if (window.confirm("This will clear all local caches and re-download the entire database from MongoDB. Continue?")) {
-                      localStorage.clear();
-                      try {
-                        const dbs = await window.indexedDB.databases();
-                        for (const dbInfo of dbs) {
-                          if (dbInfo.name) {
-                            window.indexedDB.deleteDatabase(dbInfo.name);
-                          }
-                        }
-                      } catch (err) {
-                        window.indexedDB.deleteDatabase('ChristianLyricsDB');
-                      }
-                      if ('serviceWorker' in navigator) {
-                        try {
-                          const regs = await navigator.serviceWorker.getRegistrations();
-                          for (const reg of regs) {
-                            await reg.unregister();
-                          }
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }
-                      window.location.reload();
-                    }
+                    await handleSwitchServer('default');
                   }}
-                  className="text-[10px] text-zinc-650 hover:text-amber-500 font-mono tracking-tight cursor-pointer transition-colors active-touch py-1.5 px-3 bg-zinc-900/30 hover:bg-zinc-900/80 rounded-lg border border-zinc-900/50"
+                  className="w-full p-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold rounded-2xl text-center transition-all cursor-pointer active-touch"
                 >
-                  ⚡ Force Reset Cache & Sync
+                  ← Return to Guest Library
                 </button>
               </div>
             </div>
           ) : (
-            /* DYNAMIC FORM VIEWS */
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-2.5">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">{selectedPortal === 'admin' ? '👑 Admin' : '🧑‍🎤 Choir'} Login</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">{joinRole === 'admin' ? '👑 Admin' : '🧑‍🎤 Choir'} Access</h3>
                 <button 
-                  id="portal-back-btn"
-                  onClick={() => { setSelectedPortal(null); setAuthError(''); }}
+                  onClick={() => { setJoinRole(null); setJoinError(''); }}
                   className="text-xs text-zinc-400 hover:text-white font-bold cursor-pointer transition-colors"
                 >
                   ← Back
                 </button>
               </div>
 
-              {selectedPortal === 'admin' && (
+              {joinRole === 'admin' && (
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Security Key Password</label>
+                  <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Admin Workspace Password</label>
                   <input 
-                    id="portal-password-input"
                     type="password"
                     placeholder="••••••••"
-                    value={inputPassword}
-                    onChange={(e) => setInputPassword(e.target.value)}
+                    value={joinPasswordInput}
+                    onChange={(e) => setJoinPasswordInput(e.target.value)}
                     className="w-full p-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs font-mono tracking-widest shadow-inner"
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSignIn('admin');
+                      if (e.key === 'Enter') handleJoinServerSubmit();
                     }}
                   />
                 </div>
               )}
 
-              {selectedPortal === 'choir' && (
+              {joinRole === 'choir' && (
                 <div className="space-y-1">
                   <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Enter Your Name</label>
                   <input 
-                    id="portal-name-input"
                     type="text"
-                    placeholder="e.g. Brother John"
-                    value={inputName}
-                    onChange={(e) => setInputName(e.target.value)}
+                    placeholder="e.g. John"
+                    value={joinNameInput}
+                    onChange={(e) => setJoinNameInput(e.target.value)}
                     className="w-full p-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs font-sans shadow-inner"
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSignIn('choir');
+                      if (e.key === 'Enter') handleJoinServerSubmit();
                     }}
                   />
                 </div>
               )}
 
               <button 
-                id="portal-verify-btn"
-                onClick={() => handleSignIn(selectedPortal)}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-3 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md shadow-amber-500/10 active:scale-98 active-touch"
+                onClick={handleJoinServerSubmit}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-3 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md active:scale-98 active-touch"
               >
-                Verify & Authorize
+                Access Server Workspace
               </button>
             </div>
           )}
@@ -868,7 +1046,16 @@ export default function App() {
           </div>
 
           {/* Real-time sync counters & Telemetry strip */}
-          <div id="stats-dashboard" className="flex items-center gap-3 md:gap-3.5 flex-wrap">
+          <div id="stats-dashboard" className="flex items-center gap-3 md:gap-3.5 flex-wrap ml-auto">
+            {activeServerId !== 'default' && (
+              <div className="text-right hidden md:block">
+                <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Workspace</span>
+                <span className="font-mono text-xs leading-none text-zinc-300 block font-black max-w-[120px] truncate">
+                  {localStorage.getItem(`dasong_server_name_${activeServerId}`) || activeServerId}
+                </span>
+              </div>
+            )}
+
             <div className="text-right hidden md:block">
               <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Total Songs</span>
               <span className="font-mono text-xs leading-none text-zinc-300 block font-black">
@@ -881,95 +1068,124 @@ export default function App() {
             {/* Quick theme selections and toggles */}
             <div className="flex items-center gap-2">
               
-              {/* Display User Profile & Logout Link in Header */}
-              {session && (
-                <div className="flex items-center gap-2 sm:gap-3">
-
-                  {/* MongoDB Cloud Sync Status Badge */}
-                  <button
-                    id="mongodb-sync-status-badge"
-                    onClick={handleForceSync}
-                    disabled={mongoStatus === 'connecting'}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
-                      mongoStatus === 'connected'
-                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
-                        : mongoStatus === 'connecting'
-                          ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 animate-pulse'
-                          : mongoStatus === 'error'
-                            ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
-                            : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800'
-                    }`}
-                    title="Click to Force Sync with Cloud Database"
-                  >
-                    <span className="text-xs leading-none">🍃</span>
-                    <span>
-                      {mongoStatus === 'connected'
-                        ? <><span className="hidden xs:inline">Cloud Saved</span><span className="xs:hidden">Saved</span></>
-                        : mongoStatus === 'connecting'
-                          ? 'Syncing...'
-                          : mongoStatus === 'error'
-                            ? <><span className="hidden xs:inline">Sync Error</span><span className="xs:hidden">Error</span></>
-                            : 'Offline'}
-                    </span>
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                      mongoStatus === 'connected'
-                        ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]'
-                        : mongoStatus === 'connecting'
-                          ? 'bg-amber-500 animate-pulse shadow-[0_0_6px_#f59e0b]'
-                          : mongoStatus === 'error'
-                            ? 'bg-rose-500 shadow-[0_0_6px_#ef4444]'
-                            : 'bg-zinc-650'
-                    }`} />
-                  </button>
-
-
-                  
-                  {/* Secondary Header PWA Install Shortcut Badge */}
+              {activeServerId === 'default' ? (
+                <>
                   {showInstallBanner && !isInstalled && (
                     <button 
                       onClick={handleInstallApp}
-                      className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer active-touch mr-1 shrink-0 animate-in fade-in"
+                      className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer active-touch shrink-0"
                       title="Install DaSong Songbook App"
                     >
                       <Download className="h-3.5 w-3.5 stroke-[2.5]" /> Install App
                     </button>
                   )}
-                  
-                  {/* User Profile Pill - Highly optimized and space-efficient on mobile */}
-                  <div 
-                    className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-2 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] shrink-0"
-                    title={`${session.role}: ${session.name}`}
+                  <button
+                    onClick={() => {
+                      setShowJoinModal(true);
+                      fetchServers();
+                    }}
+                    className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-450 text-black font-extrabold px-3 py-1.5 rounded-full text-[10px] uppercase font-mono tracking-wider transition-all cursor-pointer active-touch shrink-0"
                   >
-                    <span className={`text-[10px] font-mono font-extrabold px-1.5 py-0.2 rounded border uppercase shrink-0 ${
-                      session.role === 'admin' 
-                        ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.1)]' 
-                        : session.role === 'choir'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-                    }`}>
-                      <span className="sm:hidden">
-                        {session.role === 'admin' ? '👑' : session.role === 'choir' ? '🧑‍🎤' : '👤'}
-                      </span>
-                      <span className="hidden sm:inline">{session.role}</span>
-                    </span>
-                    <span className="hidden sm:inline text-xs text-zinc-300 font-bold max-w-[120px] truncate">
-                      {session.role === 'choir' ? `👋 ${session.name}` : session.name}
-                    </span>
-                  </div>
-                  
-                  {/* Compact Sign Out - Elegant power icon trigger on mobile, full label on desktop */}
-                  <button 
-                    onClick={handleLogout}
-                    className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-1.5 text-xs font-bold bg-zinc-900 hover:bg-rose-950/20 text-zinc-400 hover:text-rose-400 rounded-full border border-zinc-800 hover:border-rose-900/45 transition-all cursor-pointer active:scale-95 active-touch shrink-0"
-                    title="Sign Out / Exit"
-                  >
-                    <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                    <span className="hidden xs:inline">Sign Out</span>
+                    🔌 Join Server
                   </button>
-                </div>
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="flex items-center gap-1 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-350 hover:text-white font-extrabold px-3 py-1.5 rounded-full text-[10px] uppercase font-mono tracking-wider transition-all cursor-pointer active-touch shrink-0"
+                  >
+                    ➕ Add Server
+                  </button>
+                </>
+              ) : (
+                session && (
+                  <div className="flex items-center gap-2 sm:gap-3">
+
+                    {/* MongoDB Cloud Sync Status Badge */}
+                    <button
+                      id="mongodb-sync-status-badge"
+                      onClick={handleForceSync}
+                      disabled={mongoStatus === 'connecting'}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
+                        mongoStatus === 'connected'
+                          ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                          : mongoStatus === 'connecting'
+                            ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 animate-pulse'
+                            : mongoStatus === 'error'
+                              ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
+                              : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800'
+                      }`}
+                      title="Click to Force Sync with Cloud Database"
+                    >
+                      <span className="text-xs leading-none">🍃</span>
+                      <span>
+                        {mongoStatus === 'connected'
+                          ? <><span className="hidden xs:inline">Cloud Saved</span><span className="xs:hidden">Saved</span></>
+                          : mongoStatus === 'connecting'
+                            ? 'Syncing...'
+                            : mongoStatus === 'error'
+                              ? <><span className="hidden xs:inline">Sync Error</span><span className="xs:hidden">Error</span></>
+                              : 'Offline'}
+                      </span>
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        mongoStatus === 'connected'
+                          ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]'
+                          : mongoStatus === 'connecting'
+                            ? 'bg-amber-500 animate-pulse shadow-[0_0_6px_#f59e0b]'
+                            : mongoStatus === 'error'
+                              ? 'bg-rose-500 shadow-[0_0_6px_#ef4444]'
+                              : 'bg-zinc-650'
+                      }`} />
+                    </button>
+
+
+                    
+                    {/* Secondary Header PWA Install Shortcut Badge */}
+                    {showInstallBanner && !isInstalled && (
+                      <button 
+                        onClick={handleInstallApp}
+                        className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer active-touch mr-1 shrink-0 animate-in fade-in"
+                        title="Install DaSong Songbook App"
+                      >
+                        <Download className="h-3.5 w-3.5 stroke-[2.5]" /> Install App
+                      </button>
+                    )}
+                    
+                    {/* User Profile Pill - Highly optimized and space-efficient on mobile */}
+                    <div 
+                      className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-2 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] shrink-0"
+                      title={`${session.role}: ${session.name}`}
+                    >
+                      <span className={`text-[10px] font-mono font-extrabold px-1.5 py-0.2 rounded border uppercase shrink-0 ${
+                        session.role === 'admin' 
+                          ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.1)]' 
+                          : session.role === 'choir'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                      }`}>
+                        <span className="sm:hidden">
+                          {session.role === 'admin' ? '👑' : session.role === 'choir' ? '🧑‍🎤' : '👤'}
+                        </span>
+                        <span className="hidden sm:inline">{session.role}</span>
+                      </span>
+                      <span className="hidden sm:inline text-xs text-zinc-300 font-bold max-w-[120px] truncate">
+                        {session.role === 'choir' ? `👋 ${session.name}` : session.name}
+                      </span>
+                    </div>
+                    
+                    {/* Compact Sign Out / Leave Server */}
+                    <button 
+                      onClick={handleLeaveServer}
+                      className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-1.5 text-xs font-bold bg-zinc-900 hover:bg-rose-950/20 text-zinc-400 hover:text-rose-455 rounded-full border border-zinc-800 hover:border-rose-900/45 transition-all cursor-pointer active:scale-95 active-touch shrink-0"
+                      title="Leave Server Workspace"
+                    >
+                      <LogOut className="w-3.5 h-3.5 text-rose-455" />
+                      <span className="hidden xs:inline">Leave Workspace</span>
+                    </button>
+                  </div>
+                )
               )}
 
             </div>
+
           </div>
         </div>
 
@@ -1066,10 +1282,12 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18 }}
-              className={session?.role === 'admin' ? "grid grid-cols-1 lg:grid-cols-[7.5fr_2.5fr] gap-8 items-start w-full py-4 md:py-8 px-0 md:px-4 max-w-none mx-auto" : "flex flex-col items-center py-4 md:py-8 px-0 md:px-4 w-full max-w-6xl mx-auto"}
+              className={activeServerId === 'default' ? "w-full" : (session?.role === 'admin' ? "grid grid-cols-1 lg:grid-cols-[7.5fr_2.5fr] gap-8 items-start w-full py-4 md:py-8 px-0 md:px-4 max-w-none mx-auto" : "flex flex-col items-center py-4 md:py-8 px-0 md:px-4 w-full max-w-6xl mx-auto")}
             >
-              {/* Left Column Wrapper */}
-              <div className="flex flex-col gap-5 md:gap-6 w-full">
+              {activeServerId === 'default' ? renderGuestWelcome() : (
+                <>
+                  {/* Left Column Wrapper */}
+                  <div className="flex flex-col gap-5 md:gap-6 w-full">
 
             {/* === MOBILE COMPACT GREETING BAR (hidden on desktop) === */}
             <div className="md:hidden w-full flex items-center justify-between mb-4 px-1">
@@ -1435,9 +1653,10 @@ export default function App() {
               </div>
             </div>
           )}
-          </motion.div>
-
-        )}
+        </>
+      )}
+    </motion.div>
+  )}
 
           {/* VIEW 2: DEDICATED SONG SEARCH VIEW */}
           {activeTab === 'search' && (
@@ -1529,6 +1748,398 @@ export default function App() {
         )}
         </AnimatePresence>
       </main>
+
+      {/* Join Server Modal */}
+      <AnimatePresence>
+        {showJoinModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xs z-40 flex items-end md:items-center justify-center p-0 md:p-4"
+            onClick={() => {
+              setShowJoinModal(false);
+              setJoiningServer(null);
+              setJoinRole(null);
+              setJoinError('');
+            }}
+          >
+            <motion.div
+              initial={{ y: '20px', opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: '20px', opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="bg-[#070708] w-full h-[85vh] md:h-auto md:max-w-md rounded-t-3xl md:rounded-3xl p-5 md:p-6 space-y-4 shadow-2xl border-t md:border border-white/10 text-slate-350 overflow-y-auto pb-safe animate-in fade-in-50 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <h3 className="font-bold text-lg text-white flex items-center gap-1.5">
+                  🔌 Join Church Server
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowJoinModal(false);
+                    setJoiningServer(null);
+                    setJoinRole(null);
+                    setJoinError('');
+                  }}
+                  className="p-2 hover:bg-white/5 rounded-full text-slate-400 cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {joinError && (
+                <div className="p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold">
+                  ⚠️ {joinError}
+                </div>
+              )}
+
+              {joiningServer === null ? (
+                // Screen 1: List public servers
+                <div className="space-y-4">
+                  {/* Search input */}
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <Search className="h-4 w-4 text-zinc-550" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search church or choir server..."
+                      value={serverSearchQuery}
+                      onChange={(e) => setServerSearchQuery(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-2.5 border border-zinc-800 rounded-xl bg-zinc-950 text-white placeholder-zinc-550 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs shadow-inner"
+                    />
+                  </div>
+
+                  {/* Available list */}
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                    {loadingServers ? (
+                      <div className="text-center py-8 text-zinc-550 text-xs font-mono">
+                        Loading active servers...
+                      </div>
+                    ) : (
+                      (() => {
+                        const filtered = publicServers.filter(s => 
+                          s.name.toLowerCase().includes(serverSearchQuery.toLowerCase()) ||
+                          s.id.toLowerCase().includes(serverSearchQuery.toLowerCase())
+                        );
+                        if (filtered.length === 0) {
+                          return (
+                            <div className="text-center py-8 text-zinc-550 text-xs font-sans italic">
+                              No servers found. You can type a private server ID below or create a new server!
+                            </div>
+                          );
+                        }
+                        return filtered.map(s => (
+                          <button
+                            key={s.id}
+                            onClick={() => {
+                              // Cache server name to support page reload display
+                              localStorage.setItem(`dasong_server_name_${s.id}`, s.name);
+                              setJoiningServer(s);
+                            }}
+                            className="w-full p-3.5 bg-zinc-950/50 hover:bg-zinc-950 hover:border-amber-500/30 border border-zinc-850 rounded-xl flex items-center justify-between text-left transition-all cursor-pointer group active-touch"
+                          >
+                            <div>
+                              <div className="text-xs font-bold text-white group-hover:text-amber-450 transition-colors">
+                                {s.name}
+                              </div>
+                              <div className="text-[10px] text-zinc-550 font-mono mt-0.5">
+                                ID: {s.id}
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold text-emerald-450 opacity-0 group-hover:opacity-100 transition-opacity">
+                              [ Join ]
+                            </span>
+                          </button>
+                        ));
+                      })()
+                    )}
+                  </div>
+
+                  {/* Private server entry */}
+                  <div className="pt-3 border-t border-white/5 space-y-2">
+                    <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block">
+                      Join Private Server (by ID)
+                    </span>
+                    <div className="flex gap-2">
+                      <input
+                        id="private-server-id-input"
+                        type="text"
+                        placeholder="e.g. grace-chapel"
+                        className="flex-1 px-3 py-2 border border-zinc-850 bg-zinc-950 rounded-xl text-white outline-none focus:border-amber-500 text-xs font-mono"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = (e.target as HTMLInputElement).value.trim().toLowerCase();
+                            if (val) {
+                              setJoiningServer({ id: val, name: val });
+                            }
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          const input = document.getElementById('private-server-id-input') as HTMLInputElement;
+                          const val = input?.value.trim().toLowerCase();
+                          if (val) {
+                            setJoiningServer({ id: val, name: val });
+                          } else {
+                            setJoinError('Please enter a server ID.');
+                          }
+                        }}
+                        className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all active-touch"
+                      >
+                        Find
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Screen 2: Choose role
+                <div className="space-y-4">
+                  <div className="p-3 bg-zinc-900 border border-zinc-850 rounded-xl text-center">
+                    <span className="text-[10px] font-mono uppercase text-zinc-500">Selected Workspace</span>
+                    <h4 className="text-sm font-bold text-white mt-1">{joiningServer.name}</h4>
+                    <span className="text-[9px] font-mono text-zinc-555 block mt-0.5">ID: {joiningServer.id}</span>
+                  </div>
+
+                  {joinRole === null ? (
+                    <div className="space-y-3">
+                      <button 
+                        onClick={() => {
+                          setJoinRole('choir');
+                          setJoinError('');
+                        }}
+                        className="w-full flex items-center justify-between p-4 bg-zinc-950 border border-zinc-900 hover:border-amber-500/20 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
+                      >
+                        <div>
+                          <p className="font-bold text-xs text-white flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Join as Choir Member
+                          </p>
+                          <p className="text-[10px] text-zinc-500 mt-1">Read sheets, transpose, and suggest songs.</p>
+                        </div>
+                        <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
+                      </button>
+
+                      <button 
+                        onClick={() => {
+                          setJoinRole('admin');
+                          setJoinError('');
+                        }}
+                        className="w-full flex items-center justify-between p-4 bg-zinc-950 border border-zinc-900 hover:border-amber-500/20 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
+                      >
+                        <div>
+                          <p className="font-bold text-xs text-white flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                            Login as Admin
+                          </p>
+                          <p className="text-[10px] text-zinc-500 mt-1">Prompts password to unlock libraries management.</p>
+                        </div>
+                        <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
+                      </button>
+
+                      <button 
+                        onClick={() => {
+                          setJoiningServer(null);
+                          setJoinRole(null);
+                          setJoinError('');
+                        }}
+                        className="w-full p-2.5 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-bold rounded-xl text-center cursor-pointer transition-colors"
+                      >
+                        ← Select Different Server
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <h4 className="text-xs font-bold text-amber-500 uppercase font-mono tracking-wider">
+                          {joinRole === 'admin' ? '👑 Admin Login' : '🧑‍🎤 Choir Member Name'}
+                        </h4>
+                        <button 
+                          onClick={() => { setJoinRole(null); setJoinError(''); }}
+                          className="text-[10px] text-zinc-500 hover:text-white font-bold"
+                        >
+                          ← Change Role
+                        </button>
+                      </div>
+
+                      {joinRole === 'admin' ? (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-mono text-zinc-500 block uppercase">Admin Password</label>
+                          <input 
+                            type="password"
+                            placeholder="Enter password..."
+                            value={joinPasswordInput}
+                            onChange={(e) => setJoinPasswordInput(e.target.value)}
+                            className="w-full p-2.5 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 text-xs font-mono"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleJoinServerSubmit();
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-mono text-zinc-500 block uppercase">Your Full Name</label>
+                          <input 
+                            type="text"
+                            placeholder="e.g. Dave"
+                            value={joinNameInput}
+                            onChange={(e) => setJoinNameInput(e.target.value)}
+                            className="w-full p-2.5 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 text-xs"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleJoinServerSubmit();
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 justify-end pt-2">
+                        <button
+                          type="button"
+                          onClick={() => { setJoinRole(null); setJoinError(''); }}
+                          className="px-4 py-2 text-xs font-semibold bg-white/5 text-slate-300 hover:bg-white/10 rounded-xl"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleJoinServerSubmit}
+                          className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-2 rounded-full text-xs font-bold transition-all shadow-md cursor-pointer active-touch"
+                        >
+                          Enter Server
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create Server Modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xs z-40 flex items-end md:items-center justify-center p-0 md:p-4"
+            onClick={() => {
+              setShowCreateModal(false);
+              setCreateError('');
+            }}
+          >
+            <motion.div
+              initial={{ y: '20px', opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: '20px', opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="bg-[#070708] w-full h-auto md:max-w-md rounded-t-3xl md:rounded-3xl p-5 md:p-6 space-y-4 shadow-2xl border-t md:border border-white/10 text-slate-350 overflow-y-auto pb-safe animate-in fade-in-50 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <h3 className="font-bold text-lg text-white flex items-center gap-1.5">
+                  ➕ Add New Server Workspace
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setCreateError('');
+                  }}
+                  className="p-2 hover:bg-white/5 rounded-full text-slate-400 cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {createError && (
+                <div className="p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold">
+                  ⚠️ {createError}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateServerSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 block mb-1">Server ID (Alphanumeric, dashes, lowercase only) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. city-church-choir"
+                    value={createForm.id}
+                    onChange={(e) => setCreateForm(p => ({ ...p, id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                    className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
+                  />
+                  <span className="text-[9px] text-zinc-550 block mt-1">This forms your unique workspace identifier.</span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 block mb-1">Church / Choir Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. City Church Praise Team"
+                    value={createForm.name}
+                    onChange={(e) => setCreateForm(p => ({ ...p, name: e.target.value }))}
+                    className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 block mb-1">Admin Password *</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Create admin password..."
+                    value={createForm.adminPassword}
+                    onChange={(e) => setCreateForm(p => ({ ...p, adminPassword: e.target.value }))}
+                    className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono tracking-widest"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-1 select-none">
+                  <input
+                    id="checkbox-show-list"
+                    type="checkbox"
+                    checked={createForm.showOnPublicList}
+                    onChange={(e) => setCreateForm(p => ({ ...p, showOnPublicList: e.target.checked }))}
+                    className="w-4 h-4 rounded border-zinc-800 bg-zinc-950 text-amber-500 focus:ring-amber-500/20 cursor-pointer"
+                  />
+                  <label htmlFor="checkbox-show-list" className="text-xs text-zinc-400 cursor-pointer">
+                    Show this workspace in the public servers directory
+                  </label>
+                </div>
+
+                <div className="flex gap-2 justify-end pt-3 border-t border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      setCreateError('');
+                    }}
+                    className="px-4 py-2 text-xs font-semibold bg-white/5 text-slate-300 hover:bg-white/10 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={creatingServerStatus}
+                    className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-2 rounded-full text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                  >
+                    {creatingServerStatus ? 'Creating...' : 'Create Server'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Manual ADD individual Song dialog Overlay */}
       <AnimatePresence>
