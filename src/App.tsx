@@ -505,12 +505,12 @@ export default function App() {
         let list = await getAllSongsMetadata();
         
         // Auto-seed database with default worship songsheets if completely empty and not seeded before
-        const hasSeeded = localStorage.getItem(`dasong_has_seeded_${activeServerId}`) === 'true';
+        const hasSeeded = localStorage.getItem('dasong_has_seeded') === 'true';
         if (list.length === 0 && !hasSeeded) {
-          console.log(`Song library for ${activeServerId} is empty. Seeding default worship songbook...`);
+          console.log('Song library is empty. Seeding default worship songbook...');
           const { SEED_SONGS } = await import('./data/seedSongs');
           await saveSongsBatch(SEED_SONGS);
-          localStorage.setItem(`dasong_has_seeded_${activeServerId}`, 'true');
+          localStorage.setItem('dasong_has_seeded', 'true');
         }
         
         await syncSongsList();
@@ -725,7 +725,7 @@ export default function App() {
     }
     try {
       // Mark as seeded so that empty database does not trigger re-seeding on reload
-      localStorage.setItem(`dasong_has_seeded_${activeServerId}`, 'true');
+      localStorage.setItem('dasong_has_seeded', 'true');
       await clearAllSongs();
       setSelectedSongId(null);
       await syncSongsList();

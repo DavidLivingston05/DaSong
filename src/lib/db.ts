@@ -17,6 +17,14 @@ export function switchActiveServer(serverId: string): void {
 }
 
 export function getServerStorageKey(key: string): string {
+  // If the key is related to songs catalog syncing, return it unpartitioned (global)
+  if (
+    key === 'dasong_unsynced_song_ids' || 
+    key === 'dasong_local_max_updated_at' ||
+    key === 'dasong_has_seeded'
+  ) {
+    return key;
+  }
   const serverId = getActiveServerId();
   return `${key}_${serverId}`;
 }
@@ -34,8 +42,8 @@ export function initDB(): Promise<IDBDatabase> {
   if (_cachedDB) return Promise.resolve(_cachedDB);
 
   return new Promise((resolve, reject) => {
-    const serverId = getActiveServerId();
-    const dbName = `${DB_NAME}_${serverId}`;
+    // Open the global database (unpartitioned) so songs library cache is shared across workspaces
+    const dbName = DB_NAME;
     const request = indexedDB.open(dbName, DB_VERSION);
 
     request.onerror = () => reject(request.error);
