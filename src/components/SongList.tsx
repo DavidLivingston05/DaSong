@@ -181,7 +181,7 @@ function SongList({
                       key={song.id}
                       id={`song-row-${song.id}`}
                       onClick={() => onSelectSong(song.id)}
-                      className={`group border-b border-zinc-850/30 hover:bg-zinc-900/40 cursor-pointer transition-all ${
+                      className={`group border-b border-zinc-850/30 cursor-pointer song-row-card ${
                         isSelected 
                           ? 'bg-amber-550/[0.02] text-white border-b border-amber-550/20' 
                           : kbdIndex === index 
@@ -275,12 +275,12 @@ function SongList({
                   key={song.id}
                   id={`song-card-${song.id}`}
                   onClick={() => onSelectSong(song.id)}
-                  className={`mobile-row mx-3 px-4 py-3 flex items-center justify-between gap-3 cursor-pointer rounded-2xl border transition-all duration-150 active-touch select-none ${
+                  className={`mobile-row mx-3 px-4 py-3 flex items-center justify-between gap-3 cursor-pointer rounded-2xl border transition-all duration-150 active-touch select-none song-row-card ${
                     isSelected
                       ? 'bg-amber-550/[0.02] border-amber-550/30 shadow-md shadow-amber-500/[0.02]'
                       : kbdIndex === index
                         ? 'bg-zinc-900 border-amber-550/20'
-                        : 'bg-zinc-900/60 border-zinc-850/80'
+                        : 'premium-glass-card'
                   }`}
                 >
                   {/* Left: indicator dot */}

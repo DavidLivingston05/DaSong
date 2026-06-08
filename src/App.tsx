@@ -1065,8 +1065,10 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18 }}
-              className="flex flex-col items-center py-4 md:py-12 px-0 md:px-4 w-full max-w-4xl mx-auto"
+              className={session?.role === 'admin' ? "grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-6 items-start w-full py-4 md:py-8 px-0 md:px-4 max-w-6xl mx-auto" : "flex flex-col items-center py-4 md:py-8 px-0 md:px-4 w-full max-w-4xl mx-auto"}
             >
+              {/* Left Column Wrapper */}
+              <div className="flex flex-col gap-5 md:gap-6 w-full">
 
             {/* === MOBILE COMPACT GREETING BAR (hidden on desktop) === */}
             <div className="md:hidden w-full flex items-center justify-between mb-4 px-1">
@@ -1231,21 +1233,21 @@ export default function App() {
 
             {/* Quick Metrics Cards — 2 cols on mobile, 3 on sm+ */}
             <div className="grid grid-cols-3 gap-2 md:gap-3 w-full mb-5 select-none">
-              <div className="bg-zinc-900/60 border border-zinc-850 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
+              <div className="premium-glass-card p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
                 <span className="text-[9px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Songs</span>
                 <span className="font-mono text-xl md:text-2xl text-amber-500 block font-black mt-1">
                   {stats.total}
                 </span>
                 <span className="text-[9px] md:text-[10px] text-zinc-500 mt-0.5 block font-sans">Total</span>
               </div>
-              <div className="bg-zinc-900/60 border border-zinc-850 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
+              <div className="premium-glass-card p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
                 <span className="text-[9px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Stars</span>
                 <span className="font-mono text-xl md:text-2xl text-amber-500 block font-black mt-1">
                   {stats.favorites}
                 </span>
                 <span className="text-[9px] md:text-[10px] text-zinc-500 mt-0.5 block font-sans">Favorites</span>
               </div>
-              <div className="bg-zinc-900/60 border border-zinc-850 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
+              <div className="premium-glass-card p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
                 <span className="text-[9px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Cats</span>
                 <span className="font-mono text-xl md:text-2xl text-amber-500 block font-black mt-1">
                   {stats.categories}
@@ -1343,10 +1345,13 @@ export default function App() {
                 </div>
               </div>
             )}
+            </div> {/* Close Left Column wrapper */}
 
-            {/* Administrative Quick Actions Console */}
+            {/* Right Column Wrapper (Admin Only) */}
             {session?.role === 'admin' && (
-              <div className="w-full text-left mt-5 md:mt-6 bg-zinc-900/60 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-zinc-850 shadow-md select-none">
+              <div className="lg:sticky lg:top-6 flex flex-col gap-5 md:gap-6 h-fit w-full mt-5 lg:mt-0">
+                {/* Administrative Quick Actions Console */}
+                <div className="w-full text-left premium-glass-card p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-md select-none">
                 <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black">Admin Actions</span>
                 <div className="grid grid-cols-2 gap-2.5 mt-3">
                   <button
@@ -1363,11 +1368,9 @@ export default function App() {
                   </button>
                 </div>
               </div>
-            )}
 
-            {/* Choir Requests Review Panel */}
-            {session?.role === 'admin' && (
-              <div className="w-full text-left mt-5 md:mt-6 bg-zinc-900/60 p-5 md:p-6 rounded-2xl md:rounded-3xl border border-zinc-850 shadow-md">
+              {/* Choir Requests Review Panel */}
+              <div className="w-full text-left premium-glass-card p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-md">
                 <div className="flex items-center justify-between border-b border-zinc-850 pb-3 mb-4 select-none">
                   <div>
                     <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black">Song Requests</span>
@@ -1429,10 +1432,11 @@ export default function App() {
                   </div>
                 )}
               </div>
-            )}
-            </motion.div>
-
+            </div>
           )}
+          </motion.div>
+
+        )}
 
           {/* VIEW 2: DEDICATED SONG SEARCH VIEW */}
           {activeTab === 'search' && (
