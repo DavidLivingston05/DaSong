@@ -25,19 +25,24 @@ app.use('/api', (req, res, next) => {
 
 // Helper to partition queries. Matches exact serverId, or if serverId is 'default', matches default or missing serverId.
 function getQueryWithServer(req, customQuery = {}) {
-  if (req.serverId === 'default') {
+  const serverFilter = req.serverId === 'default'
+    ? {
+        $or: [
+          { serverId: 'default' },
+          { serverId: { $exists: false } }
+        ]
+      }
+    : { serverId: req.serverId };
+
+  if (Object.keys(customQuery).length > 0) {
     return {
-      ...customQuery,
-      $or: [
-        { serverId: 'default' },
-        { serverId: { $exists: false } }
+      $and: [
+        serverFilter,
+        customQuery
       ]
     };
   }
-  return {
-    ...customQuery,
-    serverId: req.serverId
-  };
+  return serverFilter;
 }
 
 const MONGODB_URI = process.env.MONGODB_URI;
