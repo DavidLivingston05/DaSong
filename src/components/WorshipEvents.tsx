@@ -129,12 +129,12 @@ export default function WorshipEvents({
   const [liveSong, setLiveSong] = useState<Song | null>(null);
   const [liveFontSize, setLiveFontSize] = useState<number>(24);
   const [liveShowChords, setLiveShowChords] = useState<boolean>(false);
-  const [touchOffset, setTouchOffset] = useState<number>(0);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const touchStartTime = useRef<number>(0);
   const isDragging = useRef<boolean>(false);
   const isScrolling = useRef<boolean>(false);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [liveSetlistSongIds, setLiveSetlistSongIds] = useState<string[]>([]);
   const [activeStanzaIndex, setActiveStanzaIndex] = useState<number>(0);
   const targetSlideDirectionRef = useRef<'first' | 'last'>('first');
@@ -587,7 +587,10 @@ export default function WorshipEvents({
     touchStartTime.current = Date.now();
     isDragging.current = false;
     isScrolling.current = false;
-    setTouchOffset(0);
+
+    if (trackRef.current) {
+      trackRef.current.style.transition = 'none';
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -600,6 +603,9 @@ export default function WorshipEvents({
     if (!isDragging.current && !isScrolling.current) {
       if (Math.abs(diffX) > 10 && Math.abs(diffX) > Math.abs(diffY)) {
         isDragging.current = true;
+        if (trackRef.current) {
+          trackRef.current.style.transition = 'none';
+        }
       } else if (Math.abs(diffY) > 10 && Math.abs(diffY) > Math.abs(diffX)) {
         isScrolling.current = true;
       }
@@ -615,9 +621,13 @@ export default function WorshipEvents({
 
       let offset = diffX;
       if ((isFirstSlideOfFirstSong && diffX > 0) || (isLastSlideOfLastSong && diffX < 0)) {
-        offset = diffX * 0.3; // drag resistance at boundaries
+        offset = diffX * 0.25; // added drag resistance
       }
-      setTouchOffset(offset);
+
+      // Direct DOM update bypasses React re-render, ensuring 60fps/120fps smooth movement
+      if (trackRef.current) {
+        trackRef.current.style.transform = `translateX(calc(-${activeStanzaIndex * 100}% + ${offset}px))`;
+      }
     }
   };
 
@@ -646,12 +656,17 @@ export default function WorshipEvents({
         handleNextSlide();
       } else if (diffX > threshold) {
         handlePrevSlide();
+      } else {
+        // Snap back directly in DOM
+        if (trackRef.current) {
+          trackRef.current.style.transition = 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)';
+          trackRef.current.style.transform = `translateX(-${activeStanzaIndex * 100}%)`;
+        }
       }
     }
 
     isDragging.current = false;
     isScrolling.current = false;
-    setTouchOffset(0);
   };
 
   const renderStanzaText = (text: string) => {
@@ -707,6 +722,19 @@ export default function WorshipEvents({
 
   const renderLiveConsole = () => {
     if (!showLiveConsole || !liveSong) return null;
+
+    const isSongLoaded = liveSong && liveSong.id === liveSongId;
+    if (!isSongLoaded) {
+      return (
+        <div className="fixed inset-0 bg-[#050505] text-white z-50 flex flex-col items-center justify-center font-sans">
+          <div className="animate-pulse flex flex-col items-center gap-4">
+            <div className="w-12 h-12 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin" />
+            <span className="text-zinc-500 text-xs font-mono tracking-widest uppercase">Loading Song...</span>
+          </div>
+        </div>
+      );
+    }
+
     const stanzas = parseLyricsToStanzas(liveSong.lyrics);
     const curIndex = liveSongId && liveSetlistSongIds ? liveSetlistSongIds.indexOf(liveSongId) : -1;
     const hasPrev = curIndex > 0;
@@ -805,34 +833,37 @@ export default function WorshipEvents({
         >
           {stanzas.length > 0 ? (
             <div 
+              ref={trackRef}
               className="flex w-full h-full will-change-transform"
               style={{ 
-                transform: `translateX(calc(-${activeStanzaIndex * 100}% + ${touchOffset}px))`,
-                transition: isDragging.current ? 'none' : 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)'
+                transform: `translateX(-${activeStanzaIndex * 100}%)`,
+                transition: 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)'
               }}
             >
               {stanzas.map((stanza, idx) => (
                 <div 
                   key={idx}
-                  className="w-full h-full shrink-0 flex flex-col items-center justify-center px-6 overflow-y-auto scrollbar-none py-10"
+                  className="w-full h-full shrink-0 overflow-y-auto scrollbar-none flex flex-col justify-start"
                   style={{ contentVisibility: 'auto' }}
                 >
-                  <div className="w-full max-w-4xl text-center space-y-6 select-none my-auto">
-                    <div className="mb-4">
-                      <span className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                        stanza.isChorus 
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black' 
-                          : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
-                      }`}>
-                        {stanza.label}
-                      </span>
-                    </div>
+                  <div className="w-full min-h-full flex flex-col justify-center items-center px-6 py-10">
+                    <div className="w-full max-w-4xl text-center space-y-6 select-none my-auto">
+                      <div className="mb-4">
+                        <span className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                          stanza.isChorus 
+                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black' 
+                            : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+                        }`}>
+                          {stanza.label}
+                        </span>
+                      </div>
 
-                    <div 
-                      className="whitespace-pre-line leading-relaxed font-black tracking-wide select-none"
-                      style={{ fontSize: `${liveFontSize}px` }}
-                    >
-                      {renderStanzaText(stanza.text)}
+                      <div 
+                        className="whitespace-pre-line leading-relaxed font-black tracking-wide select-none"
+                        style={{ fontSize: `${liveFontSize}px` }}
+                      >
+                        {renderStanzaText(stanza.text)}
+                      </div>
                     </div>
                   </div>
                 </div>
