@@ -998,7 +998,7 @@ export default function App() {
         <div className="w-full max-w-[1850px] mx-auto flex flex-col gap-3.5">
           {/* Row 1: Brand Logo & Telemetry Strip */}
           <div className="flex flex-wrap items-center justify-between w-full gap-y-2 gap-x-4">
-          <div className="flex items-center h-8 md:h-11 w-auto select-none transition-all duration-300 hover:scale-[1.01] hover:brightness-110">
+          <div className="flex items-center h-10 md:h-16 w-auto select-none transition-all duration-300 hover:scale-[1.01] hover:brightness-110">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 140" className="h-full w-auto">
               <defs>
                 <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="0%">
