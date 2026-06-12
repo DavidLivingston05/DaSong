@@ -33,17 +33,9 @@ function parseLyricsToStanzas(lyrics: string): Stanza[] {
            !trimmed.startsWith('bpm :');
   });
 
-  // Check if there are explicit numbered verses in the lyrics
-  const hasNumberedVerses = lyricsSections.some(section => {
-    const trimmed = section.trim();
-    return /^\d+[\s\.\)]/.test(trimmed);
-  });
-
-  let verseCounter = 1;
-
-  return lyricsSections.map((section) => {
+  return lyricsSections.map((section, idx) => {
     let text = section.trim();
-    let label = '';
+    let label = `Slide ${idx + 1}`;
     let isChorus = false;
 
     // Check if starts with a number like "1.", "2 ", "3)"
@@ -53,7 +45,6 @@ function parseLyricsToStanzas(lyrics: string): Stanza[] {
     const isExplicitChorus = /^(chorus|refrain|பல்லவி|pallavi)\b/i.test(text);
 
     if (numMatch) {
-      label = numMatch[1];
       text = numMatch[2].trim();
     } else if (isExplicitChorus) {
       isChorus = true;
@@ -62,16 +53,6 @@ function parseLyricsToStanzas(lyrics: string): Stanza[] {
         text = chorusLabelMatch[2].trim();
       }
       label = 'Chorus';
-    } else {
-      // Unnumbered/unlabeled section
-      if (hasNumberedVerses) {
-        // If the song has numbered verses elsewhere, any unnumbered sections before/between them are typically Chorus
-        isChorus = true;
-        label = 'Chorus';
-      } else {
-        // If there are no numbers at all, we just number them sequentially
-        label = String(verseCounter++);
-      }
     }
 
     return {
@@ -254,6 +235,67 @@ export default function WorshipEvents({
       }
     };
   }, [showLiveConsole, liveSong, liveSongId]);
+
+  useEffect(() => {
+    setActiveStanzaIndex(0);
+  }, [liveSongId]);
+
+  useEffect(() => {
+    if (!showLiveConsole || !liveSong) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const stanzasCount = parseLyricsToStanzas(liveSong.lyrics).length;
+      if (stanzasCount === 0) return;
+
+      if (e.key === 'Escape') {
+        setShowLiveConsole(false);
+        setLiveSongId(null);
+        return;
+      }
+
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        setActiveStanzaIndex((prev) => {
+          if (prev >= stanzasCount - 1) {
+            const curSongIdx = liveSetlistSongIds.indexOf(liveSongId || '');
+            if (curSongIdx !== -1 && curSongIdx < liveSetlistSongIds.length - 1) {
+              setLiveSongId(liveSetlistSongIds[curSongIdx + 1]);
+              return 0;
+            }
+            return prev;
+          }
+          const nextIdx = prev + 1;
+          const element = document.getElementById(`live-stanza-${nextIdx}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          return nextIdx;
+        });
+      } else if (e.key === 'ArrowLeft' || e.key === 'Backspace') {
+        e.preventDefault();
+        setActiveStanzaIndex((prev) => {
+          if (prev <= 0) {
+            const curSongIdx = liveSetlistSongIds.indexOf(liveSongId || '');
+            if (curSongIdx > 0) {
+              setLiveSongId(liveSetlistSongIds[curSongIdx - 1]);
+            }
+            return prev;
+          }
+          const prevIdx = prev - 1;
+          const element = document.getElementById(`live-stanza-${prevIdx}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          return prevIdx;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showLiveConsole, liveSong, liveSongId, liveSetlistSongIds]);
 
   const mobileScrollTimerRef = useRef<number | null>(null);
 
