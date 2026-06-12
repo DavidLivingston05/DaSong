@@ -1000,7 +1000,7 @@ export default function App() {
           <div className="flex flex-wrap items-center justify-between w-full gap-y-2 gap-x-4">
           <div className="flex items-center gap-2.5 md:gap-3.5 select-none">
             {/* Ultra-Stylish CSS Gradient Vector Logo */}
-            <div className="w-9 h-9 md:w-11 md:h-11 bg-zinc-900/60 border border-zinc-800/85 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.15)] shrink-0 relative overflow-hidden group hover:border-purple-500/35 transition-all duration-300">
+            <div className="w-12 h-12 md:w-14 md:h-14 bg-zinc-900/60 border border-zinc-800/85 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-[0_0_25px_rgba(168,85,247,0.2)] shrink-0 relative overflow-hidden group hover:border-purple-500/35 transition-all duration-300">
               {/* Glowing backdrop aura */}
               <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/15 to-amber-500/15 opacity-60 group-hover:opacity-100 transition-opacity duration-300"></div>
               
