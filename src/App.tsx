@@ -999,63 +999,56 @@ export default function App() {
           {/* Row 1: Brand Logo & Telemetry Strip */}
           <div className="flex flex-wrap items-center justify-between w-full gap-y-2 gap-x-4">
           <div className="flex items-center h-8 md:h-11 w-auto select-none transition-all duration-300 hover:scale-[1.01] hover:brightness-110">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 250" className="h-full w-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 140" className="h-full w-auto">
               <defs>
-                <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#0a0a0c"/>
-                  <stop offset="100%" stopColor="#141419"/>
-                </linearGradient>
-
                 <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#FF5E3A"/>
                   <stop offset="60%" stopColor="#FF9233"/>
                   <stop offset="100%" stopColor="#FFC300"/>
                 </linearGradient>
 
-                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="6" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                <filter id="cleanGlow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="5" result="blur" />
+                  <feComponentTransfer in="blur" result="glowCore">
+                    <feFuncA type="linear" slope="0.6"/> </feComponentTransfer>
+                  <feComposite in="SourceGraphic" in2="glowCore" operator="over"/>
                 </filter>
               </defs>
 
-              <rect width="100%" height="100%" rx="16" fill="url(#bgGrad)"/>
-
-              <g transform="translate(60, 55)">
-                <path d="M10,70 Q35,0 55,70 T100,70" fill="none" stroke="url(#logoGrad)" strokeWidth="12" strokeLinecap="round" filter="url(#glow)" opacity="0.4"/>
+              <g transform="translate(10, 10)">
+                <rect x="0" y="45" width="9" height="40" rx="4.5" fill="#FF5E3A" />
+                <rect x="16" y="25" width="9" height="80" rx="4.5" fill="url(#logoGrad)" />
+                <rect x="32" y="5" width="9" height="120" rx="4.5" fill="url(#logoGrad)" filter="url(#cleanGlow)" />
+                <rect x="48" y="20" width="9" height="90" rx="4.5" fill="url(#logoGrad)" />
+                <rect x="64" y="40" width="9" height="50" rx="4.5" fill="#FF9233" />
+                <rect x="80" y="30" width="9" height="70" rx="4.5" fill="url(#logoGrad)" />
+                <rect x="96" y="50" width="9" height="30" rx="4.5" fill="#FFC300" />
                 
-                <rect x="0" y="50" width="10" height="40" rx="5" fill="#FF5E3A" />
-                <rect x="18" y="30" width="10" height="80" rx="5" fill="url(#logoGrad)" />
-                <rect x="36" y="10" width="10" height="120" rx="5" fill="url(#logoGrad)" />
-                <rect x="54" y="25" width="10" height="90" rx="5" fill="url(#logoGrad)" />
-                <rect x="72" y="45" width="10" height="50" rx="5" fill="#FF9233" />
-                <rect x="90" y="35" width="10" height="70" rx="5" fill="url(#logoGrad)" />
-                <rect x="108" y="55" width="10" height="30" rx="5" fill="#FFC300" />
-                
-                <path d="M-20,70 L0,70 M118,70 L138,70" stroke="#FFC300" strokeWidth="4" strokeLinecap="round" opacity="0.7"/>
+                <path d="M-10,65 L-2,65 M107,65 L115,65" stroke="#FFC300" strokeWidth="3" strokeLinecap="round" opacity="0.8"/>
               </g>
 
-              <text x="230" y="155" 
+              <text x="145" y="102" 
                     fontFamily="system-ui, -apple-system, sans-serif" 
-                    fontSize="90" 
+                    fontSize="82" 
                     fontWeight="800" 
                     fill="#FFFFFF" 
                     letterSpacing="-2">Da</text>
 
-              <text x="355" y="155" 
+              <text x="260" y="102" 
                     fontFamily="system-ui, -apple-system, sans-serif" 
-                    fontSize="90" 
+                    fontSize="82" 
                     fontWeight="800" 
                     fill="url(#logoGrad)" 
                     letterSpacing="-2">Song</text>
 
-              <text x="595" y="153" 
+              <text x="485" y="100" 
                     fontFamily="system-ui, -apple-system, sans-serif" 
-                    fontSize="22" 
+                    fontSize="20" 
                     fontWeight="600" 
                     fill="#A0A0AA" 
-                    letterSpacing="8">STUDIO</text>
+                    letterSpacing="9">STUDIO</text>
 
-              <circle cx="735" cy="144" r="5" fill="#FF9233" filter="url(#glow)"/>
+              <circle cx="735" cy="92" r="4.5" fill="#FF9233" filter="url(#cleanGlow)"/>
             </svg>
           </div>
 
