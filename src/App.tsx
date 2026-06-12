@@ -994,44 +994,25 @@ export default function App() {
       <div className="absolute inset-0 pointer-events-none opacity-2 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
       
       {/* Top Professional Navigation Header - Styled like a premium MIDI master strip */}
-      <header id="main-header" className="bg-zinc-950/95 border-b border-zinc-800/80 text-white shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-20 p-3 md:p-4 sticky top-0 md:relative backdrop-blur-md">
+      <header id="main-header" className="bg-zinc-950/95 border-b border-zinc-800/80 text-white shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-20 px-3 pb-3 pt-safe md:p-4 sticky top-0 md:relative backdrop-blur-md">
         <div className="w-full max-w-[1850px] mx-auto flex flex-col gap-3.5">
           {/* Row 1: Brand Logo & Telemetry Strip */}
-          <div className="flex items-center justify-between w-full gap-4">
+          <div className="flex flex-wrap items-center justify-between w-full gap-y-2 gap-x-4">
           <div className="flex items-center gap-2.5 md:gap-3.5 select-none">
             {/* Ultra-Stylish CSS Gradient Vector Logo */}
-            <div className="w-9 h-9 md:w-11 md:h-11 bg-zinc-900/60 border border-zinc-800/85 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.12)] shrink-0 relative overflow-hidden group hover:border-amber-500/35 transition-all duration-300">
+            <div className="w-9 h-9 md:w-11 md:h-11 bg-zinc-900/60 border border-zinc-800/85 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.15)] shrink-0 relative overflow-hidden group hover:border-purple-500/35 transition-all duration-300">
               {/* Glowing backdrop aura */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 to-rose-500/10 opacity-60 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/15 to-amber-500/15 opacity-60 group-hover:opacity-100 transition-opacity duration-300"></div>
               
-              {/* Sleek Custom Vector SVG Logo with Glowing Gradients: Equalizer Crossbeam + Vertical Cross */}
-              <svg className="w-5 h-5 md:w-6.5 md:h-6.5 relative z-10 drop-shadow-[0_2px_10px_rgba(245,158,11,0.45)]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="cross-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#fbbf24" /> {/* Gold */}
-                    <stop offset="100%" stopColor="#f97316" /> {/* Orange */}
-                  </linearGradient>
-                  <linearGradient id="wave-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#ef4444" /> {/* Red */}
-                    <stop offset="50%" stopColor="#f43f5e" /> {/* Rose */}
-                    <stop offset="100%" stopColor="#ec4899" /> {/* Pink */}
-                  </linearGradient>
-                </defs>
-                
-                {/* Modern Equalizer Soundwaves forming the horizontal crossbeam */}
-                <rect x="3" y="11" width="1.5" height="2" rx="0.75" fill="url(#wave-grad)" />
-                <rect x="5.75" y="9" width="1.5" height="6" rx="0.75" fill="url(#wave-grad)" />
-                <rect x="8.5" y="6" width="1.5" height="12" rx="0.75" fill="url(#wave-grad)" />
-                <rect x="14" y="6" width="1.5" height="12" rx="0.75" fill="url(#wave-grad)" />
-                <rect x="16.75" y="9" width="1.5" height="6" rx="0.75" fill="url(#wave-grad)" />
-                <rect x="19.5" y="11" width="1.5" height="2" rx="0.75" fill="url(#wave-grad)" />
-
-                {/* Sleek Vertical Cross Beam in the center */}
-                <rect x="11.25" y="2" width="1.5" height="20" rx="0.75" fill="url(#cross-grad)" />
-              </svg>
+              {/* Render the new trendy App Icon */}
+              <img 
+                src="/app_icon.png" 
+                alt="DaSong Logo" 
+                className="w-full h-full object-cover relative z-10"
+              />
               
               {/* Dynamic live red indicator dot */}
-              <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_#ef4444]" />
+              <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_#ef4444] z-20" />
             </div>
 
             {/* Stylish Gradient App Name */}
