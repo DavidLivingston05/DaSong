@@ -998,32 +998,50 @@ export default function App() {
         <div className="w-full max-w-[1850px] mx-auto flex flex-col gap-3.5">
           {/* Row 1: Brand Logo & Telemetry Strip */}
           <div className="flex flex-wrap items-center justify-between w-full gap-y-2 gap-x-4">
-          <div className="flex items-center gap-2.5 md:gap-3.5 select-none">
-            {/* Ultra-Stylish CSS Gradient Vector Logo */}
-            <div className="w-12 h-12 md:w-14 md:h-14 bg-zinc-900/60 border border-zinc-800/85 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-[0_0_25px_rgba(245,158,11,0.25)] shrink-0 relative overflow-hidden group hover:border-amber-500/35 transition-all duration-300">
-              {/* Glowing backdrop aura */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/15 to-orange-500/15 opacity-60 group-hover:opacity-100 transition-opacity duration-300"></div>
-              
-              {/* Render the new trendy App Icon */}
-              <img 
-                src="/app_icon.png" 
-                alt="DaSong Logo" 
-                className="w-full h-full object-cover relative z-10"
-              />
-              
-              {/* Dynamic live red indicator dot */}
-              <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_#ef4444] z-20" />
-            </div>
+          <div className="flex items-center h-8 md:h-11 w-auto select-none transition-all duration-300 hover:scale-[1.01] hover:brightness-110">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 140" className="h-full w-auto" fill="none">
+              <defs>
+                <linearGradient id="dasong-monolith-orange" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#FF3E00" />
+                  <stop offset="60%" stopColor="#FF7A00" />
+                  <stop offset="100%" stopColor="#FFB800" />
+                </linearGradient>
 
-            {/* Stylish Gradient App Name */}
-            <div className="flex flex-col text-left">
-              <h1 className="text-base md:text-2xl font-black tracking-tight select-none leading-none bg-gradient-to-r from-amber-400 via-orange-400 to-rose-500 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(245,158,11,0.15)]">
-                DaSong
-              </h1>
-              <span className="text-[8px] md:text-[9.5px] font-mono tracking-[0.25em] text-zinc-500 font-extrabold uppercase mt-1 block">
-                SONGBOOK
-              </span>
-            </div>
+                <filter id="hardware-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+
+              <g transform="translate(10, 5)">
+                <g opacity="0.12">
+                  <line x1="45" y1="68" x2="860" y2="68" stroke="#FFFFFF" strokeWidth="1" strokeDasharray="2 10" />
+                  <path d="M 45,15 L 45,120 M 175,15 L 175,120" stroke="#FFFFFF" strokeWidth="1" strokeDasharray="4 6" />
+                </g>
+
+                <g filter="url(#hardware-glow)">
+                  <path d="M 45,15 L 125,15 C 165,15 185,37 185,70 C 185,103 165,125 125,125 L 45,125 Z M 90,45 L 90,95 L 120,95 C 135,95 144,87 144,70 C 144,53 135,45 120,45 Z" fill="#FFFFFF" />
+                  <path d="M 45,60 L 90,43 L 90,53 L 45,70 Z" fill="url(#dasong-monolith-orange)" />
+
+                  <path d="M 235,45 C 212,45 198,63 198,87 C 198,111 212,127 235,127 C 252,127 266,115 266,103 L 266,125 L 288,125 L 288,47 L 266,47 L 266,60 C 258,49 248,45 235,45 Z M 245,65 C 258,65 266,75 266,87 C 266,99 258,107 245,107 C 232,107 222,99 222,87 C 222,75 232,65 245,65 Z" fill="#FFFFFF" />
+
+                  <path d="M 325,73 L 350,68 C 350,59 362,53 376,53 C 392,53 400,61 400,70 C 400,83 384,89 362,95 C 335,103 322,113 322,130 C 322,149 342,159 374,159 C 406,159 428,141 428,123 L 402,126 C 402,135 390,141 376,141 C 360,141 350,135 350,126 C 350,115 362,111 388,103 C 415,95 428,85 428,67 C 428,45 405,33 375,33 C 342,33 325,49 325,73 Z" fill="url(#dasong-monolith-orange)" />
+
+                  <path d="M 452,87 C 452,61 474,45 502,45 C 530,45 552,61 552,87 C 552,113 530,129 502,129 C 474,129 452,113 452,87 Z M 476,87 C 476,103 486,109 502,109 C 518,109 528,103 528,87 C 528,71 518,65 502,65 C 486,65 476,71 476,87 Z" fill="url(#dasong-monolith-orange)" />
+
+                  <path d="M 576,47 L 600,47 L 600,59 C 608,49 622,45 636,45 C 660,45 672,60 672,85 L 672,125 L 647,125 L 647,89 C 647,76 640,66 626,66 C 612,66 600,76 600,93 L 600,125 L 576,125 Z" fill="url(#dasong-monolith-orange)" />
+
+                  <path d="M 696,87 C 696,61 716,45 742,45 C 768,45 778,60 778,60 L 778,47 L 802,47 L 802,121 C 802,149 782,161 754,161 L 726,161 L 726,140 L 746,140 C 764,140 776,134 776,119 L 776,105 C 768,115 754,121 740,121 C 714,121 696,107 696,87 Z M 721,87 C 721,101 730,106 742,106 C 754,106 776,97 776,87 C 776,76 754,66 742,66 C 730,66 721,73 721,87 Z" fill="url(#dasong-monolith-orange)" />
+
+                  <path d="M 814,87 L 824,87 L 830,55 L 838,119 L 845,30 L 852,133 L 860,70 L 866,100 L 874,87 L 890,87" fill="none" stroke="url(#dasong-monolith-orange)" strokeWidth="5" strokeLinejoin="miter" strokeLinecap="square" />
+                </g>
+
+                <text x="198" y="146" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="11.5" fill="#474B54" letterSpacing="18.5">S O N G B O O K   W O R K S P A C E</text>
+              </g>
+            </svg>
           </div>
 
           {/* Real-time sync counters & Telemetry strip */}
