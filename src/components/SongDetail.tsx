@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders } from 'lucide-react';
+import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2 } from 'lucide-react';
 import { Song, UserRole, WorshipEvent } from '../types';
 import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions, getLocalWorshipEvents, saveWorshipEvent } from '../lib/db';
 import { transposeLyrics, stripChords } from '../utils/chordTransposer';
@@ -127,6 +127,83 @@ export default function SongDetail({
   const [showChords, setShowChords] = useState<boolean>(false);
   const [fontSize, setFontSize] = useState<number>(16);
   const [showMobileDrawer, setShowMobileDrawer] = useState<boolean>(false);
+
+  // Share and copy states & helpers
+  const [showShareDropdown, setShowShareDropdown] = useState<boolean>(false);
+  const [copyToast, setCopyToast] = useState<string>('');
+
+  useEffect(() => {
+    if (copyToast) {
+      const t = setTimeout(() => setCopyToast(''), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [copyToast]);
+
+  const handleCopyChords = async () => {
+    try {
+      let processed = song.lyrics;
+      if (transposeStep !== 0) {
+        processed = transposeLyrics(processed, transposeStep);
+      }
+      const header = `${song.title}\nBy: ${song.author || 'Traditional'}\nKey: ${transposedKey}\nBPM: ${song.bpm || 72}\n\n`;
+      await navigator.clipboard.writeText(header + processed);
+      setCopyToast('Chords copied to clipboard!');
+      setShowShareDropdown(false);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to copy chords');
+    }
+  };
+
+  const handleCopyLyricsOnly = async () => {
+    try {
+      let processed = stripChords(song.lyrics);
+      const rawLines = processed.split('\n');
+      const cleanLyricsLines: string[] = [];
+      let lyricsStarted = false;
+      for (const line of rawLines) {
+        const trimmed = line.trim();
+        if (!lyricsStarted) {
+          const isMetadata = 
+            /^(?:Title|Name|Author|Artist|Composer|Writer|Key|Chord\s*Key|Bpm|Tempo|Category|Genre|Theme)\s*:/i.test(trimmed) ||
+            /^lyrics\s*:/i.test(trimmed);
+          if (isMetadata) continue;
+          if (trimmed === '') continue;
+          lyricsStarted = true;
+        }
+        cleanLyricsLines.push(line);
+      }
+      processed = cleanLyricsLines.join('\n').trim();
+
+      const header = `${song.title}\nBy: ${song.author || 'Traditional'}\n\n`;
+      await navigator.clipboard.writeText(header + processed);
+      setCopyToast('Lyrics copied to clipboard!');
+      setShowShareDropdown(false);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to copy lyrics');
+    }
+  };
+
+  const handleCopyWebLink = async () => {
+    try {
+      const currentUrl = window.location.href;
+      const url = new URL(currentUrl);
+      url.searchParams.set('song', song.id);
+      
+      const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
+      if (serverId !== 'default') {
+        url.searchParams.set('server', serverId);
+      }
+      
+      await navigator.clipboard.writeText(url.toString());
+      setCopyToast('Link copied to clipboard!');
+      setShowShareDropdown(false);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to copy link');
+    }
+  };
 
   // Compute transposed key
   const transposedKey = useMemo(() => {
@@ -491,6 +568,13 @@ export default function SongDetail({
         </div>
       )}
       
+      {/* Copy success toast */}
+      {copyToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-5 py-2.5 bg-amber-500 text-black font-black text-xs rounded-full shadow-2xl animate-in fade-in slide-in-from-top-2 flex items-center gap-2 pointer-events-none">
+          <Check className="h-3.5 w-3.5 stroke-[3]" /> {copyToast}
+        </div>
+      )}
+      
       {/* Detail Header Strip - Masterfully designed for both Desktop (Windows) and Mobile (iOS/Android) */}
       <div className="p-4 border-b border-zinc-800/80 bg-[#050506] flex items-center justify-between gap-4">
         
@@ -517,6 +601,44 @@ export default function SongDetail({
           >
             <Heart className={`h-4 w-4 ${song.favorite ? 'fill-amber-400 text-amber-400' : ''}`} />
           </button>
+
+          {/* Share Dropdown Button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowShareDropdown(!showShareDropdown)}
+              className={`h-12 w-12 rounded-2xl border flex items-center justify-center cursor-pointer transition-all shrink-0 ${
+                showShareDropdown
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
+              }`}
+              title="Share / Copy Options"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+            {showShareDropdown && (
+              <div className="absolute right-0 bottom-14 md:bottom-auto md:top-14 w-48 bg-zinc-950 border border-zinc-850 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-zinc-900">Share / Copy Options</p>
+                <button
+                  onClick={handleCopyChords}
+                  className="w-full text-left p-2 rounded-xl text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
+                >
+                  📋 Copy Chord Sheet
+                </button>
+                <button
+                  onClick={handleCopyLyricsOnly}
+                  className="w-full text-left p-2 rounded-xl text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
+                >
+                  📄 Copy Lyrics Only
+                </button>
+                <button
+                  onClick={handleCopyWebLink}
+                  className="w-full text-left p-2 rounded-xl text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
+                >
+                  🔗 Copy Song Link
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Admin Editorial Trigger Switch */}
           {currentRole === 'admin' && (
@@ -1069,7 +1191,7 @@ export default function SongDetail({
       {/* Slide-up Musician Control Drawer */}
       <div className={showMobileDrawer ? 'fixed inset-0 bg-black/85 backdrop-blur-xs z-50 flex items-end justify-center md:hidden' : 'hidden'} onClick={() => setShowMobileDrawer(false)}>
           <div 
-            className="bg-[#09090b] border-t border-zinc-800 rounded-t-3xl w-full max-w-md p-5 space-y-6 shadow-2xl animate-slideUp select-none"
+            className="bg-[#09090b] border-t border-zinc-800 rounded-t-3xl w-full max-w-md p-5 pb-safe space-y-6 shadow-2xl animate-slideUp select-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Handle */}

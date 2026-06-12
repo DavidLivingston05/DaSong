@@ -664,7 +664,7 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
       {!isLargeScreen && (
         <button
           onClick={onClose}
-          className="absolute bottom-20 right-4 z-30 flex items-center gap-2 px-5 py-3 bg-zinc-900/90 border border-zinc-700 text-white text-xs font-bold rounded-2xl shadow-xl backdrop-blur-sm active:scale-95 transition-all cursor-pointer"
+          className="absolute bottom-6 pb-safe right-4 z-30 flex items-center gap-2 px-5 py-3 bg-zinc-900/90 border border-zinc-700 text-white text-xs font-bold rounded-2xl shadow-xl backdrop-blur-sm active:scale-95 transition-all cursor-pointer"
           title="Close Presentation"
         >
           <span className="text-base leading-none">✕</span>

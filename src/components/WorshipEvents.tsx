@@ -684,7 +684,7 @@ export default function WorshipEvents({
             STAGE 1: FRESH CALENDAR MONTH PAGE
            ---------------------------------------------------- */}
         {mobileStage === 'calendar' && (
-          <div className="w-full min-h-[100dvh] flex flex-col p-5 bg-[#070708] animate-fadeIn">
+          <div className="w-full min-h-[100dvh] flex flex-col p-5 pt-safe bg-[#070708] animate-fadeIn">
             <div className="flex justify-between items-center mb-6 border-b border-zinc-850 pb-4 shrink-0">
               <div>
                 <h1 className="text-2xl font-black text-amber-500 tracking-tight">Worship Setlists</h1>
@@ -856,7 +856,7 @@ export default function WorshipEvents({
             STAGE 2: FRESH EVENT DETAILS & SETLIST PAGE
            ---------------------------------------------------- */}
         {mobileStage === 'eventDetail' && (
-          <div className="w-full min-h-[100dvh] flex flex-col justify-between p-5 bg-[#09090b] animate-slideInRight">
+          <div className="w-full min-h-[100dvh] flex flex-col justify-between p-5 pt-safe bg-[#09090b] animate-slideInRight">
             <div className="flex-1 flex flex-col min-h-0">
               
               {/* Header Navigation */}
@@ -1096,7 +1096,7 @@ export default function WorshipEvents({
             STAGE 3: FRESH FULL-SCREEN LYRICS FRAME
            ---------------------------------------------------- */}
         {mobileStage === 'lyrics' && activeLyricsSong && (
-          <div className="w-full min-h-[100dvh] p-5 bg-[#050506] flex flex-col justify-start animate-slideInRight">
+          <div className="w-full min-h-[100dvh] p-5 pt-safe bg-[#050506] flex flex-col justify-start animate-slideInRight">
             
             {/* Top Back Header navigation */}
             <div className="flex items-center justify-between border-b border-zinc-900 pb-3 shrink-0">
@@ -1170,7 +1170,7 @@ export default function WorshipEvents({
             </div>
 
             {/* Mobile floating Font Changer & Scrolling controls on bottom bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-[#09090b]/90 backdrop-blur-md border-t border-zinc-900 px-4 py-3 flex items-center justify-between shadow-2xl z-20">
+            <div className="fixed bottom-0 left-0 right-0 bg-[#09090b]/90 backdrop-blur-md border-t border-zinc-900 px-4 py-3 pb-safe flex items-center justify-between shadow-2xl z-20">
               <div className="flex items-center gap-1.5">
                 <button 
                   onClick={() => setMobileFontSize(prev => Math.max(12, prev - 2))} 
