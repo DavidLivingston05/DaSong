@@ -998,11 +998,11 @@ export default function App() {
         <div className="w-full max-w-[1850px] mx-auto flex flex-col gap-3.5">
           {/* Row 1: Brand Logo & Telemetry Strip */}
           <div className="flex flex-wrap items-center justify-between w-full gap-y-2 gap-x-4">
-          <div className="flex items-center select-none">
+          <div className="flex items-center gap-2.5 md:gap-3.5 select-none">
             {/* Ultra-Stylish CSS Gradient Vector Logo */}
-            <div className="w-9 h-9 md:w-11 md:h-11 bg-zinc-900/60 border border-zinc-800/85 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.25)] shrink-0 relative overflow-hidden group hover:border-amber-500/35 transition-all duration-300">
+            <div className="w-9 h-9 md:w-11 md:h-11 bg-zinc-900/60 border border-zinc-800/85 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.15)] shrink-0 relative overflow-hidden group hover:border-purple-500/35 transition-all duration-300">
               {/* Glowing backdrop aura */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/15 to-orange-500/15 opacity-60 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/15 to-amber-500/15 opacity-60 group-hover:opacity-100 transition-opacity duration-300"></div>
               
               {/* Render the new trendy App Icon */}
               <img 
@@ -1013,6 +1013,16 @@ export default function App() {
               
               {/* Dynamic live red indicator dot */}
               <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_#ef4444] z-20" />
+            </div>
+
+            {/* Stylish Gradient App Name */}
+            <div className="flex flex-col text-left">
+              <h1 className="text-base md:text-2xl font-black tracking-tight select-none leading-none bg-gradient-to-r from-amber-400 via-orange-400 to-rose-500 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(245,158,11,0.15)]">
+                DaSong
+              </h1>
+              <span className="text-[8px] md:text-[9.5px] font-mono tracking-[0.25em] text-zinc-500 font-extrabold uppercase mt-1 block">
+                SONGBOOK
+              </span>
             </div>
           </div>
 
