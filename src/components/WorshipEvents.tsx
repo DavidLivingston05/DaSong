@@ -2,11 +2,85 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   X, Calendar as CalendarIcon, Clock, Plus, Trash2, ChevronLeft, ChevronRight, 
   Music, BookOpen, Layers, Sparkles, Check, ArrowRight, ArrowUpRight, Search, ListPlus, MoveUp, MoveDown, ZoomIn, ZoomOut, Play, Pause,
-  Upload
+  Upload, GripVertical, Maximize2
 } from 'lucide-react';
 import { WorshipEvent, UserRole, Song } from '../types';
 import { SongMetadata, getSongById, getLocalWorshipEvents, saveWorshipEvent, deleteWorshipEvent } from '../lib/db';
 import { transposeLyrics, stripChords } from '../utils/chordTransposer';
+
+interface Stanza {
+  label: string;
+  text: string;
+  isChorus: boolean;
+}
+
+function parseLyricsToStanzas(lyrics: string): Stanza[] {
+  if (!lyrics) return [];
+  
+  let cleanLyrics = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  
+  // Split by double newlines or multiple blank lines
+  const sections = cleanLyrics.split(/\n\s*\n+/).filter(Boolean);
+  
+  // Filter out any metadata blocks like Title, Key, BPM, etc.
+  const lyricsSections = sections.filter(section => {
+    const trimmed = section.trim().toLowerCase();
+    return !trimmed.startsWith('title:') && 
+           !trimmed.startsWith('title :') &&
+           !trimmed.startsWith('key:') &&
+           !trimmed.startsWith('key :') &&
+           !trimmed.startsWith('bpm:') &&
+           !trimmed.startsWith('bpm :');
+  });
+
+  // Check if there are explicit numbered verses in the lyrics
+  const hasNumberedVerses = lyricsSections.some(section => {
+    const trimmed = section.trim();
+    return /^\d+[\s\.\)]/.test(trimmed);
+  });
+
+  let verseCounter = 1;
+
+  return lyricsSections.map((section) => {
+    let text = section.trim();
+    let label = '';
+    let isChorus = false;
+
+    // Check if starts with a number like "1.", "2 ", "3)"
+    const numMatch = text.match(/^(\d+)[\s\.\)]+(.*)/s);
+    
+    // Check if it's explicitly labeled as Chorus or Refrain or Tamil equivalents
+    const isExplicitChorus = /^(chorus|refrain|பல்லவி|pallavi)\b/i.test(text);
+
+    if (numMatch) {
+      label = numMatch[1];
+      text = numMatch[2].trim();
+    } else if (isExplicitChorus) {
+      isChorus = true;
+      const chorusLabelMatch = text.match(/^(chorus|refrain|பல்லவி|pallavi)[:\s-]*(.*)/is);
+      if (chorusLabelMatch) {
+        text = chorusLabelMatch[2].trim();
+      }
+      label = 'Chorus';
+    } else {
+      // Unnumbered/unlabeled section
+      if (hasNumberedVerses) {
+        // If the song has numbered verses elsewhere, any unnumbered sections before/between them are typically Chorus
+        isChorus = true;
+        label = 'Chorus';
+      } else {
+        // If there are no numbers at all, we just number them sequentially
+        label = String(verseCounter++);
+      }
+    }
+
+    return {
+      label,
+      text,
+      isChorus
+    };
+  });
+}
 
 interface WorshipEventsProps {
   songs: SongMetadata[];
@@ -64,6 +138,122 @@ export default function WorshipEvents({
   const [mobileTransposeStep, setMobileTransposeStep] = useState<number>(0);
   const [mobileViewMode, setMobileViewMode] = useState<'calendar' | 'timeline'>('calendar');
 
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
+
+  // Full-screen Presentation Console state
+  const [showLiveConsole, setShowLiveConsole] = useState<boolean>(false);
+  const [liveSongId, setLiveSongId] = useState<string | null>(null);
+  const [liveSong, setLiveSong] = useState<Song | null>(null);
+  const [liveFontSize, setLiveFontSize] = useState<number>(24);
+  const [liveShowChords, setLiveShowChords] = useState<boolean>(false);
+  const [liveSwipeStartX, setLiveSwipeStartX] = useState<number | null>(null);
+  const [liveSetlistSongIds, setLiveSetlistSongIds] = useState<string[]>([]);
+  const [activeStanzaIndex, setActiveStanzaIndex] = useState<number>(0);
+
+  useEffect(() => {
+    if (!liveSongId) {
+      setLiveSong(null);
+      return;
+    }
+    const loadSong = async () => {
+      try {
+        const fullSong = await getSongById(liveSongId);
+        if (fullSong) {
+          setLiveSong(fullSong);
+        }
+      } catch (err) {
+        console.error('Failed to load song for live presentation:', err);
+      }
+    };
+    loadSong();
+  }, [liveSongId]);
+
+  // Wake lock ref
+  const wakeLockRef = useRef<any>(null);
+
+  useEffect(() => {
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+        } catch (err) {
+          console.warn('Failed to obtain screen wake lock:', err);
+        }
+      }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().then(() => {
+          wakeLockRef.current = null;
+        }).catch((err: any) => {
+          console.error('Failed to release wake lock:', err);
+        });
+      }
+    }
+
+    if (showLiveConsole && liveSong) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+
+    return () => {
+      releaseWakeLock();
+    };
+  }, [showLiveConsole, liveSong]);
+
+  const liveObserverRef = useRef<IntersectionObserver | null>(null);
+
+  useEffect(() => {
+    if (!showLiveConsole || !liveSong) {
+      if (liveObserverRef.current) {
+        liveObserverRef.current.disconnect();
+        liveObserverRef.current = null;
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (liveObserverRef.current) {
+        liveObserverRef.current.disconnect();
+      }
+
+      const options = {
+        root: null,
+        rootMargin: '-30% 0px -30% 0px',
+        threshold: 0.1
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id;
+            const match = id.match(/live-stanza-(\d+)/);
+            if (match) {
+              const idx = parseInt(match[1], 10);
+              setActiveStanzaIndex(idx);
+            }
+          }
+        });
+      }, options);
+
+      liveObserverRef.current = observer;
+
+      const elements = document.querySelectorAll('.live-stanza-item');
+      elements.forEach((el) => observer.observe(el));
+    }, 150);
+
+    return () => {
+      clearTimeout(timer);
+      if (liveObserverRef.current) {
+        liveObserverRef.current.disconnect();
+        liveObserverRef.current = null;
+      }
+    };
+  }, [showLiveConsole, liveSong, liveSongId]);
 
   const mobileScrollTimerRef = useRef<number | null>(null);
 
@@ -300,6 +490,319 @@ export default function WorshipEvents({
     }
   };
 
+  const handleDragStart = (e: React.DragEvent, eventId: string, index: number) => {
+    setDraggedIndex(index);
+    setDraggedEventId(eventId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent, eventId: string, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedEventId !== eventId || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDraggedEventId(null);
+      return;
+    }
+
+    const ev = events.find(event => event.id === eventId);
+    if (!ev) return;
+
+    const songIds = ev.songIds || [];
+    const list = [...songIds];
+    
+    // Reorder
+    const [removed] = list.splice(draggedIndex, 1);
+    list.splice(targetIndex, 0, removed);
+
+    const updatedEv = { ...ev, songIds: list };
+    try {
+      await saveWorshipEvent(updatedEv);
+    } catch (err) {
+      console.error('Failed to reorder song in event via drag-and-drop:', err);
+    } finally {
+      setDraggedIndex(null);
+      setDraggedEventId(null);
+      onEventsChange();
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setLiveSwipeStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (liveSwipeStartX === null) return;
+    const endX = e.changedTouches[0].clientX;
+    const diffX = endX - liveSwipeStartX;
+    if (Math.abs(diffX) > 70) {
+      const curIndex = liveSetlistSongIds.indexOf(liveSongId || '');
+      if (diffX > 0) {
+        if (curIndex > 0) {
+          setLiveSongId(liveSetlistSongIds[curIndex - 1]);
+        }
+      } else {
+        if (curIndex < liveSetlistSongIds.length - 1) {
+          setLiveSongId(liveSetlistSongIds[curIndex + 1]);
+        }
+      }
+    }
+    setLiveSwipeStartX(null);
+  };
+
+  const renderStanzaText = (text: string) => {
+    const lines = text.split('\n');
+    return lines.map((line, lIdx) => {
+      if (liveShowChords && line.includes('[')) {
+        const chordLine: { chord: string; index: number }[] = [];
+        let cleanLine = '';
+        let charIndex = 0;
+
+        const segments = line.split(/(\[[^[\]]+\])/);
+        segments.forEach((seg) => {
+          if (seg.startsWith('[') && seg.endsWith(']')) {
+            const chord = seg.slice(1, -1);
+            chordLine.push({ chord, index: charIndex });
+          } else {
+            cleanLine += seg;
+            charIndex += seg.length;
+          }
+        });
+
+        return (
+          <div key={lIdx} className="mb-4 leading-relaxed flex flex-col items-center select-none">
+            {/* Chords Line */}
+            <div className="h-5 font-mono text-xs font-bold text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.25)] select-none relative whitespace-pre flex">
+              {chordLine.map((c, cIdx) => {
+                const prevOffset = cIdx > 0 ? chordLine[cIdx - 1].index : 0;
+                const spacing = ' '.repeat(Math.max(0, c.index - prevOffset - (cIdx > 0 ? chordLine[cIdx - 1].chord.length : 0)));
+                return (
+                  <span key={cIdx}>
+                    {spacing}
+                    <span>{c.chord}</span>
+                  </span>
+                );
+              })}
+            </div>
+            {/* Lyrics Text Line */}
+            <div className="text-zinc-100 text-center font-bold tracking-wide">
+              {cleanLine || ' '}
+            </div>
+          </div>
+        );
+      } else {
+        const cleanLine = stripChords(line);
+        return (
+          <div key={lIdx} className="py-1 text-zinc-150 text-center select-none font-bold tracking-wide">
+            {cleanLine || ' '}
+          </div>
+        );
+      }
+    });
+  };
+
+  const renderLiveConsole = () => {
+    if (!showLiveConsole || !liveSong) return null;
+    const stanzas = parseLyricsToStanzas(liveSong.lyrics);
+    const curIndex = liveSongId && liveSetlistSongIds ? liveSetlistSongIds.indexOf(liveSongId) : -1;
+    const hasPrev = curIndex > 0;
+    const hasNext = liveSetlistSongIds && curIndex < liveSetlistSongIds.length - 1;
+
+    return (
+      <div 
+        className="fixed inset-0 bg-[#050505] text-white z-50 flex flex-col font-sans select-none animate-in fade-in duration-150"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Top Navbar */}
+        <div className="flex items-center justify-between px-4 py-3 bg-[#0c0c0e] border-b border-white/5 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <button 
+              onClick={() => {
+                setShowLiveConsole(false);
+                setLiveSongId(null);
+              }}
+              className="p-2 -ml-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-full cursor-pointer transition-colors"
+              title="Exit Presenter Portal"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <div className="truncate">
+              <h3 className="text-sm font-black tracking-tight text-white truncate">
+                {liveSong.title}
+              </h3>
+              {liveSong.author && (
+                <span className="text-[10px] text-zinc-500 font-mono block truncate">
+                  {liveSong.author}
+                </span>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 shrink-0">
+            {liveSetlistSongIds.length > 0 && curIndex !== -1 && (
+              <span className="text-[10px] font-mono font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full uppercase">
+                Song {curIndex + 1} of {liveSetlistSongIds.length}
+              </span>
+            )}
+            <button 
+              onClick={() => {
+                setShowLiveConsole(false);
+                setLiveSongId(null);
+              }}
+              className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-full cursor-pointer transition-colors"
+              title="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Stanza Pills Quick Jump */}
+        {stanzas.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto px-4 py-2 bg-[#08080a] border-b border-white/5 scrollbar-none shrink-0">
+            {stanzas.map((stanza, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setActiveStanzaIndex(idx);
+                  const element = document.getElementById(`live-stanza-${idx}`);
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-mono font-bold shrink-0 transition-all cursor-pointer ${
+                  activeStanzaIndex === idx
+                    ? 'bg-amber-500 text-black border border-amber-400 font-black'
+                    : stanza.isChorus
+                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
+                    : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-850'
+                }`}
+              >
+                {stanza.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Main Scrollable Lyrics Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-12 flex flex-col items-center justify-start scroll-smooth">
+          <div className="max-w-3xl w-full text-center space-y-10 pb-[40vh]">
+            {stanzas.length > 0 ? (
+              stanzas.map((stanza, idx) => (
+                <div
+                  key={idx}
+                  id={`live-stanza-${idx}`}
+                  className={`live-stanza-item transition-all duration-300 py-8 px-6 rounded-3xl ${
+                    activeStanzaIndex === idx 
+                      ? 'bg-white/[0.02] border border-white/5 scale-102 shadow-2xl' 
+                      : 'opacity-50 border border-transparent scale-98'
+                  }`}
+                  onClick={() => setActiveStanzaIndex(idx)}
+                >
+                  <div className="mb-4">
+                    <span className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                      stanza.isChorus 
+                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black' 
+                        : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+                    }`}>
+                      {stanza.label}
+                    </span>
+                  </div>
+
+                  <div 
+                    className="whitespace-pre-line leading-relaxed font-black tracking-wide select-none"
+                    style={{ fontSize: `${liveFontSize}px` }}
+                  >
+                    {renderStanzaText(stanza.text)}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="py-20 text-center text-zinc-500 italic text-sm">
+                No lyrics parsed. Double check if this song has text content configured.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Control Bar */}
+        <div className="px-4 py-3 bg-[#0c0c0e] border-t border-white/5 flex items-center justify-between shrink-0">
+          {/* Prev Song */}
+          <button
+            disabled={!hasPrev}
+            onClick={() => {
+              if (hasPrev) {
+                setLiveSongId(liveSetlistSongIds[curIndex - 1]);
+              }
+            }}
+            className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-20 text-zinc-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors border border-zinc-800 cursor-pointer disabled:cursor-not-allowed select-none animate-in fade-in"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Prev Song</span>
+          </button>
+
+          {/* Middle controls: Font & Chords */}
+          <div className="flex items-center gap-4">
+            {/* Font Size Zoom */}
+            <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1.5 rounded-full border border-zinc-900 select-none">
+              <button
+                onClick={() => setLiveFontSize(prev => Math.max(16, prev - 2))}
+                className="p-1 text-zinc-400 hover:text-white rounded-full cursor-pointer transition-colors"
+                title="Decrease font size"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </button>
+              <span className="text-xs font-mono font-bold text-zinc-300 min-w-[32px] text-center">
+                {liveFontSize}px
+              </span>
+              <button
+                onClick={() => setLiveFontSize(prev => Math.min(64, prev + 2))}
+                className="p-1 text-zinc-400 hover:text-white rounded-full cursor-pointer transition-colors"
+                title="Increase font size"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Show/Hide Chords (if song contains chords) */}
+            {liveSong.lyrics.includes('[') && (
+              <button
+                onClick={() => setLiveShowChords(prev => !prev)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold font-mono transition-colors flex items-center gap-1.5 border cursor-pointer select-none ${
+                  liveShowChords
+                    ? 'bg-amber-500 text-black border-amber-400'
+                    : 'bg-zinc-950 text-zinc-400 border-zinc-900 hover:text-white'
+                }`}
+              >
+                <Music className="h-3.5 w-3.5" />
+                <span>Chords: {liveShowChords ? 'ON' : 'OFF'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Next Song */}
+          <button
+            disabled={!hasNext}
+            onClick={() => {
+              if (hasNext) {
+                setLiveSongId(liveSetlistSongIds[curIndex + 1]);
+              }
+            }}
+            className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-20 text-zinc-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors border border-zinc-800 cursor-pointer disabled:cursor-not-allowed select-none animate-in fade-in"
+          >
+            <span className="hidden sm:inline">Next Song</span>
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const selectedDateLabel = useMemo(() => {
     const d = new Date(selectedDateStr + 'T12:00:00');
     return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
@@ -493,13 +996,28 @@ export default function WorshipEvents({
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                           {/* Left Column: Setlist Arrangement Order */}
                           <div className="space-y-3">
-                            <div>
-                              <h5 className="text-[10px] font-mono tracking-wider text-amber-400 uppercase font-bold flex items-center gap-1">
-                                <Layers className="h-3 w-3" /> Arrangement Grid Order:
-                              </h5>
-                              <p className="text-[10px] text-slate-500 mt-0.5">
-                                Reorder alignment or click on individual tracks to load lyrics on screen.
-                              </p>
+                            <div className="flex items-center justify-between gap-4">
+                              <div>
+                                <h5 className="text-[10px] font-mono tracking-wider text-amber-400 uppercase font-bold flex items-center gap-1">
+                                  <Layers className="h-3 w-3" /> Arrangement Grid Order:
+                                </h5>
+                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                  Reorder alignment or click on individual tracks to load lyrics on screen.
+                                </p>
+                              </div>
+                              {(ev.songIds || []).length > 0 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLiveSongId(ev.songIds[0]);
+                                    setLiveSetlistSongIds(ev.songIds || []);
+                                    setShowLiveConsole(true);
+                                  }}
+                                  className="text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full cursor-pointer hover:bg-amber-500/20 transition-colors flex items-center gap-1 uppercase shrink-0"
+                                >
+                                  <Maximize2 className="h-3 w-3" /> Present Setlist
+                                </button>
+                              )}
                             </div>
 
                             {(ev.songIds || []).length === 0 ? (
@@ -514,17 +1032,27 @@ export default function WorshipEvents({
                                   
                                   if (!matchSong) return null;
                                   
+                                  const isDragging = draggedIndex === index && draggedEventId === ev.id;
                                   return (
                                     <div 
                                       key={sId}
+                                      draggable={currentRole === 'admin'}
+                                      onDragStart={(e) => handleDragStart(e, ev.id, index)}
+                                      onDragOver={handleDragOver}
+                                      onDrop={(e) => handleDrop(e, ev.id, index)}
                                       className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all ${
+                                        isDragging ? 'opacity-40 border-dashed border-amber-500/50 bg-amber-500/5' : ''
+                                      } ${
                                         isPlayActive 
                                           ? 'border-amber-500/50 bg-amber-500/10' 
                                           : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.03]'
-                                      }`}
+                                      } ${currentRole === 'admin' ? 'cursor-grab active:cursor-grabbing' : ''}`}
                                     >
                                       {/* Song title and indicator arrow */}
                                       <div className="flex items-center gap-2 truncate">
+                                        {currentRole === 'admin' && (
+                                          <GripVertical className="h-3.5 w-3.5 text-slate-500 hover:text-slate-350 cursor-grab shrink-0" />
+                                        )}
                                         <span className="text-amber-500 font-extrabold font-mono text-[10px]">
                                           {index + 1}
                                         </span>
@@ -546,37 +1074,51 @@ export default function WorshipEvents({
                                       </div>
 
                                       {/* Reordering controllers inside the setlist */}
-                                      {currentRole === 'admin' ? (
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                          <button
-                                            disabled={index === 0}
-                                            onClick={() => moveSongInEvent(ev.id, index, 'up')}
-                                            className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
-                                            title="Shift Up"
-                                          >
-                                            <MoveUp className="h-3.5 w-3.5" />
-                                          </button>
-                                          <button
-                                            disabled={index === (ev.songIds || []).length - 1}
-                                            onClick={() => moveSongInEvent(ev.id, index, 'down')}
-                                            className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
-                                            title="Shift Down"
-                                          >
-                                            <MoveDown className="h-3.5 w-3.5" />
-                                          </button>
-                                          <button
-                                            onClick={() => toggleSongInEvent(ev.id, matchSong.id)}
-                                            className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
-                                            title="De-list"
-                                          >
-                                            <X className="h-3.5 w-3.5" />
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <div className="text-[10px] text-amber-500 font-mono font-bold uppercase tracking-wider select-none shrink-0 opacity-80">
-                                          View Lyrics ➔
-                                        </div>
-                                      )}
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setLiveSongId(matchSong.id);
+                                            setLiveSetlistSongIds(ev.songIds || []);
+                                            setShowLiveConsole(true);
+                                          }}
+                                          className="p-1 rounded-lg text-amber-500 hover:text-amber-400 hover:bg-white/5 cursor-pointer"
+                                          title="Full Screen Presentation"
+                                        >
+                                          <Maximize2 className="h-3.5 w-3.5" />
+                                        </button>
+                                        {currentRole === 'admin' ? (
+                                          <>
+                                            <button
+                                              disabled={index === 0}
+                                              onClick={() => moveSongInEvent(ev.id, index, 'up')}
+                                              className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
+                                              title="Shift Up"
+                                            >
+                                              <MoveUp className="h-3.5 w-3.5" />
+                                            </button>
+                                            <button
+                                              disabled={index === (ev.songIds || []).length - 1}
+                                              onClick={() => moveSongInEvent(ev.id, index, 'down')}
+                                              className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
+                                              title="Shift Down"
+                                            >
+                                              <MoveDown className="h-3.5 w-3.5" />
+                                            </button>
+                                            <button
+                                              onClick={() => toggleSongInEvent(ev.id, matchSong.id)}
+                                              className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                                              title="De-list"
+                                            >
+                                              <X className="h-3.5 w-3.5" />
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <div className="text-[10px] text-amber-500 font-mono font-bold uppercase tracking-wider select-none shrink-0 opacity-80">
+                                            View Lyrics ➔
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
                                   );
                                 })}
@@ -887,9 +1429,23 @@ export default function WorshipEvents({
 
               {/* Setlist Loop Render Frame */}
               <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-bold pl-0.5">
-                  Order of Worship Songs
-                </p>
+                <div className="flex items-center justify-between pl-0.5">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-bold">
+                    Order of Worship Songs
+                  </p>
+                  {activeEvent && (activeEvent.songIds || []).length > 0 && (
+                    <button
+                      onClick={() => {
+                        setLiveSongId(activeEvent.songIds[0]);
+                        setLiveSetlistSongIds(activeEvent.songIds || []);
+                        setShowLiveConsole(true);
+                      }}
+                      className="text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full cursor-pointer hover:bg-amber-500/20 transition-colors flex items-center gap-1 uppercase"
+                    >
+                      <Maximize2 className="h-2.5 w-2.5" /> Present
+                    </button>
+                  )}
+                </div>
 
                 {activeEvent && (activeEvent.songIds || []).length > 0 ? (
                   <div className="space-y-2.5">
@@ -897,13 +1453,24 @@ export default function WorshipEvents({
                       const matchSong = songs.find(s => s.id === songId);
                       if (!matchSong) return null;
 
+                      const isDragging = draggedIndex === index && draggedEventId === activeEvent.id;
+
                       return (
                         <div 
                           key={songId}
+                          draggable={currentRole === 'admin'}
+                          onDragStart={(e) => handleDragStart(e, activeEvent.id, index)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, activeEvent.id, index)}
                           onClick={() => handleSongClick(matchSong)}
-                          className="p-4 bg-zinc-900 border border-zinc-850 hover:border-zinc-700 rounded-xl flex items-center justify-between gap-3 hover:bg-zinc-850/50 transition-all cursor-pointer active:scale-[0.99] select-none"
+                          className={`p-4 bg-zinc-900 border hover:border-zinc-700 rounded-xl flex items-center justify-between gap-3 hover:bg-zinc-850/50 transition-all cursor-pointer active:scale-[0.99] select-none ${
+                            isDragging ? 'opacity-40 border-dashed border-amber-500/50 bg-amber-500/5 font-bold' : 'border-zinc-850'
+                          }`}
                         >
-                          <div className="flex-1 text-left flex items-center space-x-3 min-w-0">
+                          <div className="flex-1 text-left flex items-center space-x-2.5 min-w-0">
+                            {currentRole === 'admin' && (
+                              <GripVertical className="h-4 w-4 text-zinc-500 hover:text-zinc-350 cursor-grab shrink-0" onClick={(e) => e.stopPropagation()} />
+                            )}
                             <span className="text-[11px] font-mono font-black text-amber-500/60 bg-zinc-950 border border-zinc-850 px-2 py-0.5 rounded-md shrink-0">
                               {index + 1}
                             </span>
@@ -918,7 +1485,19 @@ export default function WorshipEvents({
                           </div>
 
                           {/* Reordering and remove logic inside portable lists for Admins */}
-                          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLiveSongId(matchSong.id);
+                                setLiveSetlistSongIds(activeEvent.songIds || []);
+                                setShowLiveConsole(true);
+                              }}
+                              className="p-1.5 bg-zinc-950 text-amber-500 hover:text-amber-400 border border-zinc-850 rounded cursor-pointer"
+                              title="Full Screen Presentation"
+                            >
+                              <Maximize2 className="h-3.5 w-3.5" />
+                            </button>
                             {currentRole === 'admin' ? (
                               <>
                                 <button
@@ -943,7 +1522,7 @@ export default function WorshipEvents({
                                 </button>
                               </>
                             ) : (
-                              <span className="text-xs text-amber-500 font-medium flex items-center gap-1">
+                              <span className="text-[10px] text-amber-500 font-mono font-bold uppercase tracking-wider select-none shrink-0 opacity-80">
                                 Present ➔
                               </span>
                             )}
@@ -1305,6 +1884,8 @@ export default function WorshipEvents({
           </form>
         </div>
       )}
+
+      {renderLiveConsole()}
 
     </div>
   );
