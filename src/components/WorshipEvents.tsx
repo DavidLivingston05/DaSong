@@ -129,9 +129,15 @@ export default function WorshipEvents({
   const [liveSong, setLiveSong] = useState<Song | null>(null);
   const [liveFontSize, setLiveFontSize] = useState<number>(24);
   const [liveShowChords, setLiveShowChords] = useState<boolean>(false);
-  const [liveSwipeStartX, setLiveSwipeStartX] = useState<number | null>(null);
+  const [touchOffset, setTouchOffset] = useState<number>(0);
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+  const touchStartTime = useRef<number>(0);
+  const isDragging = useRef<boolean>(false);
+  const isScrolling = useRef<boolean>(false);
   const [liveSetlistSongIds, setLiveSetlistSongIds] = useState<string[]>([]);
   const [activeStanzaIndex, setActiveStanzaIndex] = useState<number>(0);
+  const targetSlideDirectionRef = useRef<'first' | 'last'>('first');
 
   useEffect(() => {
     if (!liveSongId) {
@@ -143,6 +149,12 @@ export default function WorshipEvents({
         const fullSong = await getSongById(liveSongId);
         if (fullSong) {
           setLiveSong(fullSong);
+          const stanzas = parseLyricsToStanzas(fullSong.lyrics);
+          if (targetSlideDirectionRef.current === 'last' && stanzas.length > 0) {
+            setActiveStanzaIndex(stanzas.length - 1);
+          } else {
+            setActiveStanzaIndex(0);
+          }
         }
       } catch (err) {
         console.error('Failed to load song for live presentation:', err);
@@ -236,17 +248,42 @@ export default function WorshipEvents({
     };
   }, [showLiveConsole, liveSong, liveSongId]);
 
-  useEffect(() => {
-    setActiveStanzaIndex(0);
-  }, [liveSongId]);
+  const handleNextSlide = () => {
+    if (!liveSong) return;
+    const stanzas = parseLyricsToStanzas(liveSong.lyrics);
+    if (stanzas.length === 0) return;
+
+    if (activeStanzaIndex >= stanzas.length - 1) {
+      const curSongIdx = liveSetlistSongIds.indexOf(liveSongId || '');
+      if (curSongIdx !== -1 && curSongIdx < liveSetlistSongIds.length - 1) {
+        targetSlideDirectionRef.current = 'first';
+        setLiveSongId(liveSetlistSongIds[curSongIdx + 1]);
+      }
+    } else {
+      setActiveStanzaIndex(prev => prev + 1);
+    }
+  };
+
+  const handlePrevSlide = () => {
+    if (!liveSong) return;
+    const stanzas = parseLyricsToStanzas(liveSong.lyrics);
+    if (stanzas.length === 0) return;
+
+    if (activeStanzaIndex <= 0) {
+      const curSongIdx = liveSetlistSongIds.indexOf(liveSongId || '');
+      if (curSongIdx > 0) {
+        targetSlideDirectionRef.current = 'last';
+        setLiveSongId(liveSetlistSongIds[curSongIdx - 1]);
+      }
+    } else {
+      setActiveStanzaIndex(prev => prev - 1);
+    }
+  };
 
   useEffect(() => {
     if (!showLiveConsole || !liveSong) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      const stanzasCount = parseLyricsToStanzas(liveSong.lyrics).length;
-      if (stanzasCount === 0) return;
-
       if (e.key === 'Escape') {
         setShowLiveConsole(false);
         setLiveSongId(null);
@@ -255,39 +292,10 @@ export default function WorshipEvents({
 
       if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
-        setActiveStanzaIndex((prev) => {
-          if (prev >= stanzasCount - 1) {
-            const curSongIdx = liveSetlistSongIds.indexOf(liveSongId || '');
-            if (curSongIdx !== -1 && curSongIdx < liveSetlistSongIds.length - 1) {
-              setLiveSongId(liveSetlistSongIds[curSongIdx + 1]);
-              return 0;
-            }
-            return prev;
-          }
-          const nextIdx = prev + 1;
-          const element = document.getElementById(`live-stanza-${nextIdx}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-          return nextIdx;
-        });
+        handleNextSlide();
       } else if (e.key === 'ArrowLeft' || e.key === 'Backspace') {
         e.preventDefault();
-        setActiveStanzaIndex((prev) => {
-          if (prev <= 0) {
-            const curSongIdx = liveSetlistSongIds.indexOf(liveSongId || '');
-            if (curSongIdx > 0) {
-              setLiveSongId(liveSetlistSongIds[curSongIdx - 1]);
-            }
-            return prev;
-          }
-          const prevIdx = prev - 1;
-          const element = document.getElementById(`live-stanza-${prevIdx}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-          return prevIdx;
-        });
+        handlePrevSlide();
       }
     };
 
@@ -295,7 +303,7 @@ export default function WorshipEvents({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showLiveConsole, liveSong, liveSongId, liveSetlistSongIds]);
+  }, [showLiveConsole, liveSong, liveSongId, liveSetlistSongIds, activeStanzaIndex]);
 
   const mobileScrollTimerRef = useRef<number | null>(null);
 
@@ -574,26 +582,76 @@ export default function WorshipEvents({
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    setLiveSwipeStartX(e.touches[0].clientX);
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchStartTime.current = Date.now();
+    isDragging.current = false;
+    isScrolling.current = false;
+    setTouchOffset(0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = currentX - touchStartX.current;
+    const diffY = currentY - touchStartY.current;
+
+    // Detect if swipe is horizontal vs scroll vertical
+    if (!isDragging.current && !isScrolling.current) {
+      if (Math.abs(diffX) > 10 && Math.abs(diffX) > Math.abs(diffY)) {
+        isDragging.current = true;
+      } else if (Math.abs(diffY) > 10 && Math.abs(diffY) > Math.abs(diffX)) {
+        isScrolling.current = true;
+      }
+    }
+
+    if (isDragging.current) {
+      if (e.cancelable) e.preventDefault();
+      
+      const stanzasCount = liveSong ? parseLyricsToStanzas(liveSong.lyrics).length : 0;
+      const curIndex = liveSongId && liveSetlistSongIds ? liveSetlistSongIds.indexOf(liveSongId) : -1;
+      const isFirstSlideOfFirstSong = activeStanzaIndex === 0 && curIndex <= 0;
+      const isLastSlideOfLastSong = activeStanzaIndex === stanzasCount - 1 && curIndex >= liveSetlistSongIds.length - 1;
+
+      let offset = diffX;
+      if ((isFirstSlideOfFirstSong && diffX > 0) || (isLastSlideOfLastSong && diffX < 0)) {
+        offset = diffX * 0.3; // drag resistance at boundaries
+      }
+      setTouchOffset(offset);
+    }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (liveSwipeStartX === null) return;
     const endX = e.changedTouches[0].clientX;
-    const diffX = endX - liveSwipeStartX;
-    if (Math.abs(diffX) > 70) {
-      const curIndex = liveSetlistSongIds.indexOf(liveSongId || '');
-      if (diffX > 0) {
-        if (curIndex > 0) {
-          setLiveSongId(liveSetlistSongIds[curIndex - 1]);
-        }
+    const endY = e.changedTouches[0].clientY;
+    const diffX = endX - touchStartX.current;
+    const diffY = endY - touchStartY.current;
+    const duration = Date.now() - touchStartTime.current;
+
+    if (!isDragging.current && !isScrolling.current && Math.abs(diffX) < 15 && Math.abs(diffY) < 15 && duration < 300) {
+      // Tap detected! Immediately switch slides to skip 300ms mobile tap delay
+      e.preventDefault();
+      const rect = e.currentTarget.getBoundingClientRect();
+      const relativeX = endX - rect.left;
+      const isRightHalf = relativeX > rect.width / 2;
+
+      if (isRightHalf) {
+        handleNextSlide();
       } else {
-        if (curIndex < liveSetlistSongIds.length - 1) {
-          setLiveSongId(liveSetlistSongIds[curIndex + 1]);
-        }
+        handlePrevSlide();
+      }
+    } else if (isDragging.current) {
+      const threshold = 60; // swipe threshold in pixels
+      if (diffX < -threshold) {
+        handleNextSlide();
+      } else if (diffX > threshold) {
+        handlePrevSlide();
       }
     }
-    setLiveSwipeStartX(null);
+
+    isDragging.current = false;
+    isScrolling.current = false;
+    setTouchOffset(0);
   };
 
   const renderStanzaText = (text: string) => {
@@ -657,8 +715,6 @@ export default function WorshipEvents({
     return (
       <div 
         className="fixed inset-0 bg-[#050505] text-white z-50 flex flex-col font-sans select-none animate-in fade-in duration-150"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
       >
         {/* Top Navbar */}
         <div className="flex items-center justify-between px-4 py-3 bg-[#0c0c0e] border-b border-white/5 shrink-0">
@@ -712,10 +768,6 @@ export default function WorshipEvents({
                 key={idx}
                 onClick={() => {
                   setActiveStanzaIndex(idx);
-                  const element = document.getElementById(`live-stanza-${idx}`);
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }
                 }}
                 className={`px-3 py-1.5 rounded-full text-xs font-mono font-bold shrink-0 transition-all cursor-pointer ${
                   activeStanzaIndex === idx
@@ -731,45 +783,66 @@ export default function WorshipEvents({
           </div>
         )}
 
-        {/* Main Scrollable Lyrics Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-12 flex flex-col items-center justify-start scroll-smooth">
-          <div className="max-w-3xl w-full text-center space-y-10 pb-[40vh]">
-            {stanzas.length > 0 ? (
-              stanzas.map((stanza, idx) => (
-                <div
+        {/* Main Lyrics Slide Canvas */}
+        <div 
+          key={liveSongId}
+          className="flex-1 overflow-hidden relative select-none w-full h-full animate-in fade-in duration-200"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onClick={(e) => {
+            // Ignore clicks if user was dragging/swiping
+            if (isDragging.current) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const isRightHalf = x > rect.width / 2;
+            if (isRightHalf) {
+              handleNextSlide();
+            } else {
+              handlePrevSlide();
+            }
+          }}
+        >
+          {stanzas.length > 0 ? (
+            <div 
+              className="flex w-full h-full will-change-transform"
+              style={{ 
+                transform: `translateX(calc(-${activeStanzaIndex * 100}% + ${touchOffset}px))`,
+                transition: isDragging.current ? 'none' : 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+            >
+              {stanzas.map((stanza, idx) => (
+                <div 
                   key={idx}
-                  id={`live-stanza-${idx}`}
-                  className={`live-stanza-item transition-all duration-300 py-8 px-6 rounded-3xl ${
-                    activeStanzaIndex === idx 
-                      ? 'bg-white/[0.02] border border-white/5 scale-102 shadow-2xl' 
-                      : 'opacity-50 border border-transparent scale-98'
-                  }`}
-                  onClick={() => setActiveStanzaIndex(idx)}
+                  className="w-full h-full shrink-0 flex flex-col items-center justify-center px-6 overflow-y-auto scrollbar-none py-10"
+                  style={{ contentVisibility: 'auto' }}
                 >
-                  <div className="mb-4">
-                    <span className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                      stanza.isChorus 
-                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black' 
-                        : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
-                    }`}>
-                      {stanza.label}
-                    </span>
-                  </div>
+                  <div className="w-full max-w-4xl text-center space-y-6 select-none my-auto">
+                    <div className="mb-4">
+                      <span className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                        stanza.isChorus 
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black' 
+                          : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+                      }`}>
+                        {stanza.label}
+                      </span>
+                    </div>
 
-                  <div 
-                    className="whitespace-pre-line leading-relaxed font-black tracking-wide select-none"
-                    style={{ fontSize: `${liveFontSize}px` }}
-                  >
-                    {renderStanzaText(stanza.text)}
+                    <div 
+                      className="whitespace-pre-line leading-relaxed font-black tracking-wide select-none"
+                      style={{ fontSize: `${liveFontSize}px` }}
+                    >
+                      {renderStanzaText(stanza.text)}
+                    </div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="py-20 text-center text-zinc-500 italic text-sm">
-                No lyrics parsed. Double check if this song has text content configured.
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center w-full h-full text-zinc-500 italic text-sm">
+              No lyrics parsed. Double check if this song has text content configured.
+            </div>
+          )}
         </div>
 
         {/* Bottom Control Bar */}
