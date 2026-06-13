@@ -1,10 +1,10 @@
-const CACHE_NAME = 'dasong-v18';
+const CACHE_NAME = 'dasong-v20';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/assets/icon-192.png',
-  '/assets/icon-512.png'
+  '/assets/icon-192-v2.png',
+  '/assets/icon-512-v2.png'
 ];
 
 self.addEventListener('install', (e) => {

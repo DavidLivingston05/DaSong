@@ -70,6 +70,9 @@ async function ensureIndexes(db) {
     await db.collection('servers').createIndex({ id: 1 }, { unique: true });
     await db.collection('servers').createIndex({ showOnPublicList: 1 });
 
+    // broadcasts indexes
+    await db.collection('broadcasts').createIndex({ serverId: 1 }, { unique: true });
+
     console.log('MongoDB indexes created/verified successfully.');
   } catch (err) {
     console.error('Failed to create MongoDB indexes:', err);
@@ -487,6 +490,49 @@ app.post('/api/lyrics/scrape-url', asyncHandler(async (req, res) => {
     title: title || 'Scraped Song',
     lyrics: cleanText
   });
+}));
+
+// --- LIVE SERVICE LYRICS SYNC (LEADER BROADCAST & FOLLOWER MODE) ---
+
+// POST /api/broadcast - update active broadcast state
+app.post('/api/broadcast', asyncHandler(async (req, res) => {
+  const { db } = await connectToDatabase();
+  const { songId, activeLineIndex } = req.body;
+  const serverId = req.serverId || 'default';
+
+  const broadcastState = {
+    serverId,
+    songId: songId || null,
+    activeLineIndex: typeof activeLineIndex === 'number' ? activeLineIndex : -1,
+    updatedAt: Date.now()
+  };
+
+  await db.collection('broadcasts').updateOne(
+    { serverId },
+    { $set: broadcastState },
+    { upsert: true }
+  );
+
+  res.json({ success: true, broadcast: broadcastState });
+}));
+
+// GET /api/broadcast - get current active broadcast
+app.get('/api/broadcast', asyncHandler(async (req, res) => {
+  const { db } = await connectToDatabase();
+  const serverId = req.serverId || 'default';
+
+  const broadcast = await db.collection('broadcasts').findOne({ serverId });
+  if (!broadcast) {
+    return res.status(204).end(); // No content
+  }
+
+  // Expire broadcast if older than 15 minutes of inactivity
+  const idleThreshold = 15 * 60 * 1000;
+  if (Date.now() - broadcast.updatedAt > idleThreshold) {
+    return res.status(204).end();
+  }
+
+  res.json(broadcast);
 }));
 
 // Error handler middleware

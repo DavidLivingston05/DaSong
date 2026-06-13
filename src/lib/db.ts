@@ -8,6 +8,13 @@ export function getActiveServerId(): string {
   return localStorage.getItem('dasong_active_server_id') || 'default';
 }
 
+export function shouldSkipSync(): boolean {
+  if (typeof window === 'undefined') return true;
+  const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
+  const savedRole = localStorage.getItem(`lyrasync_user_role_${serverId}`) || 'guest';
+  return savedRole === 'guest' || serverId === 'default';
+}
+
 export function switchActiveServer(serverId: string): void {
   localStorage.setItem('dasong_active_server_id', serverId);
   if (_cachedDB) {
@@ -294,6 +301,9 @@ async function apiRequest(path: string, options?: RequestInit): Promise<any> {
     const errText = await response.text();
     throw new Error(errText || `API error: ${response.status}`);
   }
+  if (response.status === 204) {
+    return null;
+  }
   return response.json();
 }
 
@@ -385,96 +395,98 @@ export async function syncWithMongoDB(): Promise<void> {
     console.warn('Cleanup of corrupted local songs failed:', err);
   }
 
-  // 0. Sync unsynced songs to cloud first
-  const unsyncedIds = getUnsyncedSongIds();
-  if (unsyncedIds.length > 0) {
-    const songsToSync: Song[] = [];
-    for (const id of unsyncedIds) {
-      const song = await getSongById(id);
-      if (song) {
-        songsToSync.push(song);
+  // 0. Sync unsynced songs and events/suggestions to cloud first
+  if (!shouldSkipSync()) {
+    const unsyncedIds = getUnsyncedSongIds();
+    if (unsyncedIds.length > 0) {
+      const songsToSync: Song[] = [];
+      for (const id of unsyncedIds) {
+        const song = await getSongById(id);
+        if (song) {
+          songsToSync.push(song);
+        }
       }
-    }
-    if (songsToSync.length > 0) {
-      try {
-        await apiRequest('/api/songs', {
-          method: 'POST',
-          body: JSON.stringify(songsToSync)
-        });
-        removeUnsyncedSongIds(unsyncedIds);
-      } catch (err) {
-        console.error('Failed to sync queued unsynced songs to MongoDB:', err);
-      }
-    }
-  }
-
-  // A. Flush pending event deletions
-  const unsyncedDeletedEventIds = getUnsyncedDeletedEventIds();
-  if (unsyncedDeletedEventIds.length > 0) {
-    for (const id of unsyncedDeletedEventIds) {
-      try {
-        await apiRequest(`/api/events/${id}`, { method: 'DELETE' });
-        removeUnsyncedDeletedEventIds([id]);
-      } catch (err) {
-        console.error(`Failed to background sync event deletion for ${id}:`, err);
-      }
-    }
-  }
-
-  // B. Flush pending event saves
-  const unsyncedEventIds = getUnsyncedEventIds();
-  if (unsyncedEventIds.length > 0) {
-    const localEvents = getLocalWorshipEvents();
-    for (const id of unsyncedEventIds) {
-      const event = localEvents.find(e => e.id === id);
-      if (event) {
+      if (songsToSync.length > 0) {
         try {
-          const { _id, ...eventPayload } = event as any;
-          await apiRequest('/api/events', {
+          await apiRequest('/api/songs', {
             method: 'POST',
-            body: JSON.stringify(eventPayload)
+            body: JSON.stringify(songsToSync)
           });
+          removeUnsyncedSongIds(unsyncedIds);
+        } catch (err) {
+          console.error('Failed to sync queued unsynced songs to MongoDB:', err);
+        }
+      }
+    }
+
+    // A. Flush pending event deletions
+    const unsyncedDeletedEventIds = getUnsyncedDeletedEventIds();
+    if (unsyncedDeletedEventIds.length > 0) {
+      for (const id of unsyncedDeletedEventIds) {
+        try {
+          await apiRequest(`/api/events/${id}`, { method: 'DELETE' });
+          removeUnsyncedDeletedEventIds([id]);
+        } catch (err) {
+          console.error(`Failed to background sync event deletion for ${id}:`, err);
+        }
+      }
+    }
+
+    // B. Flush pending event saves
+    const unsyncedEventIds = getUnsyncedEventIds();
+    if (unsyncedEventIds.length > 0) {
+      const localEvents = getLocalWorshipEvents();
+      for (const id of unsyncedEventIds) {
+        const event = localEvents.find(e => e.id === id);
+        if (event) {
+          try {
+            const { _id, ...eventPayload } = event as any;
+            await apiRequest('/api/events', {
+              method: 'POST',
+              body: JSON.stringify(eventPayload)
+            });
+            removeUnsyncedEventIds([id]);
+          } catch (err) {
+            console.error(`Failed to background sync event save for ${id}:`, err);
+          }
+        } else {
           removeUnsyncedEventIds([id]);
-        } catch (err) {
-          console.error(`Failed to background sync event save for ${id}:`, err);
         }
-      } else {
-        removeUnsyncedEventIds([id]);
       }
     }
-  }
 
-  // C. Flush pending suggestion deletions
-  const unsyncedDeletedSuggestionIds = getUnsyncedDeletedSuggestionIds();
-  if (unsyncedDeletedSuggestionIds.length > 0) {
-    for (const id of unsyncedDeletedSuggestionIds) {
-      try {
-        await apiRequest(`/api/suggestions/${id}`, { method: 'DELETE' });
-        removeUnsyncedDeletedSuggestionIds([id]);
-      } catch (err) {
-        console.error(`Failed to background sync suggestion deletion for ${id}:`, err);
-      }
-    }
-  }
-
-  // D. Flush pending suggestion saves
-  const unsyncedSuggestionIds = getUnsyncedSuggestionIds();
-  if (unsyncedSuggestionIds.length > 0) {
-    const localSuggestions = getLocalSuggestions();
-    for (const id of unsyncedSuggestionIds) {
-      const suggestion = localSuggestions.find(s => s.id === id);
-      if (suggestion) {
+    // C. Flush pending suggestion deletions
+    const unsyncedDeletedSuggestionIds = getUnsyncedDeletedSuggestionIds();
+    if (unsyncedDeletedSuggestionIds.length > 0) {
+      for (const id of unsyncedDeletedSuggestionIds) {
         try {
-          await apiRequest('/api/suggestions', {
-            method: 'POST',
-            body: JSON.stringify(suggestion)
-          });
-          removeUnsyncedSuggestionIds([id]);
+          await apiRequest(`/api/suggestions/${id}`, { method: 'DELETE' });
+          removeUnsyncedDeletedSuggestionIds([id]);
         } catch (err) {
-          console.error(`Failed to background sync suggestion save for ${id}:`, err);
+          console.error(`Failed to background sync suggestion deletion for ${id}:`, err);
         }
-      } else {
-        removeUnsyncedSuggestionIds([id]);
+      }
+    }
+
+    // D. Flush pending suggestion saves
+    const unsyncedSuggestionIds = getUnsyncedSuggestionIds();
+    if (unsyncedSuggestionIds.length > 0) {
+      const localSuggestions = getLocalSuggestions();
+      for (const id of unsyncedSuggestionIds) {
+        const suggestion = localSuggestions.find(s => s.id === id);
+        if (suggestion) {
+          try {
+            await apiRequest('/api/suggestions', {
+              method: 'POST',
+              body: JSON.stringify(suggestion)
+            });
+            removeUnsyncedSuggestionIds([id]);
+          } catch (err) {
+            console.error(`Failed to background sync suggestion save for ${id}:`, err);
+          }
+        } else {
+          removeUnsyncedSuggestionIds([id]);
+        }
       }
     }
   }
@@ -485,14 +497,16 @@ export async function syncWithMongoDB(): Promise<void> {
     const localCheck = await getLocalSongsCountAndMaxTimestamp();
 
     if (localCheck.count === syncCheck.count && localCheck.lastUpdated === syncCheck.lastUpdated) {
-      // Local is in sync, only sync calendar events and choir suggestions to keep things light
-      const cloudEvents: WorshipEvent[] = await apiRequest('/api/events');
-      await syncEventsBiDirectional(cloudEvents);
+      // Local is in sync, only sync calendar events and choir suggestions to keep things light (for non-guest profiles)
+      if (!shouldSkipSync()) {
+        const cloudEvents: WorshipEvent[] = await apiRequest('/api/events');
+        await syncEventsBiDirectional(cloudEvents);
 
-      const cloudSuggestions: SuggestedSong[] = await apiRequest('/api/suggestions');
-      const deletedSuggIds = new Set(getUnsyncedDeletedSuggestionIds());
-      const filteredSuggestions = cloudSuggestions.filter(s => !deletedSuggIds.has(s.id));
-      saveLocalSuggestions(filteredSuggestions);
+        const cloudSuggestions: SuggestedSong[] = await apiRequest('/api/suggestions');
+        const deletedSuggIds = new Set(getUnsyncedDeletedSuggestionIds());
+        const filteredSuggestions = cloudSuggestions.filter(s => !deletedSuggIds.has(s.id));
+        saveLocalSuggestions(filteredSuggestions);
+      }
       return;
     }
   } catch (err) {
@@ -591,15 +605,17 @@ export async function syncWithMongoDB(): Promise<void> {
   // Save the new max timestamp to localStorage so future checks can hit the cache!
   serverLocalStorage.setItem('dasong_local_max_updated_at', String(maxCloudTime));
 
-  // 2. Sync Worship Calendar Events
-  const cloudEvents: WorshipEvent[] = await apiRequest('/api/events');
-  await syncEventsBiDirectional(cloudEvents);
+  // 2. Sync Worship Calendar Events (Only for custom servers and non-guests)
+  if (!shouldSkipSync()) {
+    const cloudEvents: WorshipEvent[] = await apiRequest('/api/events');
+    await syncEventsBiDirectional(cloudEvents);
 
-  // 3. Sync Choir Guidelines Suggestions
-  const cloudSuggestions: SuggestedSong[] = await apiRequest('/api/suggestions');
-  const deletedSuggIds = new Set(getUnsyncedDeletedSuggestionIds());
-  const filteredSuggestions = cloudSuggestions.filter(s => !deletedSuggIds.has(s.id));
-  saveLocalSuggestions(filteredSuggestions);
+    // 3. Sync Choir Guidelines Suggestions
+    const cloudSuggestions: SuggestedSong[] = await apiRequest('/api/suggestions');
+    const deletedSuggIds = new Set(getUnsyncedDeletedSuggestionIds());
+    const filteredSuggestions = cloudSuggestions.filter(s => !deletedSuggIds.has(s.id));
+    saveLocalSuggestions(filteredSuggestions);
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -617,6 +633,11 @@ export async function saveSongsBatch(songs: Song[]): Promise<void> {
   if (maxTime > 0) {
     serverLocalStorage.setItem('dasong_local_max_updated_at', String(maxTime));
   }
+  
+  if (shouldSkipSync()) {
+    return;
+  }
+
   const ids = songs.map(s => s.id);
   addUnsyncedSongIds(ids);
   
@@ -635,6 +656,11 @@ export async function saveSong(song: Song): Promise<void> {
   await saveSongIndexedDB(song);
   const now = song.updatedAt || song.createdAt || Date.now();
   serverLocalStorage.setItem('dasong_local_max_updated_at', String(now));
+  
+  if (shouldSkipSync()) {
+    return;
+  }
+
   addUnsyncedSongIds([song.id]);
   
   // Background cloud sync
@@ -652,6 +678,11 @@ export async function deleteSong(id: string): Promise<void> {
   await deleteSongIndexedDB(id);
   // Remove last updated cache to force recalculation on next sync check
   serverLocalStorage.removeItem('dasong_local_max_updated_at');
+  
+  if (shouldSkipSync()) {
+    return;
+  }
+
   removeUnsyncedSongIds([id]);
   
   // Background cloud sync
@@ -667,6 +698,10 @@ export async function clearAllSongs(): Promise<void> {
   serverLocalStorage.removeItem('dasong_local_max_updated_at');
   serverLocalStorage.removeItem('dasong_unsynced_song_ids');
   
+  if (shouldSkipSync()) {
+    return;
+  }
+
   // Background cloud sync
   apiRequest('/api/songs', {
     method: 'DELETE'
@@ -791,6 +826,10 @@ export async function saveWorshipEvent(event: WorshipEvent): Promise<void> {
   }
   saveLocalWorshipEvents(localEvents);
 
+  if (shouldSkipSync()) {
+    return;
+  }
+
   removeUnsyncedDeletedEventIds([event.id]);
   addUnsyncedEventIds([event.id]);
 
@@ -809,6 +848,10 @@ export async function saveWorshipEvent(event: WorshipEvent): Promise<void> {
 export async function deleteWorshipEvent(id: string): Promise<void> {
   const localEvents = getLocalWorshipEvents().filter(e => e.id !== id);
   saveLocalWorshipEvents(localEvents);
+
+  if (shouldSkipSync()) {
+    return;
+  }
 
   removeUnsyncedEventIds([id]);
   addUnsyncedDeletedEventIds([id]);
@@ -849,6 +892,10 @@ export async function saveSuggestion(suggestion: SuggestedSong): Promise<void> {
     saveLocalSuggestions(localSuggestions);
   }
 
+  if (shouldSkipSync()) {
+    return;
+  }
+
   removeUnsyncedDeletedSuggestionIds([suggestion.id]);
   addUnsyncedSuggestionIds([suggestion.id]);
 
@@ -865,6 +912,10 @@ export async function saveSuggestion(suggestion: SuggestedSong): Promise<void> {
 export async function deleteSuggestion(id: string): Promise<void> {
   const localSuggestions = getLocalSuggestions().filter(s => s.id !== id);
   saveLocalSuggestions(localSuggestions);
+
+  if (shouldSkipSync()) {
+    return;
+  }
 
   removeUnsyncedSuggestionIds([id]);
   addUnsyncedDeletedSuggestionIds([id]);
@@ -898,5 +949,30 @@ export async function authServerAdmin(serverId: string, password?: string): Prom
     method: 'POST',
     body: JSON.stringify({ password })
   });
+}
+
+// --- LIVE SERVICE LYRICS SYNC SYNCING ACTIONS ---
+
+export interface BroadcastState {
+  serverId: string;
+  songId: string | null;
+  activeLineIndex: number;
+  updatedAt: number;
+}
+
+export async function broadcastState(songId: string | null, activeLineIndex: number): Promise<{ success: boolean; broadcast: BroadcastState }> {
+  return apiRequest('/api/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({ songId, activeLineIndex })
+  });
+}
+
+export async function getBroadcastState(): Promise<BroadcastState | null> {
+  try {
+    return await apiRequest('/api/broadcast');
+  } catch (err) {
+    console.error('Failed to get broadcast state:', err);
+    return null;
+  }
 }
 

@@ -803,9 +803,9 @@ export default function App() {
               <BookOpen className="w-6 h-6" />
             </div>
             <div className="mt-4">
-              <h3 className="text-base font-extrabold text-white group-hover:text-amber-450 transition-colors">Public Library</h3>
+              <h3 className="text-base font-extrabold text-white group-hover:text-amber-450 transition-colors">Offline Songbook & Setlists</h3>
               <p className="text-xs text-zinc-450 mt-2 leading-relaxed">
-                Browse our default collection of worship lyrics and chords in read-only mode.
+                Browse songs, create custom setlists, and practice. Stored locally on your device for offline use!
               </p>
             </div>
             <span className="text-[10px] font-mono font-bold text-amber-500/80 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
@@ -994,22 +994,22 @@ export default function App() {
       <div className="absolute inset-0 pointer-events-none opacity-2 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
       
       {/* Top Professional Navigation Header - Styled like a premium MIDI master strip */}
-      <header id="main-header" className="bg-zinc-950/95 border-b border-zinc-800/80 text-white shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-20 px-3 pb-3 pt-safe md:p-4 sticky top-0 md:relative backdrop-blur-md">
+      <header id="main-header" className="bg-zinc-950/95 text-white shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-20 px-3 pb-3 pt-safe md:p-4 sticky top-0 md:relative backdrop-blur-md border-0 border-transparent">
         <div className="w-full max-w-[1850px] mx-auto flex flex-col gap-3.5">
           {/* Row 1: Brand Logo & Telemetry Strip */}
           <div className="flex flex-wrap items-center justify-between w-full gap-y-2 gap-x-4">
-          <div className="flex items-center space-x-2 select-none transition-all duration-300 hover:scale-[1.01] hover:brightness-110">
-            <div className="flex items-center text-orange-500">
-              <svg className="h-6 w-6 md:h-7 md:w-7" fill="none" viewBox="0 0 24 24">
-                <path d="M12 3v18M17 7v10M22 10v4M7 5v14M2 9v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <div className="flex items-center space-x-3 select-none transition-all duration-300 hover:scale-[1.02] hover:brightness-110 border-0 border-transparent">
+            <div className="flex items-center text-orange-500 border-0 border-transparent">
+              <svg className="h-9 w-9 md:h-11 md:w-11 border-0 border-transparent" fill="none" viewBox="0 0 24 24">
+                <path d="M12 3v18M17 7v10M22 10v4M7 5v14M2 9v6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
               </svg>
             </div>
             
-            <div className="flex items-baseline font-sans">
-              <span className="text-xl font-black tracking-tight text-white md:text-2xl">
+            <div className="flex items-baseline font-sans border-0 border-transparent">
+              <span className="text-2xl font-black tracking-tight text-white md:text-3.5xl">
                 DaSong
               </span>
-              <span className="ml-1.5 text-xs font-bold uppercase tracking-widest text-orange-500 md:text-sm">
+              <span className="ml-2 text-xs font-bold uppercase tracking-widest text-orange-500 md:text-sm">
                 Studio
               </span>
             </div>
@@ -1198,8 +1198,8 @@ export default function App() {
               📖 Song Library
             </button>
 
-            {/* Worship Setlists Navigation (Hidden for Guests) */}
-            {session && session.role !== 'guest' && (
+            {/* Worship Setlists Navigation (Available to All Roles) */}
+            {session && (
               <button 
                 id="tab-calendar"
                 onClick={() => navigateTo('calendar')}
@@ -1219,8 +1219,8 @@ export default function App() {
             )}
           </div>
 
-          {/* Right Side: Admin Tools */}
-          {session && session.role === 'admin' && (
+          {/* Right Side: Admin/Guest Tools */}
+          {session && (session.role === 'admin' || session.role === 'guest') && (
             <div className="flex items-center gap-2 ml-auto">
               <button 
                 onClick={() => setShowAddModal(true)}
@@ -1478,12 +1478,8 @@ export default function App() {
               </button>
               
               <button 
-                onClick={() => session?.role !== 'guest' ? setActiveTab('calendar') : alert('Guests do not have access to setlists')}
-                className={`p-4 md:p-5 border rounded-2xl md:rounded-3xl text-left transition-all shadow-lg group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch ${
-                  session?.role === 'guest' 
-                    ? 'bg-zinc-950/30 border-zinc-900/40 opacity-40 cursor-not-allowed text-slate-650' 
-                    : 'bg-zinc-900/60 hover:bg-zinc-800/40 border-zinc-850 hover:border-amber-500/30 cursor-pointer'
-                }`}
+                onClick={() => setActiveTab('calendar')}
+                className="p-4 md:p-5 bg-zinc-900/60 hover:bg-zinc-800/40 border border-zinc-850 hover:border-amber-500/30 rounded-2xl md:rounded-3xl text-left transition-all cursor-pointer shadow-lg group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
               >
                 <div className="text-2xl md:text-3xl p-2.5 md:p-3 bg-zinc-950 border border-zinc-800 rounded-xl md:rounded-2xl group-hover:scale-110 transition-transform w-fit">📅</div>
                 <div>
@@ -1722,7 +1718,7 @@ export default function App() {
           )}
 
           {/* VIEW 3: CALENDAR VIEW */}
-          {activeTab === 'calendar' && session?.role !== 'guest' && (
+          {activeTab === 'calendar' && session && (
             <motion.div
               key="calendar"
               initial={{ opacity: 0, y: 10 }}
@@ -2359,6 +2355,14 @@ That [G] saved a wretch like [D] me!`}
           song={stageModeSong.song}
           activeTranspose={stageModeSong.transpose}
           onClose={() => setStageModeSong(null)}
+          onSelectSong={(id) => {
+            getSongById(id).then(fullSong => {
+              if (fullSong) {
+                setStageModeSong({ song: fullSong, transpose: 0 });
+              }
+            });
+            handleSelectSong(id);
+          }}
         />
       )}
 
@@ -2394,8 +2398,8 @@ That [G] saved a wretch like [D] me!`}
             <span className={`text-[11px] font-bold uppercase tracking-wider ${activeTab === 'search' ? 'font-black' : ''}`}>Library</span>
           </button>
 
-          {/* ADMIN FAB — center elevated button for quick actions */}
-          {session.role === 'admin' && (
+          {/* ADMIN/GUEST FAB — center elevated button for quick actions */}
+          {(session.role === 'admin' || session.role === 'guest') && (
             <div className="flex flex-col items-center -mt-5 relative min-w-[64px]">
               <button
                 onClick={() => setShowAddModal(true)}
@@ -2408,8 +2412,8 @@ That [G] saved a wretch like [D] me!`}
             </div>
           )}
 
-          {/* SETLISTS — non-guest only */}
-          {session.role !== 'guest' && (
+          {/* SETLISTS — available to all roles */}
+          {session && (
             <button
               onClick={() => navigateTo('calendar')}
               className={`flex flex-col items-center gap-1 px-5 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[56px] ${

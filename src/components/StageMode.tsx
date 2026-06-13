@@ -1,16 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Minimize, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Columns, Type, Check, RefreshCw, ChevronLeft, ChevronRight, Presentation, FileText } from 'lucide-react';
+import { Minimize, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Columns, Type, Check, RefreshCw, ChevronLeft, ChevronRight, Presentation, FileText, Radio } from 'lucide-react';
 import { Song, PresentationConfig } from '../types';
 import { transposeLyrics, stripChords } from '../utils/chordTransposer';
+import { getBroadcastState } from '../lib/db';
 
 interface StageModeProps {
   song: Song;
   activeTranspose: number;
   onClose: () => void;
   broadcastSlideIndex?: number;
+  onSelectSong?: (id: string) => void;
 }
 
-export default function StageMode({ song, activeTranspose, onClose, broadcastSlideIndex }: StageModeProps) {
+export default function StageMode({ song, activeTranspose, onClose, broadcastSlideIndex, onSelectSong }: StageModeProps) {
   const [lyrics, setLyrics] = useState<string>('');
   const [config, setConfig] = useState<PresentationConfig>({
     fontSize: 28,
@@ -30,6 +32,72 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
   const [viewMode, setViewMode] = useState<'scroll' | 'slides'>('scroll');
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
+
+  // Live follow state
+  const [isFollowing, setIsFollowing] = useState<boolean>(() => localStorage.getItem('dasong_live_follow') === 'true');
+  const [highlightedLineIndex, setHighlightedLineIndex] = useState<number>(-1);
+
+  // Poll broadcast state if following
+  useEffect(() => {
+    if (!isFollowing || !song.id) return;
+
+    let active = true;
+
+    const checkBroadcast = async () => {
+      try {
+        const state = await getBroadcastState();
+        if (!active) return;
+        if (state) {
+          // If song changed
+          if (state.songId && state.songId !== song.id && onSelectSong) {
+            onSelectSong(state.songId);
+            return;
+          }
+
+          // Update highlighted line
+          if (typeof state.activeLineIndex === 'number' && state.activeLineIndex >= 0) {
+            setHighlightedLineIndex(state.activeLineIndex);
+
+            // If in continuous scroll view, scroll the line into view
+            if (viewMode === 'scroll') {
+              setTimeout(() => {
+                const el = document.getElementById(`stage-line-${state.activeLineIndex}`);
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }, 100);
+            } else {
+              // If in slides view, compute slide index containing the active line
+              const normalizedLyrics = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+              const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
+
+              let lineCount = 0;
+              let targetSlideIndex = 0;
+              for (let sIdx = 0; sIdx < sections.length; sIdx++) {
+                const sectionLines = sections[sIdx].split('\n').length;
+                if (state.activeLineIndex >= lineCount && state.activeLineIndex < lineCount + sectionLines) {
+                  targetSlideIndex = sIdx;
+                  break;
+                }
+                lineCount += sectionLines;
+              }
+              setCurrentSlideIndex(targetSlideIndex);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error polling broadcast in StageMode:', err);
+      }
+    };
+
+    checkBroadcast();
+    const intervalId = setInterval(checkBroadcast, 2000);
+
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [isFollowing, song.id, onSelectSong, viewMode, lyrics]);
 
   // Listen for screen dimensions to restrict slides option on mobile
   useEffect(() => {
@@ -159,6 +227,8 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
     const normalizedLyrics = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
 
+    let globalLineCounter = 0;
+
     return sections.map((section, idx) => {
       const isChorus = section.toLowerCase().startsWith('chorus:');
       const lines = section.split('\n');
@@ -173,6 +243,14 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
           }`}
         >
           {lines.map((line, lIdx) => {
+            const currentLineIndex = globalLineCounter++;
+            const isHighlighted = currentLineIndex === highlightedLineIndex;
+            const lineId = `stage-line-${currentLineIndex}`;
+            
+            const highlightClass = isHighlighted
+              ? 'bg-amber-500/15 border-l-2 border-amber-500 pl-3 py-1 rounded transition-all duration-300 shadow-[0_0_12px_rgba(245,158,11,0.1)]'
+              : 'transition-all duration-200';
+
             // Check if line contains bracketed chords
             if (config.showChords && line.includes('[')) {
               // Parse chords and separate them above the lyrics block for authentic musical sheets
@@ -198,7 +276,7 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
               const lyricsColor = isLightTheme ? 'text-stone-900 font-bold' : 'text-white font-black tracking-wide';
 
               return (
-                <div key={lIdx} className="mb-3.5 leading-relaxed">
+                <div key={lIdx} id={lineId} className={`mb-3.5 leading-relaxed p-1 ${highlightClass}`}>
                   {/* Chords Line */}
                   <div className={`h-5 font-mono text-xs font-bold select-none relative whitespace-pre flex ${chordsColor}`}>
                     {chordLine.map((c, cIdx) => {
@@ -228,7 +306,8 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
             return (
               <div
                 key={lIdx}
-                className={`font-serif leading-relaxed ${
+                id={lineId}
+                className={`font-serif leading-relaxed p-1 ${highlightClass} ${
                   line.endsWith(':')
                     ? `mt-3 text-xs uppercase tracking-widest ${headingColor}`
                     : `${normalColor}`
@@ -255,6 +334,12 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
     const isChorus = section.toLowerCase().startsWith('chorus:');
     const lines = section.split('\n');
 
+    // Compute lines offset for slide highlighting
+    let activeSlideLineOffset = 0;
+    for (let sIdx = 0; sIdx < currentSlideIndex; sIdx++) {
+      activeSlideLineOffset += sections[sIdx].split('\n').length;
+    }
+
     return (
       <div 
         className={`w-full max-w-4xl px-8 py-10 md:py-14 rounded-3xl text-center select-none animate-fadeIn ${
@@ -271,6 +356,13 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
         
         <div className="space-y-6 md:space-y-8 flex flex-col justify-center min-h-[40vh] py-4">
           {lines.map((line, lIdx) => {
+            const currentLineIndex = activeSlideLineOffset + lIdx;
+            const isHighlighted = currentLineIndex === highlightedLineIndex;
+            
+            const highlightClass = isHighlighted
+              ? 'bg-amber-500/15 border-l-2 border-amber-500 px-4 py-1.5 rounded-xl transition-all duration-300 shadow-[0_0_12px_rgba(245,158,11,0.1)]'
+              : 'transition-all duration-205';
+
             if (isChorus && line.toLowerCase().startsWith('chorus:')) {
               const remaining = line.slice(7).trim();
               if (!remaining) return null;
@@ -297,7 +389,7 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
               const lyricsColor = isLightTheme ? 'text-stone-900 font-black' : 'text-white font-black tracking-wide';
 
               return (
-                <div key={lIdx} className="mb-4 leading-relaxed text-center">
+                <div key={lIdx} className={`mb-4 leading-relaxed text-center p-1 rounded-xl ${highlightClass}`}>
                   <div className={`h-6 font-mono text-sm font-black justify-center flex gap-4 ${chordsColor}`}>
                     {chordLine.map((c, cIdx) => (
                       <span key={cIdx} className="cursor-pointer hover:text-amber-500 transition-colors">
@@ -319,7 +411,7 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
             return (
               <div
                 key={lIdx}
-                className={`font-serif leading-relaxed ${
+                className={`font-serif leading-relaxed p-1 rounded-xl ${highlightClass} ${
                   line.endsWith(':')
                     ? `text-sm uppercase tracking-widest ${headingColor} mb-4`
                     : `${normalColor}`
@@ -392,6 +484,24 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
 
         {/* Display Actions Strip */}
         <div className="flex items-center gap-3">
+          {/* Follow Live Broadcast Toggle */}
+          <button
+            onClick={() => {
+              const val = !isFollowing;
+              setIsFollowing(val);
+              localStorage.setItem('dasong_live_follow', val ? 'true' : 'false');
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-pointer transition-all text-[10px] font-bold uppercase tracking-wider ${
+              isFollowing
+                ? 'bg-emerald-500 border-emerald-500 text-black shadow-[0_0_10px_rgba(16,185,129,0.3)] animate-pulse'
+                : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+            }`}
+            title="Follow Live Service Broadcast"
+          >
+            <Radio className="h-3 w-3" />
+            <span>{isFollowing ? 'Syncing' : 'Follow'}</span>
+          </button>
+
           {/* Scroll vs Slides View Toggles (Visible only on Tablets & Desktops) */}
           {isLargeScreen && (
             <div className="flex gap-1 bg-white/5 p-1 rounded-full border border-white/10 shrink-0 select-none">

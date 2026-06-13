@@ -167,7 +167,7 @@ function SongList({
                 <th className="p-3.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">Song Title</th>
                 <th className="p-3.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 hidden lg:table-cell">Author</th>
                 <th className="p-3.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">Category</th>
-                {currentRole === 'admin' && (
+                {(currentRole === 'admin' || currentRole === 'guest') && (
                   <th className="p-3.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 w-28 text-center">Delete</th>
                 )}
               </tr>
@@ -232,7 +232,7 @@ function SongList({
                       </td>
 
                       {/* Delete actions — two-step confirm */}
-                      {currentRole === 'admin' && (
+                      {(currentRole === 'admin' || currentRole === 'guest') && (
                         <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => handleDeleteClick(song.id)}
@@ -252,7 +252,7 @@ function SongList({
                 })
               ) : (
                 <tr>
-                  <td colSpan={currentRole === 'admin' ? 5 : 4} className="text-center py-16 px-4 bg-zinc-950/20">
+                  <td colSpan={(currentRole === 'admin' || currentRole === 'guest') ? 5 : 4} className="text-center py-16 px-4 bg-zinc-950/20">
                     <Layers className="h-9 w-9 text-zinc-800 mx-auto mb-2.5" />
                     <p className="font-semibold text-zinc-500 text-xs font-sans tracking-wide">No Songs Found</p>
                     <p className="text-[10px] text-zinc-650 mt-1.5 font-sans">
@@ -321,7 +321,7 @@ function SongList({
                         <Star className="h-5 w-5 text-zinc-700" />
                       )}
                     </button>
-                    {currentRole === 'admin' && (
+                    {(currentRole === 'admin' || currentRole === 'guest') && (
                       <button
                         onClick={() => handleDeleteClick(song.id)}
                         className={`p-2.5 transition-colors cursor-pointer active-touch rounded-xl ${

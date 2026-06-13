@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2 } from 'lucide-react';
+import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio } from 'lucide-react';
 import { Song, UserRole, WorshipEvent } from '../types';
-import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions, getLocalWorshipEvents, saveWorshipEvent } from '../lib/db';
+import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions, getLocalWorshipEvents, saveWorshipEvent, broadcastState, getBroadcastState } from '../lib/db';
 import { transposeLyrics, stripChords } from '../utils/chordTransposer';
 import { parseTwoLineChords } from '../utils/lyricsParser';
 import Metronome from './Metronome';
@@ -77,6 +77,107 @@ export default function SongDetail({
   const setlistIndex = useMemo(() => {
     return worshipSetList.indexOf(songId);
   }, [worshipSetList, songId]);
+
+  // --- LIVE SERVICE LYRICS SYNC STATE & LOGIC ---
+  const [isBroadcasting, setIsBroadcasting] = useState<boolean>(() => localStorage.getItem('dasong_live_broadcast') === 'true');
+  const [isFollowing, setIsFollowing] = useState<boolean>(() => localStorage.getItem('dasong_live_follow') === 'true');
+  const [highlightedLineIndex, setHighlightedLineIndex] = useState<number>(-1);
+
+  // Poll broadcast state if following
+  useEffect(() => {
+    if (!isFollowing || !songId) return;
+
+    let active = true;
+
+    const checkBroadcast = async () => {
+      try {
+        const state = await getBroadcastState();
+        if (!active) return;
+        if (state) {
+          // If song changed
+          if (state.songId && state.songId !== songId) {
+            onSelectSong(state.songId, setlistSongIds);
+            return;
+          }
+
+          // Update highlighted line
+          if (typeof state.activeLineIndex === 'number' && state.activeLineIndex >= 0) {
+            setHighlightedLineIndex(state.activeLineIndex);
+            
+            // Scroll to this line
+            setTimeout(() => {
+              const el = document.getElementById(`lyric-line-${state.activeLineIndex}`);
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 100);
+          }
+        }
+      } catch (err) {
+        console.warn('Error polling broadcast:', err);
+      }
+    };
+
+    checkBroadcast();
+    const intervalId = setInterval(checkBroadcast, 2000);
+
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [isFollowing, songId, onSelectSong, setlistSongIds]);
+
+  // Broadcast song changes if leader
+  useEffect(() => {
+    if (isBroadcasting && song?.id) {
+      broadcastState(song.id, 0);
+      setHighlightedLineIndex(0);
+    }
+  }, [song?.id, isBroadcasting]);
+
+  const handleLineSelect = async (lineIdx: number) => {
+    setHighlightedLineIndex(lineIdx);
+    
+    if (isBroadcasting && song) {
+      try {
+        await broadcastState(song.id, lineIdx);
+      } catch (err) {
+        console.error('Failed to broadcast line selection:', err);
+      }
+    }
+  };
+
+  const handleToggleBroadcast = async (val: boolean) => {
+    setIsBroadcasting(val);
+    localStorage.setItem('dasong_live_broadcast', val ? 'true' : 'false');
+    if (val) {
+      setIsFollowing(false);
+      localStorage.setItem('dasong_live_follow', 'false');
+      if (song) {
+        try {
+          await broadcastState(song.id, 0);
+          setHighlightedLineIndex(0);
+        } catch (err) {
+          console.error('Failed to start broadcast:', err);
+        }
+      }
+    } else {
+      try {
+        await broadcastState(null, -1);
+      } catch (err) {
+        console.warn('Failed to stop broadcast:', err);
+      }
+    }
+  };
+
+  const handleToggleFollow = (val: boolean) => {
+    setIsFollowing(val);
+    localStorage.setItem('dasong_live_follow', val ? 'true' : 'false');
+    if (val) {
+      setIsBroadcasting(false);
+      localStorage.setItem('dasong_live_broadcast', 'false');
+    }
+  };
 
   const hasNextSong = setlistIndex >= 0 && setlistIndex < worshipSetList.length - 1;
   const hasPrevSong = setlistIndex > 0;
@@ -580,8 +681,13 @@ export default function SongDetail({
         
         {/* Left Side: Back Trigger */}
         <button
-          onClick={onClose}
-          className="h-12 px-4 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-amber-500 hover:text-amber-400 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
+          onClick={() => {
+            if (isBroadcasting) {
+              broadcastState(null, -1).catch(() => {});
+            }
+            onClose();
+          }}
+          className="h-12 px-4 bg-zinc-900 border border-zinc-800 hover:bg-zinc-850 text-amber-500 hover:text-amber-400 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
           title={backLabel || "Back to Search"}
         >
           ← <span className="hidden xs:inline">{backLabel || "Back to Search"}</span>
@@ -589,6 +695,39 @@ export default function SongDetail({
 
         {/* Right Side: Primary Responsive Actions Control Panel */}
         <div className="flex items-center gap-2">
+          {/* Follow Live Service (For all users) */}
+          <button
+            onClick={() => handleToggleFollow(!isFollowing)}
+            className={`h-12 px-3 rounded-2xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold ${
+              isFollowing
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] animate-pulse'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
+            }`}
+            title={isFollowing ? "Following active live service broadcast" : "Follow active live service broadcast"}
+          >
+            <Radio className="h-4 w-4" />
+            <span className="hidden sm:inline">{isFollowing ? 'Syncing' : 'Follow'}</span>
+          </button>
+
+          {/* Broadcast Live Service (For admin role only) */}
+          {currentRole === 'admin' && (
+            <button
+              onClick={() => handleToggleBroadcast(!isBroadcasting)}
+              className={`h-12 px-3 rounded-2xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold relative ${
+                isBroadcasting
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
+              }`}
+              title={isBroadcasting ? "Broadcasting live screen state" : "Broadcast live screen state"}
+            >
+              {isBroadcasting && (
+                <Radio className="h-4 w-4 animate-ping duration-1000 absolute opacity-30" />
+              )}
+              <Radio className="h-4 w-4" />
+              <span className="hidden sm:inline">{isBroadcasting ? 'Broadcasting' : 'Broadcast'}</span>
+            </button>
+          )}
+
           {/* Favorite Indicator Action Button */}
           <button
             onClick={() => onToggleFavorite(song.id, !song.favorite)}
@@ -641,7 +780,7 @@ export default function SongDetail({
           </div>
 
           {/* Admin Editorial Trigger Switch */}
-          {currentRole === 'admin' && (
+          {(currentRole === 'admin' || currentRole === 'guest') && (
             <button
               onClick={() => setIsEditing(!isEditing)}
               className="flex-1 sm:flex-initial h-12 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-850 hover:text-white px-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -652,7 +791,7 @@ export default function SongDetail({
           )}
 
           {/* Add to Setlist Dropdown Trigger */}
-          {currentRole === 'admin' && song && (
+          {(currentRole === 'admin' || currentRole === 'guest') && song && (
             <div className="relative flex-1 sm:flex-initial">
               <button
                 type="button"
@@ -990,80 +1129,102 @@ export default function SongDetail({
               </div>
 
               {sections.length > 0 ? (
-                sections.map((section, idx) => {
-                  const isChorus = section.toLowerCase().startsWith('chorus:');
-                  const lines = section.split('\n');
+                (() => {
+                  let globalLineCounter = 0;
+                  return sections.map((section, idx) => {
+                    const isChorus = section.toLowerCase().startsWith('chorus:');
+                    const lines = section.split('\n');
 
-                  return (
-                    <div
-                      key={idx}
-                      className={`mb-6 p-2 rounded-lg transition-all ${
-                        isChorus
-                          ? 'border-l-4 border-amber-500 bg-amber-500/5 pl-4'
-                          : ''
-                      }`}
-                    >
-                      {lines.map((line, lIdx) => {
-                        // Superscript rendering logic for active musician chords
-                        if (showChords && line.includes('[')) {
-                          const chordLine: { chord: string; index: number }[] = [];
-                          let cleanLine = '';
-                          let charIndex = 0;
+                    return (
+                      <div
+                        key={idx}
+                        className={`mb-6 p-2 rounded-lg transition-all ${
+                          isChorus
+                            ? 'border-l-4 border-amber-500 bg-amber-500/5 pl-4'
+                            : ''
+                        }`}
+                      >
+                        {lines.map((line, lIdx) => {
+                          const currentLineIndex = globalLineCounter++;
+                          const isHighlighted = currentLineIndex === highlightedLineIndex;
+                          const lineId = `lyric-line-${currentLineIndex}`;
+                          
+                          const clickHandler = () => {
+                            handleLineSelect(currentLineIndex);
+                          };
+                          
+                          const highlightClass = isHighlighted
+                            ? 'bg-amber-500/15 border-l-2 border-amber-500 pl-2.5 py-1 rounded transition-all duration-300 shadow-[0_0_12px_rgba(245,158,11,0.1)]'
+                            : 'transition-all duration-200';
 
-                          const segments = line.split(/(\[[^[\]]+\])/);
-                          segments.forEach((seg) => {
-                            if (seg.startsWith('[') && seg.endsWith(']')) {
-                              const chord = seg.slice(1, -1);
-                              chordLine.push({ chord, index: charIndex });
-                            } else {
-                              cleanLine += seg;
-                              charIndex += seg.length;
-                            }
-                          });
+                          // Superscript rendering logic for active musician chords
+                          if (showChords && line.includes('[')) {
+                            const chordLine: { chord: string; index: number }[] = [];
+                            let cleanLine = '';
+                            let charIndex = 0;
 
-                          return (
-                            <div key={lIdx} className="mb-2.5 leading-tight">
-                              {/* Superscript chords line */}
-                              <div className="h-5.5 font-mono text-[10px] font-bold text-amber-400 select-none relative whitespace-pre flex items-center mb-1">
-                                {chordLine.map((c, cIdx) => {
-                                  const prevOffset = cIdx > 0 ? chordLine[cIdx - 1].index : 0;
-                                  const spacing = ' '.repeat(Math.max(0, c.index - prevOffset - (cIdx > 0 ? chordLine[cIdx - 1].chord.length : 0)));
-                                  return (
-                                    <span key={cIdx}>
-                                      {spacing}
-                                      <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 px-1 py-0.5 rounded-md font-extrabold mx-0.5 shadow-sm transition-all cursor-pointer">
-                                        {c.chord}
+                            const segments = line.split(/(\[[^[\]]+\])/);
+                            segments.forEach((seg) => {
+                              if (seg.startsWith('[') && seg.endsWith(']')) {
+                                const chord = seg.slice(1, -1);
+                                chordLine.push({ chord, index: charIndex });
+                              } else {
+                                cleanLine += seg;
+                                charIndex += seg.length;
+                              }
+                            });
+
+                            return (
+                              <div
+                                key={lIdx}
+                                id={lineId}
+                                onClick={clickHandler}
+                                className={`mb-2.5 leading-tight cursor-pointer hover:bg-white/5 p-1 rounded ${highlightClass}`}
+                              >
+                                {/* Superscript chords line */}
+                                <div className="h-5.5 font-mono text-[10px] font-bold text-amber-400 select-none relative whitespace-pre flex items-center mb-1">
+                                  {chordLine.map((c, cIdx) => {
+                                    const prevOffset = cIdx > 0 ? chordLine[cIdx - 1].index : 0;
+                                    const spacing = ' '.repeat(Math.max(0, c.index - prevOffset - (cIdx > 0 ? chordLine[cIdx - 1].chord.length : 0)));
+                                    return (
+                                      <span key={cIdx}>
+                                        {spacing}
+                                        <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 px-1 py-0.5 rounded-md font-extrabold mx-0.5 shadow-sm transition-all cursor-pointer">
+                                          {c.chord}
+                                        </span>
                                       </span>
-                                    </span>
-                                  );
-                                })}
+                                    );
+                                  })}
+                                </div>
+                                {/* Lyrics Line */}
+                                <div className="text-slate-200 font-medium tracking-wide">
+                                  {cleanLine || ' '}
+                                </div>
                               </div>
-                              {/* Lyrics Line */}
-                              <div className="text-slate-200 font-medium tracking-wide">
-                                {cleanLine || ' '}
-                              </div>
+                            );
+                          }
+
+                          // Normal lyric block
+                          return (
+                            <div
+                              key={lIdx}
+                              id={lineId}
+                              onClick={clickHandler}
+                              className={`leading-relaxed p-1 cursor-pointer hover:bg-white/5 rounded ${highlightClass} ${
+                                line.endsWith(':')
+                                  ? 'font-bold text-amber-500 mt-2 text-[11px] uppercase tracking-widest'
+                                  : 'text-slate-200 font-medium'
+                              }`}
+                              style={{ fontSize: `${line.endsWith(':') ? '11px' : 'inherit'}` }}
+                            >
+                              {line}
                             </div>
                           );
-                        }
-
-                        // Normal lyric block
-                        return (
-                          <div
-                            key={lIdx}
-                            className={`leading-relaxed ${
-                              line.endsWith(':')
-                                ? 'font-bold text-amber-500 mt-2 text-[11px] uppercase tracking-widest'
-                                : 'text-slate-200 font-medium'
-                            }`}
-                            style={{ fontSize: `${line.endsWith(':') ? '11px' : 'inherit'}` }}
-                          >
-                            {line}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })
+                        })}
+                      </div>
+                    );
+                  });
+                })()
               ) : (
                 <p className="text-slate-500 py-10 text-center italic">Lyrics Empty</p>
               )}

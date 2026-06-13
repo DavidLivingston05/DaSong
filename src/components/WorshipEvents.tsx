@@ -975,7 +975,7 @@ export default function WorshipEvents({
             </div>
 
             {/* Redesigned G-Calendar style "Create Event" Button */}
-            {currentRole === 'admin' && (
+            {(currentRole === 'admin' || currentRole === 'guest') && (
               <button
                 onClick={() => {
                   setCreateDate(selectedDateStr);
@@ -1122,9 +1122,9 @@ export default function WorshipEvents({
                           onClick={() => setEditingEventId(isExpanded ? null : ev.id)}
                           className="text-[11px] font-bold text-slate-400 hover:text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-full cursor-pointer transition-colors"
                         >
-                          {isExpanded ? 'Fold List' : currentRole === 'admin' ? `Manage Setup (${(ev.songIds || []).length})` : `View Setlist (${(ev.songIds || []).length})`}
+                          {isExpanded ? 'Fold List' : (currentRole === 'admin' || currentRole === 'guest') ? `Manage Setup (${(ev.songIds || []).length})` : `View Setlist (${(ev.songIds || []).length})`}
                         </button>
-                        {currentRole === 'admin' && (
+                        {(currentRole === 'admin' || currentRole === 'guest') && (
                           <button 
                             onClick={(e) => handleDeleteEvent(ev.id, e)}
                             className="p-2 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 rounded-xl cursor-pointer transition-colors"
@@ -1182,7 +1182,7 @@ export default function WorshipEvents({
                                   return (
                                     <div 
                                       key={sId}
-                                      draggable={currentRole === 'admin'}
+                                      draggable={(currentRole === 'admin' || currentRole === 'guest')}
                                       onDragStart={(e) => handleDragStart(e, ev.id, index)}
                                       onDragOver={handleDragOver}
                                       onDrop={(e) => handleDrop(e, ev.id, index)}
@@ -1192,11 +1192,11 @@ export default function WorshipEvents({
                                         isPlayActive 
                                           ? 'border-amber-500/50 bg-amber-500/10' 
                                           : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.03]'
-                                      } ${currentRole === 'admin' ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                                      } ${(currentRole === 'admin' || currentRole === 'guest') ? 'cursor-grab active:cursor-grabbing' : ''}`}
                                     >
                                       {/* Song title and indicator arrow */}
                                       <div className="flex items-center gap-2 truncate">
-                                        {currentRole === 'admin' && (
+                                        {(currentRole === 'admin' || currentRole === 'guest') && (
                                           <GripVertical className="h-3.5 w-3.5 text-slate-500 hover:text-slate-350 cursor-grab shrink-0" />
                                         )}
                                         <span className="text-amber-500 font-extrabold font-mono text-[10px]">
@@ -1233,7 +1233,7 @@ export default function WorshipEvents({
                                         >
                                           <Maximize2 className="h-3.5 w-3.5" />
                                         </button>
-                                        {currentRole === 'admin' ? (
+                                        {(currentRole === 'admin' || currentRole === 'guest') ? (
                                           <>
                                             <button
                                               disabled={index === 0}
@@ -1276,9 +1276,9 @@ export default function WorshipEvents({
                           <div className="space-y-3 xl:border-l xl:border-white/5 xl:pl-6 pt-4 xl:pt-0">
                             <div className="flex items-center justify-between">
                               <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
-                                {currentRole === 'admin' ? 'Link Catalog Songs:' : 'Search Catalog Songs:'}
+                                {(currentRole === 'admin' || currentRole === 'guest') ? 'Link Catalog Songs:' : 'Search Catalog Songs:'}
                               </label>
-                              {currentRole === 'admin' && (
+                              {(currentRole === 'admin' || currentRole === 'guest') && (
                                 <div className="flex items-center gap-1.5 select-none">
                                   <button
                                     type="button"
@@ -1321,7 +1321,7 @@ export default function WorshipEvents({
                                     <button
                                       key={song.id}
                                       onClick={() => {
-                                        if (currentRole === 'admin') {
+                                        if ((currentRole === 'admin' || currentRole === 'guest')) {
                                           toggleSongInEvent(ev.id, song.id);
                                         } else {
                                           onSelectSong(song.id, ev.songIds || []);
@@ -1335,7 +1335,7 @@ export default function WorshipEvents({
                                     >
                                       <span className="truncate">{song.title}</span>
                                       <span className="shrink-0 text-[10px]">
-                                        {currentRole === 'admin' ? (
+                                        {(currentRole === 'admin' || currentRole === 'guest') ? (
                                           isAdded ? (
                                             <Check className="h-3.5 w-3.5 text-emerald-400 stroke-[3]" />
                                           ) : (
@@ -1390,7 +1390,7 @@ export default function WorshipEvents({
             <div className="bg-zinc-950 rounded-2xl border border-zinc-900 p-4 space-y-4">
               
               {/* Creator Button for Admins in Stage 1 */}
-              {currentRole === 'admin' && (
+              {(currentRole === 'admin' || currentRole === 'guest') && (
                 <button
                   onClick={() => {
                     setCreateDate(selectedDateStr);
@@ -1604,7 +1604,7 @@ export default function WorshipEvents({
                       return (
                         <div 
                           key={songId}
-                          draggable={currentRole === 'admin'}
+                          draggable={(currentRole === 'admin' || currentRole === 'guest')}
                           onDragStart={(e) => handleDragStart(e, activeEvent.id, index)}
                           onDragOver={handleDragOver}
                           onDrop={(e) => handleDrop(e, activeEvent.id, index)}
@@ -1614,7 +1614,7 @@ export default function WorshipEvents({
                           }`}
                         >
                           <div className="flex-1 text-left flex items-center space-x-2.5 min-w-0">
-                            {currentRole === 'admin' && (
+                            {(currentRole === 'admin' || currentRole === 'guest') && (
                               <GripVertical className="h-4 w-4 text-zinc-500 hover:text-zinc-350 cursor-grab shrink-0" onClick={(e) => e.stopPropagation()} />
                             )}
                             <span className="text-[11px] font-mono font-black text-amber-500/60 bg-zinc-950 border border-zinc-850 px-2 py-0.5 rounded-md shrink-0">
@@ -1644,7 +1644,7 @@ export default function WorshipEvents({
                             >
                               <Maximize2 className="h-3.5 w-3.5" />
                             </button>
-                            {currentRole === 'admin' ? (
+                            {(currentRole === 'admin' || currentRole === 'guest') ? (
                               <>
                                 <button
                                   disabled={index === 0}
@@ -1687,9 +1687,9 @@ export default function WorshipEvents({
                   <div className="mt-6 pt-5 border-t border-zinc-900 space-y-3 shrink-0">
                     <div className="flex items-center justify-between pl-0.5">
                       <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
-                        {currentRole === 'admin' ? 'Link Catalog Songs:' : 'Search Catalog Songs:'}
+                        {(currentRole === 'admin' || currentRole === 'guest') ? 'Link Catalog Songs:' : 'Search Catalog Songs:'}
                       </label>
-                      {currentRole === 'admin' && (
+                      {(currentRole === 'admin' || currentRole === 'guest') && (
                         <div className="flex items-center gap-1.5 select-none">
                           <button
                             type="button"
@@ -1727,7 +1727,7 @@ export default function WorshipEvents({
                           <button
                             key={song.id}
                             onClick={() => {
-                              if (currentRole === 'admin') {
+                              if ((currentRole === 'admin' || currentRole === 'guest')) {
                                 toggleSongInEvent(activeEvent.id, song.id);
                               } else {
                                 handleSongClick(song);
@@ -1740,7 +1740,7 @@ export default function WorshipEvents({
                             }`}
                           >
                             <span className="truncate">{song.title}</span>
-                            {currentRole === 'admin' ? (
+                            {(currentRole === 'admin' || currentRole === 'guest') ? (
                               isAdded ? (
                                 <Check className="h-3 w-3 text-emerald-400 shrink-0" />
                               ) : (
@@ -1759,7 +1759,7 @@ export default function WorshipEvents({
             </div>
 
             {/* Create Trigger form on Mobile if Empty layout */}
-            {!activeEvent && currentRole === 'admin' && (
+            {!activeEvent && (currentRole === 'admin' || currentRole === 'guest') && (
               <div className="my-6 p-6 bg-zinc-950/50 border border-dashed border-zinc-900 rounded-2xl flex flex-col items-center">
                 <p className="text-zinc-500 text-xs font-mono text-center mb-4 leading-relaxed">
                   Would you like to schedule and customize a brand new Sunday service for this date?
@@ -1779,7 +1779,7 @@ export default function WorshipEvents({
             )}
 
             {/* Admin Event Settings Customizer Trigger */}
-            {currentRole === 'admin' && activeEvent && (
+            {(currentRole === 'admin' || currentRole === 'guest') && activeEvent && (
               <div className="mt-4 pt-3 border-t border-zinc-900 shrink-0 flex items-center gap-2">
                 <button 
                   onClick={async () => {
