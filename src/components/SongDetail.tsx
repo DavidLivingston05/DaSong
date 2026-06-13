@@ -1151,27 +1151,31 @@ export default function SongDetail({
                     const isChorus = section.toLowerCase().startsWith('chorus:');
                     const lines = section.split('\n');
 
+                    // Calculate index range for this section
+                    const startIdx = globalLineCounter;
+                    const endIdx = globalLineCounter + lines.length - 1;
+                    const isSectionHighlighted = highlightedLineIndex >= startIdx && highlightedLineIndex <= endIdx;
+
                     return (
                       <div
                         key={idx}
-                        className={`mb-6 p-2 rounded-lg transition-all ${
-                          isChorus
-                            ? 'border-l-4 border-amber-500 bg-amber-500/5 pl-4'
-                            : ''
+                        className={`mb-6 p-4 rounded-2xl transition-all duration-300 ${
+                          isSectionHighlighted
+                            ? 'bg-amber-500/10 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
+                            : (isChorus
+                                ? 'border-l-4 border-amber-500 bg-amber-500/5 pl-4 text-slate-350'
+                                : 'border border-transparent text-slate-350')
                         }`}
                       >
                         {lines.map((line, lIdx) => {
                           const currentLineIndex = globalLineCounter++;
-                          const isHighlighted = currentLineIndex === highlightedLineIndex;
                           const lineId = `lyric-line-${currentLineIndex}`;
                           
                           const clickHandler = () => {
                             handleLineSelect(currentLineIndex);
                           };
                           
-                          const highlightClass = isHighlighted
-                            ? 'bg-amber-500/15 border-l-2 border-amber-500 pl-2.5 py-1 rounded transition-all duration-300 shadow-[0_0_12px_rgba(245,158,11,0.1)]'
-                            : 'transition-all duration-200';
+                          const highlightClass = 'transition-all duration-200';
 
                           // Superscript rendering logic for active musician chords
                           if (showChords && line.includes('[')) {
@@ -1213,7 +1217,7 @@ export default function SongDetail({
                                   })}
                                 </div>
                                 {/* Lyrics Line */}
-                                <div className="text-slate-200 font-medium tracking-wide">
+                                <div className={`${isSectionHighlighted ? 'text-white font-semibold' : 'text-slate-200'} font-medium tracking-wide`}>
                                   {cleanLine || ' '}
                                 </div>
                               </div>
@@ -1229,7 +1233,7 @@ export default function SongDetail({
                               className={`leading-relaxed p-1 cursor-pointer hover:bg-white/5 rounded ${highlightClass} ${
                                 line.endsWith(':')
                                   ? 'font-bold text-amber-500 mt-2 text-[11px] uppercase tracking-widest'
-                                  : 'text-slate-200 font-medium'
+                                  : (isSectionHighlighted ? 'text-white font-semibold' : 'text-slate-200 font-medium')
                               }`}
                               style={{ fontSize: `${line.endsWith(':') ? '11px' : 'inherit'}` }}
                             >

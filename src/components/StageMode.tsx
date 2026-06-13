@@ -249,23 +249,27 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
       const isChorus = section.toLowerCase().startsWith('chorus:');
       const lines = section.split('\n');
 
+      // Calculate index range for this section
+      const startIdx = globalLineCounter;
+      const endIdx = globalLineCounter + lines.length - 1;
+      const isSectionHighlighted = highlightedLineIndex >= startIdx && highlightedLineIndex <= endIdx;
+
       return (
         <div
           key={idx}
-          className={`mb-6 p-4 rounded-xl break-inside-avoid ${
-            isChorus
-              ? 'border-l-4 border-amber-600 bg-amber-500/5 dark:bg-amber-400/5'
-              : ''
+          className={`mb-6 p-5 rounded-2xl break-inside-avoid transition-all duration-300 ${
+            isSectionHighlighted
+              ? 'bg-amber-500/10 border border-amber-500/35 shadow-[0_0_20px_rgba(245,158,11,0.15)]'
+              : (isChorus
+                  ? 'border-l-4 border-amber-600 bg-amber-500/5 dark:bg-amber-400/5 border-transparent'
+                  : 'border border-transparent')
           }`}
         >
           {lines.map((line, lIdx) => {
             const currentLineIndex = globalLineCounter++;
-            const isHighlighted = currentLineIndex === highlightedLineIndex;
             const lineId = `stage-line-${currentLineIndex}`;
             
-            const highlightClass = isHighlighted
-              ? 'bg-amber-500/15 border-l-2 border-amber-500 pl-3 py-1 rounded transition-all duration-300 shadow-[0_0_12px_rgba(245,158,11,0.1)]'
-              : 'transition-all duration-200';
+            const highlightClass = 'transition-all duration-200';
 
             // Check if line contains bracketed chords
             if (config.showChords && line.includes('[')) {
@@ -289,7 +293,9 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
               // Assign custom pro color schemes depending on physical theme
               const isLightTheme = config.theme === 'parchment' || config.theme === 'classic';
               const chordsColor = isLightTheme ? 'text-amber-700' : 'text-amber-400 font-black drop-shadow-[0_0_8px_rgba(245,158,11,0.25)]';
-              const lyricsColor = isLightTheme ? 'text-stone-900 font-bold' : 'text-white font-black tracking-wide';
+              const lyricsColor = isSectionHighlighted
+                ? 'text-white font-extrabold tracking-wide'
+                : (isLightTheme ? 'text-stone-900 font-bold' : 'text-zinc-350 font-medium tracking-wide');
 
               return (
                 <div key={lIdx} id={lineId} className={`mb-3.5 leading-relaxed p-1 ${highlightClass}`}>
@@ -317,7 +323,9 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
             // Normal line or raw header line
             const isLightTheme = config.theme === 'parchment' || config.theme === 'classic';
             const headingColor = isLightTheme ? 'text-amber-800' : 'text-amber-500 font-extrabold';
-            const normalColor = isLightTheme ? 'text-stone-900 font-bold' : 'text-zinc-100 font-black tracking-wide';
+            const normalColor = isSectionHighlighted
+              ? 'text-white font-extrabold tracking-wide'
+              : (isLightTheme ? 'text-stone-900 font-bold' : 'text-zinc-350 font-medium tracking-wide');
 
             return (
               <div
