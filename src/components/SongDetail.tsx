@@ -83,6 +83,22 @@ export default function SongDetail({
   const [isFollowing, setIsFollowing] = useState<boolean>(() => localStorage.getItem('dasong_live_follow') === 'true');
   const [highlightedLineIndex, setHighlightedLineIndex] = useState<number>(-1);
 
+  // Synchronize follow mode state with global changes (e.g. toggled from dashboard)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const stored = localStorage.getItem('dasong_live_follow') === 'true';
+      if (stored !== isFollowing) {
+        setIsFollowing(stored);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    const interval = setInterval(handleStorageChange, 1000);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [isFollowing]);
+
   // Poll broadcast state if following
   useEffect(() => {
     if (!isFollowing || !songId) return;

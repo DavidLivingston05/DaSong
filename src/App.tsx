@@ -23,7 +23,8 @@ import {
   switchActiveServer,
   getPublicServers,
   createServer,
-  authServerAdmin
+  authServerAdmin,
+  getBroadcastState
 } from './lib/db';
 import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
@@ -119,6 +120,10 @@ export default function App() {
   const [showIOSInstructions, setShowIOSInstructions] = useState<boolean>(false);
   const [dismissedInstall, setDismissedInstall] = useState<boolean>(() => {
     return localStorage.getItem('dasong_dismiss_install') === 'true';
+  });
+
+  const [isFollowing, setIsFollowing] = useState<boolean>(() => {
+    return localStorage.getItem('dasong_live_follow') === 'true';
   });
 
 
@@ -645,6 +650,41 @@ export default function App() {
       });
     }
   }, []);
+
+  const handleToggleFollow = useCallback((val: boolean) => {
+    setIsFollowing(val);
+    localStorage.setItem('dasong_live_follow', val ? 'true' : 'false');
+    if (val) {
+      localStorage.setItem('dasong_live_broadcast', 'false');
+      window.dispatchEvent(new Event('storage'));
+    }
+  }, []);
+
+  // Global Live Broadcast follow polling - automatically navigate and open the led song
+  useEffect(() => {
+    if (!isFollowing) return;
+
+    let active = true;
+    const pollInterval = setInterval(async () => {
+      if (!active) return;
+      try {
+        const state = await getBroadcastState();
+        if (state && state.songId && state.songId !== selectedSongId) {
+          // Found a new active song! Automatically navigate and open it.
+          setSongSourceTab('search'); // Set source to search
+          setActiveTab('search');     // Open search tab (where song detail is shown)
+          handleSelectSong(state.songId);
+        }
+      } catch (err) {
+        console.error("Global follow polling error:", err);
+      }
+    }, 2000);
+
+    return () => {
+      active = false;
+      clearInterval(pollInterval);
+    };
+  }, [isFollowing, selectedSongId, handleSelectSong]);
 
   // Handle single chord toggle favorite
   const handleToggleFavorite = useCallback(async (id: string, currentFav: boolean) => {
@@ -1317,6 +1357,45 @@ export default function App() {
                 Logged in as: <span className="text-amber-400 font-bold uppercase">{session?.role}</span>
               </p>
             </div>
+
+            {/* Live Service Follow Panel (Guest/Choir/Admin dashboard) */}
+            {activeServerId !== 'default' && (
+              <div className={`w-full p-5 rounded-3xl border transition-all duration-300 ${
+                isFollowing 
+                  ? 'bg-amber-500/10 border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.1)]' 
+                  : 'bg-zinc-950/40 border-zinc-800/80 hover:border-zinc-700/80'
+              } mb-6 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
+                <div className="absolute top-1/2 -right-4 -translate-y-1/2 w-36 h-36 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="flex items-start gap-3.5 relative z-10">
+                  <div className="pt-0.5 shrink-0">
+                    <span className="relative flex h-3 w-3">
+                      {isFollowing && (
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      )}
+                      <span className={`relative inline-flex rounded-full h-3 w-3 ${isFollowing ? 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' : 'bg-zinc-650'}`}></span>
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Live Broadcast Follower Mode</h3>
+                    <p className="text-[11px] text-zinc-400 mt-1 select-none font-medium leading-relaxed max-w-xl">
+                      {isFollowing 
+                        ? 'Actively listening for live broadcast... Your screen will automatically navigate to the active song.' 
+                        : 'Enable to automatically open the song being projected/led by the worship leader.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleToggleFollow(!isFollowing)}
+                  className={`relative z-10 px-5 py-2.5 rounded-full text-xs font-extrabold font-mono tracking-wider uppercase transition-all cursor-pointer active-touch shrink-0 ${
+                    isFollowing 
+                      ? 'bg-amber-500 text-black shadow-md hover:bg-amber-400 shadow-amber-500/25' 
+                      : 'bg-zinc-900 border border-zinc-800 text-zinc-350 hover:text-white hover:border-zinc-700'
+                  }`}
+                >
+                  {isFollowing ? '🔊 Syncing' : '🔇 Follow'}
+                </button>
+              </div>
+            )}
 
             {/* Elegant PWA Browser Install Banner */}
             {showInstallBanner && !isInstalled && !dismissedInstall && (
