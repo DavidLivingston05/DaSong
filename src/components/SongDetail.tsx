@@ -82,6 +82,11 @@ export default function SongDetail({
   const [isBroadcasting, setIsBroadcasting] = useState<boolean>(() => localStorage.getItem('dasong_live_broadcast') === 'true');
   const [isFollowing, setIsFollowing] = useState<boolean>(() => localStorage.getItem('dasong_live_follow') === 'true');
   const [highlightedLineIndex, setHighlightedLineIndex] = useState<number>(-1);
+  const highlightedLineRef = useRef<number>(-1);
+
+  useEffect(() => {
+    highlightedLineRef.current = highlightedLineIndex;
+  }, [highlightedLineIndex]);
 
   // Synchronize follow mode state with global changes (e.g. toggled from dashboard)
   useEffect(() => {
@@ -118,15 +123,18 @@ export default function SongDetail({
 
           // Update highlighted line
           if (typeof state.activeLineIndex === 'number' && state.activeLineIndex >= 0) {
+            const hasLineChanged = state.activeLineIndex !== highlightedLineRef.current;
             setHighlightedLineIndex(state.activeLineIndex);
             
-            // Scroll to this line
-            setTimeout(() => {
-              const el = document.getElementById(`lyric-line-${state.activeLineIndex}`);
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }, 100);
+            // Scroll to this line ONLY if it actually changed
+            if (hasLineChanged) {
+              setTimeout(() => {
+                const el = document.getElementById(`lyric-line-${state.activeLineIndex}`);
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }, 100);
+            }
           }
         }
       } catch (err) {

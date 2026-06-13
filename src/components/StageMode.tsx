@@ -36,6 +36,11 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
   // Live follow state
   const [isFollowing, setIsFollowing] = useState<boolean>(() => localStorage.getItem('dasong_live_follow') === 'true');
   const [highlightedLineIndex, setHighlightedLineIndex] = useState<number>(-1);
+  const highlightedLineRef = useRef<number>(-1);
+
+  useEffect(() => {
+    highlightedLineRef.current = highlightedLineIndex;
+  }, [highlightedLineIndex]);
 
   // Synchronize follow mode state with global changes (e.g. toggled from dashboard)
   useEffect(() => {
@@ -72,16 +77,19 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
 
           // Update highlighted line
           if (typeof state.activeLineIndex === 'number' && state.activeLineIndex >= 0) {
+            const hasLineChanged = state.activeLineIndex !== highlightedLineRef.current;
             setHighlightedLineIndex(state.activeLineIndex);
 
-            // If in continuous scroll view, scroll the line into view
+            // If in continuous scroll view, scroll the line into view only when it changes
             if (viewMode === 'scroll') {
-              setTimeout(() => {
-                const el = document.getElementById(`stage-line-${state.activeLineIndex}`);
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-              }, 100);
+              if (hasLineChanged) {
+                setTimeout(() => {
+                  const el = document.getElementById(`stage-line-${state.activeLineIndex}`);
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }, 100);
+              }
             } else {
               // If in slides view, compute slide index containing the active line
               const normalizedLyrics = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
