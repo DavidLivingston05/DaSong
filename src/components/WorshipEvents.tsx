@@ -87,7 +87,247 @@ export default function WorshipEvents({
   onOpenUploadModal
 }: WorshipEventsProps) {
 
+  const getWeekdayName = (dateStr: string): string => {
+    try {
+      const d = new Date(dateStr + 'T12:00:00');
+      return d.toLocaleDateString('en-US', { weekday: 'long' });
+    } catch {
+      return 'Sunday';
+    }
+  };
 
+  const getCreativeSuggestions = (dateStr: string, timeStr: string): { title: string; description: string }[] => {
+    let weekday = 'Sunday';
+    try {
+      const d = new Date(dateStr + 'T12:00:00');
+      weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+    } catch {}
+
+    let hour = 9;
+    if (timeStr) {
+      const parts = timeStr.split(':');
+      if (parts.length > 0) {
+        hour = parseInt(parts[0], 10);
+      }
+    }
+
+    let timeOfDay = 'Morning';
+    if (hour >= 5 && hour < 12) timeOfDay = 'Morning';
+    else if (hour >= 12 && hour < 17) timeOfDay = 'Afternoon';
+    else if (hour >= 17 && hour < 22) timeOfDay = 'Evening';
+    else timeOfDay = 'Night';
+
+    const suggestions: { title: string; description: string }[] = [];
+
+    if (weekday === 'Sunday') {
+      if (timeOfDay === 'Morning') {
+        suggestions.push({
+          title: 'Sunday Morning Worship',
+          description: 'A service of gratitude and praise, opening our hearts to the divine word and community fellowship.'
+        });
+        suggestions.push({
+          title: 'Sunday Celebration Service',
+          description: 'A vibrant morning service celebrating community, faith, and uplifting worship songs.'
+        });
+        suggestions.push({
+          title: 'Sunday Morning Praise & Word',
+          description: 'An inspiring session starting with lively worship followed by scripture teaching.'
+        });
+      } else if (timeOfDay === 'Afternoon') {
+        suggestions.push({
+          title: 'Sunday Afternoon Fellowship',
+          description: 'A relaxed post-service gathering for lunch, community discussion, and group prayer.'
+        });
+        suggestions.push({
+          title: 'Sunday Worship & Communion',
+          description: 'A sacred afternoon service focusing on the Lord\'s Supper and contemplative songs.'
+        });
+        suggestions.push({
+          title: 'Sunday Divine Liturgy',
+          description: 'Traditional liturgical service with communion, responsive readings, and choral praise.'
+        });
+      } else if (timeOfDay === 'Evening') {
+        suggestions.push({
+          title: 'Sunday Evening Vespers',
+          description: 'A contemplative evening service featuring traditional hymns, scripture readings, and silent meditation.'
+        });
+        suggestions.push({
+          title: 'Sunday Night Praise Revival',
+          description: 'An evening of revival songs, testimony sharing, and extended ministry prayer time.'
+        });
+        suggestions.push({
+          title: 'Sunday Night Youth Service',
+          description: 'A high-energy contemporary worship service tailored for students and young adults.'
+        });
+      } else {
+        suggestions.push({
+          title: 'Sunday Midnight Prayer',
+          description: 'A solemn midnight watch prayer meeting seeking peace and blessing for the coming week.'
+        });
+        suggestions.push({
+          title: 'Sunday Night Watch',
+          description: 'A late-night intercessory prayer and adoration session in the sanctuary.'
+        });
+        suggestions.push({
+          title: 'Sunday Worship Gathering',
+          description: 'An informal evening collection of worship, study, and shared encouragement.'
+        });
+      }
+    } else if (weekday === 'Saturday') {
+      if (timeOfDay === 'Morning') {
+        suggestions.push({
+          title: 'Saturday Morning Devotion',
+          description: 'A quiet morning start focusing on scripture reading, soft instrumental worship, and guided prayer.'
+        });
+        suggestions.push({
+          title: 'Saturday Praise & Prayer',
+          description: 'A weekend service dedicated to intercessory prayer, thanksgiving, and musical worship.'
+        });
+        suggestions.push({
+          title: 'Saturday Worship Session',
+          description: 'An early weekend gathering to praise together and refresh our hearts in worship.'
+        });
+      } else if (timeOfDay === 'Afternoon') {
+        suggestions.push({
+          title: 'Saturday Afternoon Gathering',
+          description: 'A casual weekend meetup for building relationships, studying scripture, and light praise.'
+        });
+        suggestions.push({
+          title: 'Saturday Youth Fellowship',
+          description: 'A dynamic gathering for youth to connect, share testimonies, and build fellowship through contemporary worship.'
+        });
+        suggestions.push({
+          title: 'Saturday Choir Rehearsal',
+          description: 'Vocal preparation, setlist run-through, and prayer for the upcoming Sunday worship services.'
+        });
+      } else if (timeOfDay === 'Evening') {
+        suggestions.push({
+          title: 'Saturday Evening Vigil',
+          description: 'An intimate evening of acoustic praise, prayer, and quiet reflection to close the week.'
+        });
+        suggestions.push({
+          title: 'Saturday Night Worship',
+          description: 'A high-energy praise session followed by a time of fellowship and personal reflection.'
+        });
+        suggestions.push({
+          title: 'Saturday Vespers Service',
+          description: 'Choral evening prayer and candle-lit reflection preparing our minds for Sunday.'
+        });
+      } else {
+        suggestions.push({
+          title: 'Saturday Midnight Vigil',
+          description: 'A focused late-night prayer vigil for spiritual breakthrough and divine guidance.'
+        });
+        suggestions.push({
+          title: 'Saturday Late Night Praise',
+          description: 'An acoustic night of fellowship, worship, and storytelling around the word.'
+        });
+        suggestions.push({
+          title: 'Saturday Worship Session',
+          description: 'Weekend nighttime gathering to focus on adoration and personal ministry time.'
+        });
+      }
+    } else if (weekday === 'Wednesday') {
+      if (timeOfDay === 'Evening') {
+        suggestions.push({
+          title: 'Wednesday Midweek Prayer',
+          description: 'A midweek pause to seek guidance, share prayer requests, and rejuvenate our spirits.'
+        });
+        suggestions.push({
+          title: 'Wednesday Bible Study & Worship',
+          description: 'An interactive dive into scripture complemented by acoustic praise and discussion.'
+        });
+        suggestions.push({
+          title: 'Midweek Revival Service',
+          description: 'Recharging our spiritual batteries halfway through the week with prayer and praise.'
+        });
+      } else {
+        suggestions.push({
+          title: `Wednesday ${timeOfDay} Service`,
+          description: `A midweek gathering for worship and encouragement during the ${timeOfDay.toLowerCase()} hours.`
+        });
+        suggestions.push({
+          title: 'Wednesday Prayer Meeting',
+          description: 'Coming together midweek to lift up our community, church, and personal prayer needs.'
+        });
+        suggestions.push({
+          title: 'Midweek Fellowship',
+          description: 'A warm midweek gathering for encouragement, light study, and worship.'
+        });
+      }
+    } else if (weekday === 'Friday') {
+      if (timeOfDay === 'Evening') {
+        suggestions.push({
+          title: 'Friday Night Fire',
+          description: 'A powerful night of intercessory prayer, high-energy praise, and spiritual renewal.'
+        });
+        suggestions.push({
+          title: 'Friday Youth Gathering',
+          description: 'An energetic evening for young believers to connect, play, and worship together.'
+        });
+        suggestions.push({
+          title: 'Friday Night Prayer & Worship',
+          description: 'An extended night of seeking God\'s presence through uninterrupted musical adoration and prayer.'
+        });
+      } else {
+        suggestions.push({
+          title: `Friday ${timeOfDay} Worship`,
+          description: `Starting the weekend early with a special ${timeOfDay.toLowerCase()} service of devotion.`
+        });
+        suggestions.push({
+          title: 'Friday Fellowship Gathering',
+          description: 'A casual gathering for discussion, fellowship, and warm worship songs.'
+        });
+        suggestions.push({
+          title: 'Friday Healing & Deliverance',
+          description: 'A dedicated service focusing on prayers for physical, emotional, and spiritual healing.'
+        });
+      }
+    } else {
+      if (timeOfDay === 'Morning') {
+        suggestions.push({
+          title: `${weekday} Morning Devotion`,
+          description: 'A peaceful morning devotion, starting the day in scripture and silent prayer.'
+        });
+        suggestions.push({
+          title: `${weekday} Prayer & Worship`,
+          description: 'A sweet hour of morning prayer accompanied by reflective worship songs.'
+        });
+        suggestions.push({
+          title: 'Daily Morning Bread',
+          description: 'An early gathering focused on bible readings, devotional insights, and prayers.'
+        });
+      } else if (timeOfDay === 'Evening') {
+        suggestions.push({
+          title: `${weekday} Midweek Fellowship`,
+          description: 'A small-group styled service for study, prayer, and acoustic praise.'
+        });
+        suggestions.push({
+          title: `${weekday} Evening Bible Study`,
+          description: 'An evening classroom-style study of the Word, paired with worship and group prayers.'
+        });
+        suggestions.push({
+          title: `${weekday} Night Praise`,
+          description: 'A quiet evening sanctuary service of praise, thanksgiving, and dedication.'
+        });
+      } else {
+        suggestions.push({
+          title: `${weekday} Worship Session`,
+          description: 'A special weekday worship session to refresh our spirits in God\'s presence.'
+        });
+        suggestions.push({
+          title: `${weekday} Fellowship Service`,
+          description: 'Connecting with other believers on a weekday to share testimonies, pray, and praise.'
+        });
+        suggestions.push({
+          title: 'Community Prayer Gathering',
+          description: 'A union of believers gathering on a weekday to seek blessings for our neighborhood and families.'
+        });
+      }
+    }
+
+    return suggestions;
+  };
 
   // Calendar Month Navigation State
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -102,6 +342,8 @@ export default function WorshipEvents({
   const [createTime, setCreateTime] = useState<string>('09:00');
   const [createDesc, setCreateDesc] = useState<string>('');
   const [createSongIds, setCreateSongIds] = useState<string[]>([]);
+  const [aiKeyword, setAiKeyword] = useState<string>('');
+  const [isGeneratingTheme, setIsGeneratingTheme] = useState<boolean>(false);
 
   // Active viewing/editing event on agenda for desktop
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -450,6 +692,49 @@ export default function WorshipEvents({
     return sorted;
   }, [songs, songSearchQuery]);
 
+  const handleAiGenerateTheme = async () => {
+    setIsGeneratingTheme(true);
+    try {
+      const res = await fetch('/api/ai/generate-theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: createDate, time: createTime, keywords: aiKeyword })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.title) setCreateTitle(data.title);
+        if (data.description) setCreateDesc(data.description);
+      } else {
+        const suggestions = getCreativeSuggestions(createDate, createTime);
+        const match = suggestions.find(s => 
+          s.title.toLowerCase().includes(aiKeyword.toLowerCase()) || 
+          s.description.toLowerCase().includes(aiKeyword.toLowerCase())
+        );
+        const selected = match || suggestions[Math.floor(Math.random() * suggestions.length)];
+        
+        if (selected) {
+          if (aiKeyword.trim()) {
+            setCreateTitle(`${aiKeyword.trim()} & Praise`);
+            setCreateDesc(`A special service centering on ${aiKeyword.trim()}, seeking fellowship and shared reflection.`);
+          } else {
+            setCreateTitle(selected.title);
+            setCreateDesc(selected.description);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('AI theme generation failed, running local fallback:', err);
+      const suggestions = getCreativeSuggestions(createDate, createTime);
+      const selected = suggestions[0];
+      if (selected) {
+        setCreateTitle(selected.title);
+        setCreateDesc(selected.description);
+      }
+    } finally {
+      setIsGeneratingTheme(false);
+    }
+  };
+
   const handleCreateEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createTitle.trim()) {
@@ -476,6 +761,7 @@ export default function WorshipEvents({
       setCreateTitle('');
       setCreateDesc('');
       setCreateSongIds([]);
+      setAiKeyword('');
       setShowCreateDialog(false);
     }
   };
@@ -980,7 +1266,7 @@ export default function WorshipEvents({
                 onClick={() => {
                   setCreateDate(selectedDateStr);
                   setCreateSongIds([]);
-                  setCreateTitle('Sunday Worship');
+                  setCreateTitle(`${getWeekdayName(selectedDateStr)} Worship`);
                   setShowCreateDialog(true);
                 }}
                 className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs py-3 rounded-2xl shadow-[0_0_20px_rgba(245,158,11,0.15)] flex items-center justify-center gap-2 cursor-pointer transition-all"
@@ -1395,7 +1681,7 @@ export default function WorshipEvents({
                   onClick={() => {
                     setCreateDate(selectedDateStr);
                     setCreateSongIds([]);
-                    setCreateTitle('Worship Session');
+                    setCreateTitle(`${getWeekdayName(selectedDateStr)} Worship`);
                     setShowCreateDialog(true);
                   }}
                   className="w-full bg-[#f59e0b] text-black font-extrabold text-xs py-3.5 rounded-xl shadow-[0_4px_16px_rgba(242,158,11,0.1)] flex items-center justify-center gap-2 cursor-pointer transition-transform"
@@ -1762,13 +2048,13 @@ export default function WorshipEvents({
             {!activeEvent && (currentRole === 'admin' || currentRole === 'guest') && (
               <div className="my-6 p-6 bg-zinc-950/50 border border-dashed border-zinc-900 rounded-2xl flex flex-col items-center">
                 <p className="text-zinc-500 text-xs font-mono text-center mb-4 leading-relaxed">
-                  Would you like to schedule and customize a brand new Sunday service for this date?
+                  Would you like to schedule and customize a brand new {getWeekdayName(selectedDateStr)} service for this date?
                 </p>
                 <button
                   onClick={() => {
                     setCreateDate(selectedDateStr);
                     setCreateSongIds([]);
-                    setCreateTitle('Sunday Worship Service');
+                    setCreateTitle(`${getWeekdayName(selectedDateStr)} Worship Service`);
                     setShowCreateDialog(true);
                   }}
                   className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-[#f59e0b] border border-amber-500/25 rounded-xl text-xs font-bold font-mono transition-transform"
@@ -1971,11 +2257,58 @@ export default function WorshipEvents({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Sunday Morning Worship"
+                  placeholder={`e.g. ${getWeekdayName(createDate)} Morning Worship`}
                   value={createTitle}
                   onChange={e => setCreateTitle(e.target.value)}
                   className="w-full bg-[#09090b] border border-white/10 rounded-xl px-3.5 py-2.5 text-slate-200 placeholder-slate-550 focus:outline-none focus:border-amber-500 text-xs font-semibold"
                 />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {getCreativeSuggestions(createDate, createTime).map((sug, sIdx) => (
+                    <button
+                      key={sIdx}
+                      type="button"
+                      onClick={() => {
+                        setCreateTitle(sug.title);
+                        setCreateDesc(sug.description);
+                      }}
+                      className="text-[10px] font-medium bg-amber-500/10 hover:bg-amber-500/20 text-[#f59e0b] border border-amber-500/20 hover:border-amber-500/40 px-2.5 py-1 rounded-lg transition-colors cursor-pointer select-none"
+                    >
+                      {sug.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI Creative Assistant */}
+              <div className="p-3 bg-[#0d0d11]/80 rounded-2xl border border-amber-500/10 space-y-2">
+                <div className="flex items-center gap-1.5 text-amber-500 text-[10px] font-mono uppercase font-bold">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>AI Creative Assistant</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Sermon Topic (e.g. Hope, Forgiveness)"
+                    value={aiKeyword}
+                    onChange={e => setAiKeyword(e.target.value)}
+                    className="flex-1 bg-[#09090b] border border-white/10 rounded-xl px-3 py-2 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500 text-xs font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAiGenerateTheme}
+                    disabled={isGeneratingTheme}
+                    className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-extrabold text-[11px] px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                  >
+                    {isGeneratingTheme ? (
+                      <div className="w-3 h-3 border-2 border-black/25 border-t-black rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5 stroke-[2.5]" />
+                        <span>Generate</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

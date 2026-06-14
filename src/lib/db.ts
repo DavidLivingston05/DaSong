@@ -795,11 +795,13 @@ export function getLocalWorshipEvents(): WorshipEvent[] {
     }
   }
   // Default starter event
+  const today = new Date();
+  const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
   return [
     {
       id: 'event-starter-1',
-      title: 'Sunday Service 1 - Morning Praise',
-      date: new Date().toISOString().split('T')[0],
+      title: `${dayName} Service 1 - Morning Praise`,
+      date: today.toISOString().split('T')[0],
       time: '09:00',
       description: 'Morning praise & devotion segment',
       songIds: []

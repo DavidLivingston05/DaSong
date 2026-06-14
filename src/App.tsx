@@ -51,19 +51,18 @@ export default function App() {
 
   const [session, setSession] = useState<UserSession | null>(() => {
     const serverId = getActiveServerId();
-    if (serverId === 'default') {
-      return { role: 'guest', name: 'Guest Browser' };
-    }
     const savedRole = localStorage.getItem(`lyrasync_user_role_${serverId}`);
     const savedName = localStorage.getItem(`lyrasync_user_name_${serverId}`);
-    if (savedRole === 'admin' || savedRole === 'choir') {
+    if (savedRole === 'admin' || savedRole === 'choir' || (serverId === 'default' && savedRole === 'guest')) {
       return {
         role: savedRole as UserRole,
-        name: savedName || (savedRole === 'admin' ? 'Administrator' : '')
+        name: savedName || (savedRole === 'admin' ? 'Administrator' : savedRole === 'guest' ? 'Guest Browser' : '')
       };
     }
-    return null; // Force login/role selection for this server
+    return null; // Force login/role selection / Portal
   });
+
+  const [portalView, setPortalView] = useState<'menu' | 'join' | 'create'>('menu');
 
   const currentRole = session ? session.role : 'guest';
 
@@ -328,12 +327,10 @@ export default function App() {
     const savedRole = localStorage.getItem(`lyrasync_user_role_${newServerId}`);
     const savedName = localStorage.getItem(`lyrasync_user_name_${newServerId}`);
 
-    if (newServerId === 'default') {
-      setSession({ role: 'guest', name: 'Guest Browser' });
-    } else if (savedRole === 'admin' || savedRole === 'choir') {
+    if (savedRole === 'admin' || savedRole === 'choir' || (newServerId === 'default' && savedRole === 'guest')) {
       setSession({
         role: savedRole as UserRole,
-        name: savedName || (savedRole === 'admin' ? 'Administrator' : '')
+        name: savedName || (savedRole === 'admin' ? 'Administrator' : savedRole === 'guest' ? 'Guest Browser' : '')
       });
     } else {
       setSession(null); // Force role selection for the server
@@ -445,15 +442,44 @@ export default function App() {
   };
 
   const handleLeaveServer = async () => {
-    if (confirm('Are you sure you want to exit this server and return to the Guest public library?')) {
-      await handleSwitchServer('default');
+    if (confirm('Are you sure you want to exit this workspace and return to the Portal?')) {
+      // Clear saved session info for the server we are leaving
+      localStorage.removeItem(`lyrasync_user_role_${activeServerId}`);
+      localStorage.removeItem(`lyrasync_user_name_${activeServerId}`);
+      
+      // Reset default server preferences too if any, so they return to portal menu
+      localStorage.removeItem(`lyrasync_user_role_default`);
+      localStorage.removeItem(`lyrasync_user_name_default`);
+      
+      // Reset server back to default
+      switchActiveServer('default');
+      setActiveServerId('default');
+      setSession(null);
+      setPortalView('menu');
+      
+      // Clear states
+      setSongs([]);
+      setEvents([]);
+      setSuggestions([]);
+      
+      try {
+        await initDB();
+        await syncSongsList();
+      } catch (err) {
+        console.error('Error switching server DB:', err);
+      }
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem(`lyrasync_user_role_${activeServerId}`);
     localStorage.removeItem(`lyrasync_user_name_${activeServerId}`);
+    if (activeServerId === 'default') {
+      localStorage.removeItem(`lyrasync_user_role_default`);
+      localStorage.removeItem(`lyrasync_user_name_default`);
+    }
     setSession(null);
+    setPortalView('menu');
   };
 
 
@@ -776,6 +802,12 @@ export default function App() {
     }
   };
 
+  const handleSelectGuestMode = async () => {
+    localStorage.setItem('lyrasync_user_role_default', 'guest');
+    localStorage.setItem('lyrasync_user_name_default', 'Guest Browser');
+    await handleSwitchServer('default');
+  };
+
   // Presentation Trigger handlers
   const handleEnterStageMode = async (transposeStep: number) => {
     if (!selectedSongId) return;
@@ -900,132 +932,564 @@ export default function App() {
     );
   };
 
-  if (activeServerId !== 'default' && !session) {
-    const serverName = localStorage.getItem(`dasong_server_name_${activeServerId}`) || activeServerId;
-    return (
-      <div id="login-portal" className="flex items-center justify-center min-h-[100dvh] bg-[#070708] text-white p-4 font-sans relative overflow-hidden">
-        {/* Backdrop patterns */}
-        <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px]"></div>
-        <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-rose-500/5 rounded-full blur-3xl"></div>
+  if (!session) {
+    if (activeServerId !== 'default') {
+      const serverName = localStorage.getItem(`dasong_server_name_${activeServerId}`) || activeServerId;
+      return (
+        <div id="login-portal" className="flex items-center justify-center min-h-[100dvh] bg-[#070708] text-white p-4 font-sans relative overflow-hidden">
+          {/* Backdrop patterns */}
+          <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px]"></div>
+          <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-rose-500/5 rounded-full blur-3xl"></div>
 
-        <div className="w-full max-w-md p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_40px_rgba(245,158,11,0.05)] relative z-10 animate-in fade-in zoom-in-95 duration-350">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-black tracking-tight text-white mb-2">{serverName}</h1>
-            <p className="text-zinc-550 text-xs font-mono uppercase tracking-widest">Workspace ID: {activeServerId}</p>
-            <p className="text-zinc-400 text-xs mt-2">Select your access role to enter this church server workspace.</p>
-          </div>
-
-          {joinError && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-405 text-[11px] rounded-xl text-center font-bold">
-              ⚠️ {joinError}
+          <div className="w-full max-w-md p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_40px_rgba(245,158,11,0.05)] relative z-10 animate-in fade-in zoom-in-95 duration-350">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-black tracking-tight text-white mb-2">{serverName}</h1>
+              <p className="text-zinc-550 text-xs font-mono uppercase tracking-widest">Workspace ID: {activeServerId}</p>
+              <p className="text-zinc-400 text-xs mt-2">Select your access role to enter this church server workspace.</p>
             </div>
-          )}
 
-          {joinRole === null ? (
-            <div className="space-y-3">
-              <button 
-                onClick={() => {
-                  setJoinRole('choir');
-                  setJoinError('');
-                }}
-                className="w-full flex items-center justify-between p-4 bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-900 hover:border-amber-500/30 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
-              >
-                <div>
-                  <p className="font-bold text-xs text-white flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Join as Choir Member
-                  </p>
-                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Access songs, worship setlists, and suggest songs sheets.</p>
-                </div>
-                <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
-              </button>
+            {joinError && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-405 text-[11px] rounded-xl text-center font-bold">
+                ⚠️ {joinError}
+              </div>
+            )}
 
-              <button 
-                onClick={() => {
-                  setJoinRole('admin');
-                  setJoinError('');
-                }}
-                className="w-full flex items-center justify-between p-4 bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-900 hover:border-amber-500/30 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
-              >
-                <div>
-                  <p className="font-bold text-xs text-white flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                    Login as Administrator
-                  </p>
-                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">Enter password to unlock song creation, imports, and full management.</p>
-                </div>
-                <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
-              </button>
-
-              <div className="pt-4 border-t border-white/5 flex gap-2">
+            {joinRole === null ? (
+              <div className="space-y-3">
                 <button 
-                  onClick={async () => {
-                    await handleSwitchServer('default');
+                  onClick={() => {
+                    setJoinRole('choir');
+                    setJoinError('');
                   }}
-                  className="w-full p-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold rounded-2xl text-center transition-all cursor-pointer active-touch"
+                  className="w-full flex items-center justify-between p-4 bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-900 hover:border-amber-500/30 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
                 >
-                  ← Return to Guest Library
+                  <div>
+                    <p className="font-bold text-xs text-white flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Join as Choir Member
+                    </p>
+                    <p className="text-[10px] text-zinc-500 mt-1 font-medium">Access songs, worship setlists, and suggest songs sheets.</p>
+                  </div>
+                  <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
                 </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-2.5">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">{joinRole === 'admin' ? '👑 Admin' : '🧑‍🎤 Choir'} Access</h3>
+
                 <button 
-                  onClick={() => { setJoinRole(null); setJoinError(''); }}
-                  className="text-xs text-zinc-400 hover:text-white font-bold cursor-pointer transition-colors"
+                  onClick={() => {
+                    setJoinRole('admin');
+                    setJoinError('');
+                  }}
+                  className="w-full flex items-center justify-between p-4 bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-900 hover:border-amber-500/30 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
                 >
-                  ← Back
+                  <div>
+                    <p className="font-bold text-xs text-white flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                      Login as Administrator
+                    </p>
+                    <p className="text-[10px] text-zinc-500 mt-1 font-medium">Enter password to unlock song creation, imports, and full management.</p>
+                  </div>
+                  <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
+                </button>
+
+                <div className="pt-4 border-t border-white/5 flex gap-2">
+                  <button 
+                    onClick={async () => {
+                      await handleSwitchServer('default');
+                    }}
+                    className="w-full p-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold rounded-2xl text-center transition-all cursor-pointer active-touch"
+                  >
+                    ← Return to Portal
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-2.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">{joinRole === 'admin' ? '👑 Admin' : '🧑‍🎤 Choir'} Access</h3>
+                  <button 
+                    onClick={() => { setJoinRole(null); setJoinError(''); }}
+                    className="text-xs text-zinc-400 hover:text-white font-bold cursor-pointer transition-colors"
+                  >
+                    ← Back
+                  </button>
+                </div>
+
+                {joinRole === 'admin' && (
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Admin Workspace Password</label>
+                    <input 
+                      type="password"
+                      placeholder="••••••••"
+                      value={joinPasswordInput}
+                      onChange={(e) => setJoinPasswordInput(e.target.value)}
+                      className="w-full p-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs font-mono tracking-widest shadow-inner"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleJoinServerSubmit();
+                      }}
+                    />
+                  </div>
+                )}
+
+                {joinRole === 'choir' && (
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Enter Your Name</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. John"
+                      value={joinNameInput}
+                      onChange={(e) => setJoinNameInput(e.target.value)}
+                      className="w-full p-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs font-sans shadow-inner"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleJoinServerSubmit();
+                      }}
+                    />
+                  </div>
+                )}
+
+                <button 
+                  onClick={handleJoinServerSubmit}
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-3 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md active:scale-98 active-touch"
+                >
+                  Access Server Workspace
                 </button>
               </div>
-
-              {joinRole === 'admin' && (
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Admin Workspace Password</label>
-                  <input 
-                    type="password"
-                    placeholder="••••••••"
-                    value={joinPasswordInput}
-                    onChange={(e) => setJoinPasswordInput(e.target.value)}
-                    className="w-full p-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs font-mono tracking-widest shadow-inner"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleJoinServerSubmit();
-                    }}
-                  />
-                </div>
-              )}
-
-              {joinRole === 'choir' && (
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Enter Your Name</label>
-                  <input 
-                    type="text"
-                    placeholder="e.g. John"
-                    value={joinNameInput}
-                    onChange={(e) => setJoinNameInput(e.target.value)}
-                    className="w-full p-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs font-sans shadow-inner"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleJoinServerSubmit();
-                    }}
-                  />
-                </div>
-              )}
-
-              <button 
-                onClick={handleJoinServerSubmit}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-3 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md active:scale-98 active-touch"
-              >
-                Access Server Workspace
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
-    );
+      );
+    } else {
+      return (
+        <div id="welcome-portal" className="flex flex-col items-center justify-center min-h-[100dvh] bg-[#070708] text-white p-4 font-sans relative overflow-hidden">
+          {/* Backdrop patterns */}
+          <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px]"></div>
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-amber-500/[0.03] rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-rose-500/5 rounded-full blur-3xl"></div>
+
+          <div className="w-full max-w-4xl px-4 py-8 relative z-10">
+            {/* Header/Hero Section */}
+            <div className="text-center mb-12 animate-in fade-in slide-in-from-top duration-500">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider mb-4 animate-bounce">
+                <Sparkles className="w-3.5 h-3.5" /> Premium Worship Companion
+              </div>
+              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
+                DaSong Studio Portal
+              </h1>
+              <p className="text-sm md:text-base text-zinc-400 mt-4 leading-relaxed font-medium max-w-2xl mx-auto font-sans">
+                A secure multi-tenant platform for churches, choirs, and worship groups. Browse public song sheets, sync setlists, and manage team chord libraries.
+              </p>
+            </div>
+
+            {/* Conditional Subviews */}
+            {portalView === 'menu' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full animate-in fade-in zoom-in-95 duration-200">
+                {/* Guest Card */}
+                <div 
+                  onClick={handleSelectGuestMode}
+                  className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-850 hover:border-amber-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[260px]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-base font-extrabold text-white group-hover:text-amber-450 transition-colors">Guest Mode</h3>
+                    <p className="text-xs text-zinc-400 mt-2 leading-relaxed font-sans">
+                      Browse offline songs, transpose, create local setlists, and access offline calendar. Stored locally on your device!
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-amber-500/80 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Enter Guest Mode <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+
+                {/* Join Server Card */}
+                <div 
+                  onClick={() => {
+                    setPortalView('join');
+                    fetchServers();
+                  }}
+                  className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-855 hover:border-emerald-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[260px]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-emerald-450 group-hover:scale-110 transition-transform duration-300">
+                    <Layers className="w-6 h-6" />
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-base font-extrabold text-white group-hover:text-emerald-450 transition-colors">Join Church Server</h3>
+                    <p className="text-xs text-zinc-400 mt-2 leading-relaxed font-sans">
+                      Connect to an existing workspace for your local church choir or worship team.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-emerald-450 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Find Server <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+
+                {/* Create Server Card */}
+                <div 
+                  onClick={() => setPortalView('create')}
+                  className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-855 hover:border-rose-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[260px]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-rose-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-rose-455 group-hover:scale-110 transition-transform duration-300">
+                    <Plus className="w-6 h-6" />
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-base font-extrabold text-white group-hover:text-rose-400 transition-colors">Create Server</h3>
+                    <p className="text-xs text-zinc-400 mt-2 leading-relaxed font-sans">
+                      Initialize a clean, dedicated workspace with isolated database and team permissions.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-rose-455 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Start Workspace <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Portal Subview: Join Server */}
+            {portalView === 'join' && (
+              <div className="w-full max-w-md mx-auto p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative z-10 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
+                  <h3 className="font-bold text-base text-white flex items-center gap-1.5 font-sans">
+                    🔌 Join Church Server
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setPortalView('menu');
+                      setJoiningServer(null);
+                      setJoinRole(null);
+                      setJoinError('');
+                    }}
+                    className="text-xs text-zinc-400 hover:text-white font-bold cursor-pointer transition-colors font-sans"
+                  >
+                    ← Back
+                  </button>
+                </div>
+
+                {joinError && (
+                  <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-405 text-[11px] rounded-xl text-center font-bold">
+                    ⚠️ {joinError}
+                  </div>
+                )}
+
+                {joiningServer === null ? (
+                  // Screen 1: List public servers
+                  <div className="space-y-4">
+                    {/* Search input */}
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-zinc-550" />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Search church or choir server..."
+                        value={serverSearchQuery}
+                        onChange={(e) => setServerSearchQuery(e.target.value)}
+                        className="block w-full pl-10 pr-4 py-2.5 border border-zinc-805 rounded-xl bg-zinc-950 text-white placeholder-zinc-550 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs shadow-inner font-sans"
+                      />
+                    </div>
+
+                    {/* Available list */}
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                      {loadingServers ? (
+                        <div className="text-center py-6 text-zinc-555 text-xs font-mono">
+                          Loading active servers...
+                        </div>
+                      ) : (
+                        (() => {
+                          const filtered = publicServers.filter(s => 
+                            s.name.toLowerCase().includes(serverSearchQuery.toLowerCase()) ||
+                            s.id.toLowerCase().includes(serverSearchQuery.toLowerCase())
+                          );
+                          if (filtered.length === 0) {
+                            return (
+                              <div className="text-center py-6 text-zinc-555 text-xs font-sans italic">
+                                No servers found. Type a private ID below!
+                              </div>
+                            );
+                          }
+                          return filtered.map(s => (
+                            <button
+                              key={s.id}
+                              onClick={() => {
+                                localStorage.setItem(`dasong_server_name_${s.id}`, s.name);
+                                setJoiningServer(s);
+                              }}
+                              className="w-full p-3 bg-zinc-950/50 hover:bg-zinc-950 hover:border-amber-500/30 border border-zinc-850 rounded-xl flex items-center justify-between text-left transition-all cursor-pointer group active-touch"
+                            >
+                              <div>
+                                <div className="text-xs font-bold text-white group-hover:text-amber-450 transition-colors">
+                                  {s.name}
+                                </div>
+                                <div className="text-[10px] text-zinc-550 font-mono mt-0.5">
+                                  ID: {s.id}
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-mono font-bold text-emerald-450 opacity-0 group-hover:opacity-100 transition-opacity">
+                                [ Join ]
+                              </span>
+                            </button>
+                          ));
+                        })()
+                      )}
+                    </div>
+
+                    {/* Private server entry */}
+                    <div className="pt-3 border-t border-white/5 space-y-2">
+                      <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block">
+                        Join Private Server (by ID)
+                      </span>
+                      <div className="flex gap-2">
+                        <input
+                          id="portal-private-server-id-input"
+                          type="text"
+                          placeholder="e.g. grace-chapel"
+                          className="flex-1 px-3 py-2 border border-zinc-850 bg-zinc-950 rounded-xl text-white outline-none focus:border-amber-500 text-xs font-mono"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const val = (e.target as HTMLInputElement).value.trim().toLowerCase();
+                              if (val) {
+                                setJoiningServer({ id: val, name: val });
+                              }
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const input = document.getElementById('portal-private-server-id-input') as HTMLInputElement;
+                            const val = input?.value.trim().toLowerCase();
+                            if (val) {
+                              setJoiningServer({ id: val, name: val });
+                            } else {
+                              setJoinError('Please enter a server ID.');
+                            }
+                          }}
+                          className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-350 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all active-touch"
+                        >
+                          Find
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Screen 2: Choose role / credentials
+                  <div className="space-y-4">
+                    <div className="p-3 bg-zinc-900 border border-zinc-850 rounded-xl text-center">
+                      <span className="text-[10px] font-mono uppercase text-zinc-550">Selected Workspace</span>
+                      <h4 className="text-sm font-bold text-white mt-1">{joiningServer.name}</h4>
+                      <span className="text-[9px] font-mono text-zinc-555 block mt-0.5">ID: {joiningServer.id}</span>
+                    </div>
+
+                    {joinRole === null ? (
+                      <div className="space-y-3">
+                        <button 
+                          onClick={() => {
+                            setJoinRole('choir');
+                            setJoinError('');
+                          }}
+                          className="w-full flex items-center justify-between p-4 bg-zinc-950 border border-zinc-900 hover:border-amber-500/20 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
+                        >
+                          <div>
+                            <p className="font-bold text-xs text-white flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                              Join as Choir Member
+                            </p>
+                            <p className="text-[10px] text-zinc-550 mt-1">Read sheets, transpose, and suggest songs.</p>
+                          </div>
+                          <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
+                        </button>
+
+                        <button 
+                          onClick={() => {
+                            setJoinRole('admin');
+                            setJoinError('');
+                          }}
+                          className="w-full flex items-center justify-between p-4 bg-zinc-950 border border-zinc-900 hover:border-amber-500/20 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
+                        >
+                          <div>
+                            <p className="font-bold text-xs text-white flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                              Login as Admin
+                            </p>
+                            <p className="text-[10px] text-zinc-550 mt-1">Prompts password to unlock libraries management.</p>
+                          </div>
+                          <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
+                        </button>
+
+                        <button 
+                          onClick={() => {
+                            setJoiningServer(null);
+                            setJoinRole(null);
+                            setJoinError('');
+                          }}
+                          className="w-full p-2.5 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-bold rounded-xl text-center cursor-pointer transition-colors"
+                        >
+                          ← Select Different Server
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                          <h4 className="text-xs font-bold text-amber-500 uppercase font-mono tracking-wider">
+                            {joinRole === 'admin' ? '👑 Admin Login' : '🧑‍🎤 Choir Member Name'}
+                          </h4>
+                          <button 
+                            onClick={() => { setJoinRole(null); setJoinError(''); }}
+                            className="text-[10px] text-zinc-500 hover:text-white font-bold"
+                          >
+                            ← Change Role
+                          </button>
+                        </div>
+
+                        {joinRole === 'admin' ? (
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-mono text-zinc-500 block uppercase">Admin Password</label>
+                            <input 
+                              type="password"
+                              placeholder="Enter password..."
+                              value={joinPasswordInput}
+                              onChange={(e) => setJoinPasswordInput(e.target.value)}
+                              className="w-full p-2.5 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 text-xs font-mono tracking-widest"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleJoinServerSubmit();
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-mono text-zinc-500 block uppercase">Enter Your Name</label>
+                            <input 
+                              type="text"
+                              placeholder="e.g. John"
+                              value={joinNameInput}
+                              onChange={(e) => setJoinNameInput(e.target.value)}
+                              className="w-full p-2.5 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 text-xs font-sans"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleJoinServerSubmit();
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        <button 
+                          onClick={handleJoinServerSubmit}
+                          className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md active:scale-98"
+                        >
+                          Access Server Workspace
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Portal Subview: Create Server */}
+            {portalView === 'create' && (
+              <div className="w-full max-w-md mx-auto p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative z-10 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
+                  <h3 className="font-bold text-base text-white flex items-center gap-1.5 font-sans">
+                    ➕ Create Server Workspace
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setPortalView('menu');
+                      setCreateError('');
+                    }}
+                    className="text-xs text-zinc-400 hover:text-white font-bold cursor-pointer transition-colors"
+                  >
+                    ← Back
+                  </button>
+                </div>
+
+                {createError && (
+                  <div className="p-3 bg-red-500/10 border border-red-550/20 text-red-405 text-[11px] rounded-xl text-center font-bold mb-4 font-sans">
+                    ⚠️ {createError}
+                  </div>
+                )}
+
+                <form onSubmit={handleCreateServerSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1 font-sans">Server ID (Alphanumeric, dashes, lowercase only) *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. city-church-choir"
+                      value={createForm.id}
+                      onChange={(e) => setCreateForm(p => ({ ...p, id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                      className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
+                    />
+                    <span className="text-[9px] text-zinc-550 block mt-1">This forms your unique workspace identifier.</span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-450 block mb-1 font-sans">Church / Choir Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. City Church Praise Team"
+                      value={createForm.name}
+                      onChange={(e) => setCreateForm(p => ({ ...p, name: e.target.value }))}
+                      className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-455 block mb-1 font-sans">Admin Password *</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Create admin password..."
+                      value={createForm.adminPassword}
+                      onChange={(e) => setCreateForm(p => ({ ...p, adminPassword: e.target.value }))}
+                      className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono tracking-widest"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1 select-none">
+                    <input
+                      id="portal-checkbox-show-list"
+                      type="checkbox"
+                      checked={createForm.showOnPublicList}
+                      onChange={(e) => setCreateForm(p => ({ ...p, showOnPublicList: e.target.checked }))}
+                      className="w-4 h-4 rounded border-zinc-800 bg-zinc-950 text-amber-500 focus:ring-amber-500/20 cursor-pointer"
+                    />
+                    <label htmlFor="portal-checkbox-show-list" className="text-xs text-zinc-400 cursor-pointer font-sans">
+                      Show this workspace in the public servers directory
+                    </label>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-3 border-t border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPortalView('menu');
+                        setCreateError('');
+                      }}
+                      className="px-4 py-2 text-xs font-semibold bg-white/5 text-slate-350 hover:bg-white/10 rounded-xl cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={creatingServerStatus}
+                      className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-2 rounded-full text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                    >
+                      {creatingServerStatus ? 'Creating...' : 'Create Server'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
   }
 
   return (

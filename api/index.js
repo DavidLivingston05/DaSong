@@ -535,6 +535,62 @@ app.get('/api/broadcast', asyncHandler(async (req, res) => {
   res.json(broadcast);
 }));
 
+// POST /api/ai/generate-theme - generate theme using Gemini if key is set, otherwise return failure so client can fall back.
+app.post('/api/ai/generate-theme', asyncHandler(async (req, res) => {
+  const { date, time, keywords } = req.body;
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return res.status(404).json({ error: 'GEMINI_API_KEY is not configured on the server. Fallback to client templates.' });
+  }
+
+  if (!date) {
+    return res.status(400).json({ error: 'Date is required' });
+  }
+
+  let weekday = 'Sunday';
+  try {
+    const d = new Date(date + 'T12:00:00');
+    weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+  } catch {}
+
+  const prompt = `You are a creative worship planner. Generate a highly creative title and a matching description for a church worship service scheduled on a ${weekday} (${date}) at ${time || '09:00'}.
+${keywords ? `The specific theme focus, sermon topic, or keywords are: "${keywords}".` : 'Keep the theme inspiring, uplifting, and general.'}
+
+Respond ONLY with a JSON object in this exact format, without markdown block syntax:
+{
+  "title": "A short creative title (e.g. 'Echoes of Grace' or 'Midweek Refuge')",
+  "description": "A beautiful, encouraging 1-2 sentence description of the service theme."
+}`;
+
+  const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json'
+      }
+    })
+  });
+
+  if (!apiResponse.ok) {
+    const errorText = await apiResponse.text();
+    return res.status(502).json({ error: `Gemini API call failed: ${errorText}` });
+  }
+
+  const result = await apiResponse.json();
+  try {
+    const text = result.candidates[0].content.parts[0].text;
+    const parsed = JSON.parse(text.trim());
+    res.json(parsed);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to parse AI response' });
+  }
+}));
+
 // Error handler middleware
 app.use((err, req, res, next) => {
   console.error('API Error:', err);
