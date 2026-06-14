@@ -701,7 +701,7 @@ export default function SongDetail({
       )}
       
       {/* Detail Header Strip - Masterfully designed for both Desktop (Windows) and Mobile (iOS/Android) */}
-      <div className="p-4 border-b border-zinc-800/80 bg-[#050506] flex items-center justify-between gap-4">
+      <div className="p-4 border-b border-zinc-800/80 bg-[#050506] flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         
         {/* Left Side: Back Trigger */}
         <button
@@ -718,11 +718,11 @@ export default function SongDetail({
         </button>
 
         {/* Right Side: Primary Responsive Actions Control Panel */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 ml-auto">
           {/* Follow Live Service (For all users) */}
           <button
             onClick={() => handleToggleFollow(!isFollowing)}
-            className={`h-12 px-3 rounded-2xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold ${
+            className={`h-12 w-12 sm:w-auto sm:px-4 rounded-2xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold ${
               isFollowing
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] animate-pulse'
                 : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
@@ -737,7 +737,7 @@ export default function SongDetail({
           {currentRole === 'admin' && (
             <button
               onClick={() => handleToggleBroadcast(!isBroadcasting)}
-              className={`h-12 px-3 rounded-2xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold relative ${
+              className={`h-12 w-12 sm:w-auto sm:px-4 rounded-2xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold relative ${
                 isBroadcasting
                   ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
                   : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
@@ -758,7 +758,7 @@ export default function SongDetail({
             className={`h-12 w-12 rounded-2xl border flex items-center justify-center cursor-pointer transition-all shrink-0 ${
               song.favorite
                 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
             }`}
             title="Toggle Favorite"
           >
@@ -766,13 +766,13 @@ export default function SongDetail({
           </button>
 
           {/* Share Dropdown Button */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <button
               onClick={() => setShowShareDropdown(!showShareDropdown)}
               className={`h-12 w-12 rounded-2xl border flex items-center justify-center cursor-pointer transition-all shrink-0 ${
                 showShareDropdown
                   ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
               }`}
               title="Share / Copy Options"
             >
@@ -807,23 +807,25 @@ export default function SongDetail({
           {(currentRole === 'admin' || currentRole === 'guest') && (
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="flex-1 sm:flex-initial h-12 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-850 hover:text-white px-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              className="h-12 w-12 sm:w-auto sm:px-4 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-850 hover:text-white rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              title="Edit Lyrics"
             >
               <Edit3 className="h-4 w-4 shrink-0" /> 
-              <span>Edit Lyrics</span>
+              <span className="hidden sm:inline">Edit Lyrics</span>
             </button>
           )}
 
           {/* Add to Setlist Dropdown Trigger */}
           {(currentRole === 'admin' || currentRole === 'guest') && song && (
-            <div className="relative flex-1 sm:flex-initial">
+            <div className="relative shrink-0">
               <button
                 type="button"
                 onClick={() => setShowSetlistDropdown(!showSetlistDropdown)}
-                className="w-full h-12 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-850 hover:text-white px-4 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                className="h-12 w-12 sm:w-auto sm:px-4 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-850 hover:text-white rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                title="Add to Setlist"
               >
                 <Plus className="h-4 w-4 shrink-0" /> 
-                <span>Add to Setlist</span>
+                <span className="hidden sm:inline">Add to Setlist</span>
               </button>
               {showSetlistDropdown && (
                 <div className="absolute right-0 bottom-14 md:bottom-auto md:top-14 w-60 bg-zinc-950 border border-zinc-850 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
@@ -863,13 +865,13 @@ export default function SongDetail({
           <button
             id="stage-presentation-trigger"
             onClick={() => onEnterStageMode(transposeStep)}
-            className="flex-1 sm:flex-initial h-12 bg-amber-500 hover:bg-amber-400 text-black px-5 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer active:scale-95"
+            className="h-12 w-12 sm:w-auto sm:px-5 bg-amber-500 hover:bg-amber-400 text-black rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer active:scale-95 shrink-0"
+            title="Present Fullscreen"
           >
-            <span>Present Fullscreen</span> 
             <ArrowUpRight className="h-4 w-4 stroke-[3] shrink-0" />
+            <span className="hidden sm:inline">Present Fullscreen</span> 
           </button>
         </div>
-
       </div>
 
       {/* Editing panel state */}
