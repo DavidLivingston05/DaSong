@@ -1493,12 +1493,12 @@ export default function App() {
   }
 
   return (
-    <div id="app-root" className={`h-[100dvh] md:h-auto overflow-hidden md:overflow-visible bg-[#08080a] text-zinc-300 transition-colors duration-300 flex flex-col font-sans relative`}>
+    <div id="app-root" className={`bg-[#08080a] text-zinc-300 transition-colors duration-300 flex flex-col font-sans relative ${selectedSongId ? 'h-[100dvh] overflow-hidden' : 'min-h-[100dvh]'}`}>
       {/* Dynamic hardware grid pattern */}
       <div className="absolute inset-0 pointer-events-none opacity-2 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
       
       {/* Top Professional Navigation Header - Styled like a premium MIDI master strip */}
-      <header id="main-header" className="bg-zinc-950/95 text-white shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-20 px-3 pb-3 pt-safe md:p-4 sticky top-0 md:relative backdrop-blur-md border-0 border-transparent">
+      <header id="main-header" className={`bg-zinc-950/95 text-white shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-20 px-3 pb-3 pt-safe md:p-4 relative backdrop-blur-md border-0 border-transparent ${selectedSongId ? 'hidden md:block' : ''}`}>
         <div className="w-full max-w-[1850px] mx-auto flex flex-col gap-3.5">
           {/* Row 1: Brand Logo & Telemetry Strip */}
           <div className="flex flex-wrap items-center justify-between w-full gap-y-2 gap-x-4">
@@ -1746,7 +1746,7 @@ export default function App() {
       </header>
 
       {/* Main content body grid splits */}
-      <main className={`flex-1 p-4 md:p-6 pb-20 md:pb-6 max-w-[1850px] mx-auto w-full min-h-0 flex flex-col ${selectedSongId ? 'overflow-hidden h-full' : 'overflow-y-auto md:overflow-visible'}`}>
+      <main className={`flex-1 p-4 md:p-6 pb-20 md:pb-6 max-w-[1850px] mx-auto w-full flex flex-col ${selectedSongId ? 'min-h-0 overflow-hidden h-full' : 'overflow-visible'}`}>
         <AnimatePresence mode="wait">
           {/* VIEW 1: CLEAN LANDING DASHBOARD */}
           {activeTab === 'dashboard' && (
