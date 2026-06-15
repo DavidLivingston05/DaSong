@@ -221,26 +221,50 @@ export default function SongDetail({
     return match ? match.title : 'Previous Song';
   }, [prevSongId, allMetadata]);
 
-  const handleSuggestThisSong = async () => {
+  // Suggestion modal states
+  const [showSuggestModal, setShowSuggestModal] = useState<boolean>(false);
+  const [sugName, setSugName] = useState<string>(() => localStorage.getItem('lyrasync_user_name') || 'Choir Member');
+  const [sugEventId, setSugEventId] = useState<string>('');
+  const [sugNote, setSugNote] = useState<string>('');
+
+  const handleOpenSuggestModal = () => {
+    if (!song) return;
+    setSugNote('');
+    setSugEventId('');
+    setShowSuggestModal(true);
+  };
+
+  const handleSubmitSuggestion = async () => {
     if (!song) return;
     const suggestions = getLocalSuggestions();
     
-    if (suggestions.some((s: any) => s.songId === song.id)) {
-      alert(`"${song.title}" has already been suggested to the Admin.`);
+    if (suggestions.some((s: any) => s.songId === song.id && s.eventId === (sugEventId || undefined))) {
+      alert(`"${song.title}" has already been suggested for this meeting.`);
       return;
     }
+
+    const nameToSave = sugName.trim() || 'Choir Member';
+    localStorage.setItem('lyrasync_user_name', nameToSave);
+
+    const localEvents = getLocalWorshipEvents();
+    const selectedEvent = localEvents.find(e => e.id === sugEventId);
 
     const newSuggestion = {
       id: `sug-${Date.now()}`,
       songId: song.id,
       songTitle: song.title,
-      suggestedBy: localStorage.getItem('lyrasync_user_name') || 'Choir Member',
-      timestamp: Date.now()
+      suggestedBy: nameToSave,
+      timestamp: Date.now(),
+      eventId: sugEventId || undefined,
+      eventTitle: selectedEvent ? selectedEvent.title : undefined,
+      eventDate: selectedEvent ? selectedEvent.date : undefined,
+      note: sugNote.trim() || undefined
     };
 
     try {
       await saveSuggestion(newSuggestion);
-      alert(`"${song.title}" has been successfully added to the Admin Review suggestions list!`);
+      alert(`"${song.title}" has been successfully suggested for ${selectedEvent ? `"${selectedEvent.title}"` : 'General Catalog'}!`);
+      setShowSuggestModal(false);
       onLyricsUpdated(); // notify parent
     } catch (err) {
       alert('Failed to save suggestion: ' + err);
@@ -1088,11 +1112,11 @@ export default function SongDetail({
 
                   {currentRole === 'choir' && (
                     <button
-                      onClick={handleSuggestThisSong}
+                      onClick={handleOpenSuggestModal}
                       className="w-full sm:w-auto bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-400 text-xs font-mono uppercase tracking-wider font-bold px-4 h-12 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
                       <Heart className="h-4 w-4 text-amber-500" />
-                      <span>Suggest Set</span>
+                      <span>Suggest Song</span>
                     </button>
                   )}
                 </div>
@@ -1108,11 +1132,11 @@ export default function SongDetail({
                 <div className="flex items-center gap-3">
                   {currentRole === 'choir' && (
                     <button
-                      onClick={handleSuggestThisSong}
+                      onClick={handleOpenSuggestModal}
                       className="w-full sm:w-auto bg-amber-600 hover:bg-amber-550 text-white text-xs font-mono uppercase tracking-wider font-bold px-5 py-3 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
                     >
                       <Heart className="h-4 w-4 text-white" />
-                      <span>Suggest Set</span>
+                      <span>Suggest Song</span>
                     </button>
                   )}
                 </div>
@@ -1289,7 +1313,92 @@ export default function SongDetail({
             </button>
           </div>
         </div>
-      </div>
+
+      {/* Suggest for Service Modal Dialog */}
+      {showSuggestModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={() => setShowSuggestModal(false)}>
+          <div 
+            className="bg-[#070708] border border-zinc-800 rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200 select-none text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <Heart className="h-4.5 w-4.5 text-amber-500 fill-amber-500/10" /> Suggest for Service
+              </h3>
+              <button 
+                onClick={() => setShowSuggestModal(false)}
+                className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-amber-500/5 border border-amber-500/15 p-3.5 rounded-2xl">
+              <span className="text-[10px] text-amber-500 font-mono tracking-widest uppercase block font-semibold">SUGGESTING SONG</span>
+              <span className="text-sm font-bold text-white block mt-0.5">{song?.title}</span>
+              {song?.author && <span className="text-[11px] text-zinc-400 block mt-0.5">by {song.author}</span>}
+            </div>
+
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Your Name</label>
+                <input 
+                  type="text"
+                  value={sugName}
+                  onChange={(e) => setSugName(e.target.value)}
+                  className="w-full text-xs p-3 rounded-xl border border-zinc-800 bg-zinc-950 text-white outline-none focus:border-amber-500"
+                  placeholder="e.g. Choir Member, Guest"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Target Worship Event / Meeting</label>
+                <select
+                  value={sugEventId}
+                  onChange={(e) => setSugEventId(e.target.value)}
+                  className="w-full text-xs p-3 rounded-xl border border-zinc-800 bg-zinc-950 text-white outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value="">General Catalog (No specific meeting)</option>
+                  {getLocalWorshipEvents()
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                    .map(ev => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.title} ({new Date(ev.date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})})
+                      </option>
+                    ))
+                  }
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Optional Note (e.g. key, order, memo)</label>
+                <textarea
+                  value={sugNote}
+                  onChange={(e) => setSugNote(e.target.value)}
+                  className="w-full text-xs p-3 h-16 rounded-xl border border-zinc-800 bg-zinc-955 text-white outline-none focus:border-amber-500 resize-none"
+                  placeholder="e.g. Suggesting this as the opening praise song"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setShowSuggestModal(false)}
+                className="flex-1 py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-850 text-zinc-350 hover:text-white text-xs font-bold rounded-xl cursor-pointer transition-colors active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitSuggestion}
+                className="flex-1 py-3 bg-amber-600 hover:bg-amber-550 text-white text-xs font-bold rounded-xl cursor-pointer transition-colors active:scale-95 shadow-md"
+              >
+                Submit Suggestion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

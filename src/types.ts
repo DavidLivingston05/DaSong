@@ -44,6 +44,9 @@ export interface SuggestedSong {
   songTitle: string;
   suggestedBy: string;
   timestamp: number;
+  eventId?: string;
+  eventTitle?: string;
+  eventDate?: string;
   note?: string;
 }
 

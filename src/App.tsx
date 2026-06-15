@@ -2059,10 +2059,38 @@ export default function App() {
                         key={sug.id} 
                         className="p-4 bg-zinc-955/20 hover:bg-zinc-900/40 border border-zinc-900 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all"
                       >
-                        <div className="text-left">
-                          <h4 className="text-xs font-bold text-white">{sug.songTitle}</h4>
-                          <p className="text-[10px] text-zinc-500 mt-1 font-mono">
-                            Suggested by <span className="text-zinc-400 font-bold">{sug.suggestedBy || 'Choir Member'}</span> • {new Date(sug.timestamp).toLocaleDateString()}
+                        <div className="text-left flex-1 min-w-0">
+                          <h4 className="text-xs font-bold text-white truncate">{sug.songTitle}</h4>
+                          
+                          {sug.eventTitle ? (
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] text-amber-500 font-mono">
+                              <span className="bg-amber-500/10 text-amber-450 border border-amber-500/20 px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider shrink-0">
+                                Target Meeting
+                              </span>
+                              <span className="font-bold text-amber-400/90 truncate max-w-[150px] sm:max-w-xs">{sug.eventTitle}</span>
+                              {sug.eventDate && (
+                                <span className="text-zinc-550 shrink-0">
+                                  ({new Date(sug.eventDate).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})})
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 mt-1 text-[10px] text-zinc-500 font-mono">
+                              <span className="bg-zinc-900 text-zinc-400 border border-zinc-800 px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider shrink-0">
+                                General Catalog
+                              </span>
+                              <span className="truncate">Global Library suggestion</span>
+                            </div>
+                          )}
+                          
+                          {sug.note && (
+                            <p className="text-[10.5px] text-zinc-450 italic mt-1.5 pl-2 border-l border-zinc-800 leading-normal max-w-xl break-words">
+                              "{sug.note}"
+                            </p>
+                          )}
+                          
+                          <p className="text-[9.5px] text-zinc-600 mt-2 font-mono uppercase tracking-wider">
+                            Suggested by <span className="text-zinc-500 font-bold font-sans normal-case">{sug.suggestedBy || 'Choir Member'}</span> • {new Date(sug.timestamp).toLocaleDateString()}
                           </p>
                         </div>
                         

@@ -889,7 +889,7 @@ export function saveLocalSuggestions(suggestions: SuggestedSong[]) {
 
 export async function saveSuggestion(suggestion: SuggestedSong): Promise<void> {
   const localSuggestions = getLocalSuggestions();
-  if (!localSuggestions.some(s => s.songId === suggestion.songId)) {
+  if (!localSuggestions.some(s => s.songId === suggestion.songId && s.eventId === suggestion.eventId)) {
     localSuggestions.push(suggestion);
     saveLocalSuggestions(localSuggestions);
   }
