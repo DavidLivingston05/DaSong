@@ -2,11 +2,11 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   X, Calendar as CalendarIcon, Clock, Plus, Trash2, ChevronLeft, ChevronRight, 
   Music, BookOpen, Layers, Sparkles, Check, ArrowRight, ArrowUpRight, Search, ListPlus, MoveUp, MoveDown, ZoomIn, ZoomOut, Play, Pause,
-  Upload, GripVertical, Maximize2
+  Upload, GripVertical, Maximize2, TrendingUp
 } from 'lucide-react';
 import { WorshipEvent, UserRole, Song } from '../types';
 import { SongMetadata, getSongById, getLocalWorshipEvents, saveWorshipEvent, deleteWorshipEvent } from '../lib/db';
-import { transposeLyrics, stripChords } from '../utils/chordTransposer';
+import { stripChords } from '../utils/chordTransposer';
 
 interface Stanza {
   label: string;
@@ -347,6 +347,8 @@ export default function WorshipEvents({
 
   // Active viewing/editing event on agenda for desktop
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   // Mobile navigation stages
   // 'calendar' -> Full month grid page
@@ -357,8 +359,6 @@ export default function WorshipEvents({
   const [mobileFontSize, setMobileFontSize] = useState<number>(18);
   const [mobileScrolling, setMobileScrolling] = useState<boolean>(false);
   const [mobileScrollSpeed, setMobileScrollSpeed] = useState<number>(2);
-  const [mobileShowChords, setMobileShowChords] = useState<boolean>(false);
-  const [mobileTransposeStep, setMobileTransposeStep] = useState<number>(0);
   const [mobileViewMode, setMobileViewMode] = useState<'calendar' | 'timeline'>('calendar');
 
   // Drag and drop state
@@ -370,7 +370,6 @@ export default function WorshipEvents({
   const [liveSongId, setLiveSongId] = useState<string | null>(null);
   const [liveSong, setLiveSong] = useState<Song | null>(null);
   const [liveFontSize, setLiveFontSize] = useState<number>(24);
-  const [liveShowChords, setLiveShowChords] = useState<boolean>(false);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const touchStartTime = useRef<number>(0);
@@ -588,7 +587,6 @@ export default function WorshipEvents({
       const fullSong = await getSongById(songMetadata.id);
       if (fullSong) {
         setActiveLyricsSong(fullSong);
-        setMobileTransposeStep(0);
         onSelectSong(songMetadata.id, activeEvent ? (activeEvent.songIds || []) : []); // Triggers selection globally
         setMobileStage('lyrics');
       }
@@ -668,6 +666,101 @@ export default function WorshipEvents({
     return events.filter(e => e.date === selectedDateStr);
   }, [events, selectedDateStr]);
 
+  // Compute Song Usage Statistics (Frequency & Last Used)
+  const songUsageStats = useMemo(() => {
+    const stats: Record<string, { count: number; lastUsedDate: string; lastUsedTimestamp: number }> = {};
+    
+    // Initialize stats for all songs
+    songs.forEach(song => {
+      stats[song.id] = { count: 0, lastUsedDate: '', lastUsedTimestamp: 0 };
+    });
+
+    // Populate usage from events
+    events.forEach(event => {
+      if (!event.songIds) return;
+      
+      let eventTimestamp = 0;
+      try {
+        const eventTime = event.time || '12:00';
+        eventTimestamp = new Date(`${event.date}T${eventTime}`).getTime();
+      } catch {
+        eventTimestamp = new Date(event.date).getTime();
+      }
+
+      event.songIds.forEach(songId => {
+        if (!stats[songId]) {
+          stats[songId] = { count: 0, lastUsedDate: '', lastUsedTimestamp: 0 };
+        }
+        stats[songId].count += 1;
+        
+        // Update last used if this event is more recent
+        if (eventTimestamp > stats[songId].lastUsedTimestamp) {
+          stats[songId].lastUsedTimestamp = eventTimestamp;
+          stats[songId].lastUsedDate = event.date;
+        }
+      });
+    });
+
+    return stats;
+  }, [songs, events]);
+
+  // Compute overall rotation metrics, warnings, and treasures
+  const rotationAnalytics = useMemo(() => {
+    const activeSongIds = Object.keys(songUsageStats).filter(id => songUsageStats[id].count > 0);
+    
+    // Calculate total placements
+    let totalPlacements = 0;
+    events.forEach(e => {
+      totalPlacements += (e.songIds || []).length;
+    });
+
+    // Variety rating
+    const varietyScore = totalPlacements > 0 
+      ? Math.round((activeSongIds.length / totalPlacements) * 100) 
+      : 100;
+
+    // Get top 5 popular songs
+    const popularSongs = [...songs]
+      .filter(s => songUsageStats[s.id] && songUsageStats[s.id].count > 0)
+      .sort((a, b) => (songUsageStats[b.id]?.count || 0) - (songUsageStats[a.id]?.count || 0))
+      .slice(0, 5);
+
+    // Forgotten treasures (songs with 0 count, or not used for the longest time)
+    const forgottenSongs = [...songs]
+      .sort((a, b) => {
+        const statsA = songUsageStats[a.id] || { count: 0, lastUsedTimestamp: 0 };
+        const statsB = songUsageStats[b.id] || { count: 0, lastUsedTimestamp: 0 };
+        if (statsA.count === 0 && statsB.count > 0) return -1;
+        if (statsB.count === 0 && statsA.count > 0) return 1;
+        return (statsA.lastUsedTimestamp || 0) - (statsB.lastUsedTimestamp || 0);
+      })
+      .slice(0, 5);
+
+    // Recent songs watch list (sung in last 14 days)
+    const now = Date.now();
+    const recentSongs = [...songs]
+      .filter(s => {
+        const stats = songUsageStats[s.id];
+        if (!stats || stats.count === 0 || !stats.lastUsedTimestamp) return false;
+        const daysAgo = (now - stats.lastUsedTimestamp) / (1000 * 60 * 60 * 24);
+        return daysAgo <= 14;
+      })
+      .sort((a, b) => {
+        const statsA = songUsageStats[a.id] || { lastUsedTimestamp: 0 };
+        const statsB = songUsageStats[b.id] || { lastUsedTimestamp: 0 };
+        return (statsB.lastUsedTimestamp || 0) - (statsA.lastUsedTimestamp || 0);
+      })
+      .slice(0, 5);
+
+    return {
+      activeSongsCount: activeSongIds.length,
+      varietyScore,
+      popularSongs,
+      forgottenSongs,
+      recentSongs
+    };
+  }, [songs, events, songUsageStats]);
+
   const [songSearchInput, setSongSearchInput] = useState<string>('');
   const [songSearchQuery, setSongSearchQuery] = useState<string>('');
 
@@ -679,9 +772,11 @@ export default function WorshipEvents({
     return () => clearTimeout(handler);
   }, [songSearchInput]);
 
-  // Song catalogs sorted alphabetically by title and optionally filtered by search query
   const filteredSongs = useMemo(() => {
     let sorted = [...songs].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    if (selectedCategory !== 'All') {
+      sorted = sorted.filter(s => s.category === selectedCategory);
+    }
     if (songSearchQuery.trim()) {
       const q = songSearchQuery.toLowerCase();
       sorted = sorted.filter(s => 
@@ -690,7 +785,7 @@ export default function WorshipEvents({
       );
     }
     return sorted;
-  }, [songs, songSearchQuery]);
+  }, [songs, songSearchQuery, selectedCategory]);
 
   const handleAiGenerateTheme = async () => {
     setIsGeneratingTheme(true);
@@ -958,51 +1053,12 @@ export default function WorshipEvents({
   const renderStanzaText = (text: string) => {
     const lines = text.split('\n');
     return lines.map((line, lIdx) => {
-      if (liveShowChords && line.includes('[')) {
-        const chordLine: { chord: string; index: number }[] = [];
-        let cleanLine = '';
-        let charIndex = 0;
-
-        const segments = line.split(/(\[[^[\]]+\])/);
-        segments.forEach((seg) => {
-          if (seg.startsWith('[') && seg.endsWith(']')) {
-            const chord = seg.slice(1, -1);
-            chordLine.push({ chord, index: charIndex });
-          } else {
-            cleanLine += seg;
-            charIndex += seg.length;
-          }
-        });
-
-        return (
-          <div key={lIdx} className="mb-4 leading-relaxed flex flex-col items-center select-none">
-            {/* Chords Line */}
-            <div className="h-5 font-mono text-xs font-bold text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.25)] select-none relative whitespace-pre flex">
-              {chordLine.map((c, cIdx) => {
-                const prevOffset = cIdx > 0 ? chordLine[cIdx - 1].index : 0;
-                const spacing = ' '.repeat(Math.max(0, c.index - prevOffset - (cIdx > 0 ? chordLine[cIdx - 1].chord.length : 0)));
-                return (
-                  <span key={cIdx}>
-                    {spacing}
-                    <span>{c.chord}</span>
-                  </span>
-                );
-              })}
-            </div>
-            {/* Lyrics Text Line */}
-            <div className="text-zinc-100 text-center font-bold tracking-wide">
-              {cleanLine || ' '}
-            </div>
-          </div>
-        );
-      } else {
-        const cleanLine = stripChords(line);
-        return (
-          <div key={lIdx} className="py-1 text-zinc-150 text-center select-none font-bold tracking-wide">
-            {cleanLine || ' '}
-          </div>
-        );
-      }
+      const cleanLine = stripChords(line);
+      return (
+        <div key={lIdx} className="py-1 text-zinc-150 text-center select-none font-bold tracking-wide">
+          {cleanLine || ' '}
+        </div>
+      );
     });
   };
 
@@ -1201,20 +1257,7 @@ export default function WorshipEvents({
               </button>
             </div>
 
-            {/* Show/Hide Chords (if song contains chords) */}
-            {liveSong.lyrics.includes('[') && (
-              <button
-                onClick={() => setLiveShowChords(prev => !prev)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold font-mono transition-colors flex items-center gap-1.5 border cursor-pointer select-none ${
-                  liveShowChords
-                    ? 'bg-amber-500 text-black border-amber-400'
-                    : 'bg-zinc-950 text-zinc-400 border-zinc-900 hover:text-white'
-                }`}
-              >
-                <Music className="h-3.5 w-3.5" />
-                <span>Chords: {liveShowChords ? 'ON' : 'OFF'}</span>
-              </button>
-            )}
+            {/* Chords toggle removed to keep lyrics presentation simple */}
           </div>
 
           {/* Next Song */}
@@ -1331,7 +1374,9 @@ export default function WorshipEvents({
 
           {/* Prompt footer */}
           <div className="text-[10px] text-slate-500 leading-relaxed font-sans pt-4 border-t border-white/5">
-            <span className="font-semibold text-amber-500 block mb-1">💡 Interactive Setlists</span>
+            <span className="font-semibold text-amber-500 flex items-center gap-1 mb-1">
+              <Sparkles className="h-3.5 w-3.5 text-amber-550" /> Interactive Setlists
+            </span>
             Select a date to inspect or build sets for services. Click songs to launch lyrics directly on the display stand.
           </div>
         </div>
@@ -1341,17 +1386,31 @@ export default function WorshipEvents({
           <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
             <div>
               <span className="text-[10px] uppercase font-mono tracking-wider font-extrabold text-amber-500">Service Schedule</span>
-              <h3 className="text-base md:text-lg font-bold text-white tracking-tight mt-0.5">
+              <h3 className="text-base md:text-lg font-serif font-bold text-white tracking-tight mt-0.5">
                 {selectedDateLabel}
               </h3>
             </div>
-            <button 
-              onClick={onClose}
-              className="p-1.5 hover:bg-white/5 rounded-full text-slate-400 hover:text-white cursor-pointer transition-colors"
-              title="Close Panel"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAnalytics(!showAnalytics)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer select-none ${
+                  showAnalytics
+                    ? 'bg-amber-500 border-amber-500 text-black shadow-md'
+                    : 'bg-white/5 border-white/10 text-slate-450 hover:text-white'
+                }`}
+                title="Toggle Rotation Analytics Panel"
+              >
+                <TrendingUp className="h-3 w-3" />
+                <span>Rotation Stats</span>
+              </button>
+              <button 
+                onClick={onClose}
+                className="p-1.5 hover:bg-white/5 rounded-full text-slate-400 hover:text-white cursor-pointer transition-colors"
+                title="Close Panel"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Agenda Grid or List representation */}
@@ -1472,23 +1531,22 @@ export default function WorshipEvents({
                                       onDragStart={(e) => handleDragStart(e, ev.id, index)}
                                       onDragOver={handleDragOver}
                                       onDrop={(e) => handleDrop(e, ev.id, index)}
-                                      className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all ${
+                                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all duration-205 ${
                                         isDragging ? 'opacity-40 border-dashed border-amber-500/50 bg-amber-500/5' : ''
                                       } ${
                                         isPlayActive 
-                                          ? 'border-amber-500/50 bg-amber-500/10' 
-                                          : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.03]'
+                                          ? 'border-amber-500/40 bg-amber-500/[0.04] shadow-md shadow-amber-500/[0.02]' 
+                                          : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10'
                                       } ${(currentRole === 'admin' || currentRole === 'guest') ? 'cursor-grab active:cursor-grabbing' : ''}`}
                                     >
-                                      {/* Song title and indicator arrow */}
+                                      {/* Song title and metadata tags */}
                                       <div className="flex items-center gap-2 truncate">
                                         {(currentRole === 'admin' || currentRole === 'guest') && (
                                           <GripVertical className="h-3.5 w-3.5 text-slate-500 hover:text-slate-350 cursor-grab shrink-0" />
                                         )}
-                                        <span className="text-amber-500 font-extrabold font-mono text-[10px]">
-                                          {index + 1}
+                                        <span className="w-5.5 h-5.5 flex items-center justify-center rounded-lg bg-zinc-900 border border-zinc-800 text-amber-500 font-extrabold font-mono text-[9px] shrink-0 select-none">
+                                          {String(index + 1).padStart(2, '0')}
                                         </span>
-                                        <span className="text-slate-500 font-bold">--&gt;</span>
                                         <button
                                           onClick={() => {
                                             onSelectSong(matchSong.id, ev.songIds || []);
@@ -1499,10 +1557,40 @@ export default function WorshipEvents({
                                           {matchSong.title}
                                         </button>
                                         {matchSong.author && (
-                                          <span className="text-[10px] text-slate-500 font-sans truncate hidden sm:inline">
-                                            ({matchSong.author})
+                                          <span className="text-[10px] text-slate-550 font-sans truncate hidden md:inline">
+                                            by {matchSong.author}
                                           </span>
                                         )}
+                                        {matchSong.category && (
+                                          <span className="text-[9px] font-mono font-bold text-zinc-500 bg-zinc-900 border border-zinc-850 px-1.5 py-0.5 rounded-md truncate max-w-[85px] hidden sm:inline select-none uppercase tracking-wider">
+                                            {matchSong.category}
+                                          </span>
+                                        )}
+                                        {matchSong.bpm && (
+                                          <span className="text-[9px] font-mono font-bold text-zinc-500 bg-zinc-900 border border-zinc-850 px-1.5 py-0.5 rounded-md shrink-0 hidden md:inline select-none">
+                                            {matchSong.bpm} BPM
+                                          </span>
+                                        )}
+                                        {(() => {
+                                          const stats = songUsageStats[matchSong.id];
+                                          if (!stats || stats.count === 0) return null;
+                                          
+                                          const daysAgo = Math.floor((Date.now() - stats.lastUsedTimestamp) / (1000 * 60 * 60 * 24));
+                                          let tooltip = `Sung ${stats.count} times. Last used ${daysAgo} days ago.`;
+
+                                          return (
+                                            <span className={`inline-flex items-center gap-1 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border select-none shrink-0 ${
+                                              daysAgo <= 14 
+                                                ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' 
+                                                : daysAgo <= 30 
+                                                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+                                                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                            }`} title={tooltip}>
+                                              <span className={`w-1 h-1 rounded-full ${daysAgo <= 14 ? 'bg-rose-500 animate-pulse' : daysAgo <= 30 ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+                                              {stats.count}x
+                                            </span>
+                                          );
+                                        })()}
                                       </div>
 
                                       {/* Reordering controllers inside the setlist */}
@@ -1595,6 +1683,28 @@ export default function WorshipEvents({
                                 className="block w-full pl-8 pr-3 py-1.5 border border-white/10 rounded-lg bg-black/40 text-slate-300 placeholder-slate-500 focus:outline-none focus:border-amber-500/50 text-[11px] transition-all"
                               />
                             </div>
+
+                            {/* Category Filter Tabs */}
+                            <div className="flex gap-1 overflow-x-auto pb-1 select-none no-scrollbar text-[9px] font-bold uppercase font-mono tracking-wider">
+                              {['All', 'Worship', 'Classic', 'Praise & Thanksgiving', 'Christmas', 'Gospel'].map(cat => {
+                                const isSel = selectedCategory === cat;
+                                const displayLabel = cat === 'Praise & Thanksgiving' ? 'Praise' : cat;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={cat}
+                                    onClick={() => setSelectedCategory(cat)}
+                                    className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 cursor-pointer ${
+                                      isSel
+                                        ? 'bg-amber-550 border-amber-600 text-black font-black'
+                                        : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                                    }`}
+                                  >
+                                    {displayLabel}
+                                  </button>
+                                );
+                              })}
+                            </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[160px] overflow-y-auto pr-1">
                               {filteredSongs.length === 0 ? (
                                 <div className="col-span-full py-2 text-center text-slate-650 text-[11px] italic">
@@ -1619,7 +1729,30 @@ export default function WorshipEvents({
                                           : 'border-white/5 bg-white/[0.01] hover:bg-white/5 text-slate-300'
                                       }`}
                                     >
-                                      <span className="truncate">{song.title}</span>
+                                      <div className="flex items-center gap-1.5 truncate">
+                                        <span className="truncate">{song.title}</span>
+                                        {(() => {
+                                          const stats = songUsageStats[song.id];
+                                          if (stats && stats.count > 0) {
+                                            const daysAgo = Math.floor((Date.now() - stats.lastUsedTimestamp) / (1000 * 60 * 60 * 24));
+                                            let colorClass = 'text-slate-500';
+                                            if (daysAgo <= 14) colorClass = 'text-rose-500 font-bold';
+                                            else if (daysAgo <= 30) colorClass = 'text-amber-500';
+                                            else colorClass = 'text-emerald-500';
+                                            
+                                            return (
+                                              <span className={`text-[8px] font-mono shrink-0 select-none ${colorClass}`}>
+                                                ({stats.count}x • {daysAgo}d)
+                                              </span>
+                                            );
+                                          }
+                                          return (
+                                            <span className="text-[8px] font-mono text-sky-450 shrink-0 select-none">
+                                              (new)
+                                            </span>
+                                          );
+                                        })()}
+                                      </div>
                                       <span className="shrink-0 text-[10px]">
                                         {(currentRole === 'admin' || currentRole === 'guest') ? (
                                           isAdded ? (
@@ -1644,8 +1777,103 @@ export default function WorshipEvents({
                 );
               })
             )}
-          </div>
         </div>
+      </div>
+
+      {/* Dynamic sliding panel: Rotation Analytics Sidebar */}
+        {showAnalytics && (
+          <div className="w-80 border-l border-white/10 p-5 bg-[#060608] flex flex-col justify-between select-none animate-in slide-in-from-right duration-200 shrink-0">
+            <div className="space-y-5 flex-1 overflow-y-auto pr-1">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
+                  <TrendingUp className="h-4 w-4 text-amber-500" />
+                </div>
+                <h4 className="text-sm font-bold text-white tracking-wide">Rotation Health</h4>
+              </div>
+
+              {/* Usage Stats Overview */}
+              <div className="p-3 bg-[#09090b] rounded-2xl border border-white/5 space-y-2.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400">Songs in Rotation</span>
+                  <span className="font-mono text-white font-bold">{rotationAnalytics.activeSongsCount} / {songs.length}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400">Rotation Variety Rate</span>
+                  <span className="font-mono text-emerald-400 font-bold">{rotationAnalytics.varietyScore}%</span>
+                </div>
+                <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    className="bg-emerald-500 h-full rounded-full" 
+                    style={{ width: `${Math.min(100, rotationAnalytics.varietyScore)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Rest watch alerts */}
+              <div className="space-y-2">
+                <h5 className="text-[10px] font-mono tracking-wider text-rose-500 uppercase font-bold">⚠️ Rest Watch (Sung ≤14d ago):</h5>
+                {rotationAnalytics.recentSongs.length === 0 ? (
+                  <p className="text-[11px] text-slate-505 italic pl-1">All songs well-rested</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {rotationAnalytics.recentSongs.map(s => {
+                      const stats = songUsageStats[s.id];
+                      const daysAgo = Math.floor((Date.now() - stats.lastUsedTimestamp) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div key={s.id} className="p-2 rounded-xl bg-rose-500/[0.02] border border-rose-500/15 flex justify-between items-center text-[11px]">
+                          <span className="text-zinc-350 truncate pr-2 font-medium">{s.title}</span>
+                          <span className="text-rose-400 font-mono shrink-0 font-bold">{daysAgo}d ago</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Most popular rotation */}
+              <div className="space-y-2">
+                <h5 className="text-[10px] font-mono tracking-wider text-amber-500 uppercase font-bold">🔥 Top Rotation (Most Played):</h5>
+                {rotationAnalytics.popularSongs.length === 0 ? (
+                  <p className="text-[11px] text-slate-505 italic pl-1">No songs used yet</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {rotationAnalytics.popularSongs.map(s => {
+                      const stats = songUsageStats[s.id];
+                      return (
+                        <div key={s.id} className="p-2 rounded-xl bg-white/[0.01] border border-white/5 flex justify-between items-center text-[11px]">
+                          <span className="text-zinc-350 truncate pr-2 font-medium">{s.title}</span>
+                          <span className="text-amber-500 font-mono shrink-0 font-bold">{stats.count}x</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Forgotten Treasures */}
+              <div className="space-y-2">
+                <h5 className="text-[10px] font-mono tracking-wider text-sky-400 uppercase font-bold">💎 Forgotten Treasures (0 play / oldest):</h5>
+                {rotationAnalytics.forgottenSongs.length === 0 ? (
+                  <p className="text-[11px] text-slate-505 italic pl-1">No forgotten songs</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {rotationAnalytics.forgottenSongs.map(s => {
+                      const stats = songUsageStats[s.id] || { count: 0, lastUsedTimestamp: 0 };
+                      return (
+                        <div key={s.id} className="p-2 rounded-xl bg-sky-500/[0.01] border border-sky-500/10 flex justify-between items-center text-[11px]">
+                          <span className="text-zinc-350 truncate pr-2 font-medium">{s.title}</span>
+                          <span className="text-sky-400 font-mono shrink-0 font-bold">
+                            {stats.count === 0 ? 'never' : `${Math.floor((Date.now() - stats.lastUsedTimestamp) / (1000 * 60 * 60 * 24))}d ago`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
 
@@ -1696,21 +1924,27 @@ export default function WorshipEvents({
                   onClick={() => setMobileViewMode('calendar')}
                   className={`flex-1 py-2 text-xs font-bold font-mono rounded-lg transition-all active-touch cursor-pointer ${
                     mobileViewMode === 'calendar'
-                      ? 'bg-amber-500 text-black font-extrabold shadow-sm'
+                      ? 'bg-amber-600 text-white font-bold shadow-sm'
                       : 'text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
-                  📅 Month Grid
+                  <div className="flex items-center justify-center gap-1.5">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    <span>Month Grid</span>
+                  </div>
                 </button>
                 <button
                   onClick={() => setMobileViewMode('timeline')}
                   className={`flex-1 py-2 text-xs font-bold font-mono rounded-lg transition-all active-touch cursor-pointer ${
                     mobileViewMode === 'timeline'
-                      ? 'bg-amber-500 text-black font-extrabold shadow-sm'
-                      : 'text-zinc-500 hover:text-zinc-300'
+                      ? 'bg-amber-600 text-white font-bold shadow-sm'
+                      : 'text-zinc-555 hover:text-zinc-350'
                   }`}
                 >
-                  🗓️ Timeline List
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Timeline List</span>
+                  </div>
                 </button>
               </div>
 
@@ -1819,8 +2053,10 @@ export default function WorshipEvents({
             </div>
 
 
-            <div className="text-[11px] text-zinc-500 leading-relaxed font-mono mt-auto pt-4 border-t border-zinc-900 flex items-center gap-1.5">
-              <span className="text-amber-500 font-bold">💡 Tip:</span>
+            <div className="text-[11px] text-zinc-500 leading-relaxed font-mono mt-auto pt-4 border-t border-zinc-900 flex items-center gap-2">
+              <span className="text-amber-500 font-bold flex items-center gap-1">
+                <Sparkles className="h-3 w-3" /> Tip:
+              </span>
               Tap a date to inspect or construct setlists and sing lyrics instantly.
             </div>
           </div>
@@ -1906,10 +2142,31 @@ export default function WorshipEvents({
                             <span className="text-[11px] font-mono font-black text-amber-500/60 bg-zinc-950 border border-zinc-850 px-2 py-0.5 rounded-md shrink-0">
                               {index + 1}
                             </span>
-                            <div className="truncate shrink">
-                              <span className="text-[14px] font-bold text-zinc-100 hover:text-amber-400 transition-colors block truncate">
-                                {matchSong.title}
-                              </span>
+                            <div className="truncate shrink flex flex-col">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="text-[14px] font-bold text-zinc-100 hover:text-amber-400 transition-colors block truncate">
+                                  {matchSong.title}
+                                </span>
+                                {(() => {
+                                  const stats = songUsageStats[matchSong.id];
+                                  if (!stats || stats.count === 0) return null;
+                                  
+                                  const daysAgo = Math.floor((Date.now() - stats.lastUsedTimestamp) / (1000 * 60 * 60 * 24));
+                                  let dotColor = 'bg-zinc-650';
+                                  if (daysAgo <= 14) dotColor = 'bg-rose-500 animate-pulse';
+                                  else if (daysAgo <= 30) dotColor = 'bg-amber-500';
+                                  else dotColor = 'bg-emerald-500';
+
+                                  return (
+                                    <div className="flex items-center gap-1.5 shrink-0 select-none">
+                                      <span className="text-[8px] font-mono text-zinc-500 bg-white/5 border border-zinc-800 px-1 py-0.2 rounded">
+                                        {stats.count}x
+                                      </span>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                               {matchSong.author && (
                                 <span className="text-[10px] text-zinc-500 block truncate font-mono">({matchSong.author})</span>
                               )}
@@ -2025,7 +2282,30 @@ export default function WorshipEvents({
                                 : 'border-zinc-900 bg-[#0a0a0c] hover:bg-zinc-900/40 text-zinc-300'
                             }`}
                           >
-                            <span className="truncate">{song.title}</span>
+                            <div className="flex items-center gap-1 truncate">
+                              <span className="truncate">{song.title}</span>
+                              {(() => {
+                                const stats = songUsageStats[song.id];
+                                if (stats && stats.count > 0) {
+                                  const daysAgo = Math.floor((Date.now() - stats.lastUsedTimestamp) / (1000 * 60 * 60 * 24));
+                                  let colorClass = 'text-slate-500';
+                                  if (daysAgo <= 14) colorClass = 'text-rose-500 font-bold';
+                                  else if (daysAgo <= 30) colorClass = 'text-amber-500';
+                                  else colorClass = 'text-emerald-500';
+                                  
+                                  return (
+                                    <span className={`text-[7.5px] font-mono shrink-0 select-none ${colorClass}`}>
+                                      ({stats.count}x)
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span className="text-[7.5px] font-mono text-sky-450 shrink-0 select-none">
+                                    (new)
+                                  </span>
+                                );
+                              })()}
+                            </div>
                             {(currentRole === 'admin' || currentRole === 'guest') ? (
                               isAdded ? (
                                 <Check className="h-3 w-3 text-emerald-400 shrink-0" />
@@ -2118,40 +2398,7 @@ export default function WorshipEvents({
                 <ChevronLeft className="h-5 w-5 mr-1" /> Setlist
               </button>
 
-              {/* Quick transposition and chord toggles inline */}
-              <div className="flex items-center gap-1.5 text-zinc-300">
-                <button
-                  onClick={() => setMobileShowChords(!mobileShowChords)}
-                  className={`px-2.5 py-1 rounded-lg text-[10.5px] font-mono font-black transition-all border ${
-                    mobileShowChords 
-                      ? 'bg-amber-500/10 border-amber-500 text-amber-500' 
-                      : 'bg-zinc-900 border-zinc-850 text-zinc-450 hover:text-white'
-                  }`}
-                >
-                  Chord Box: {mobileShowChords ? 'ON' : 'OFF'}
-                </button>
-
-                {mobileShowChords && (
-                  <div className="flex items-center bg-zinc-900 rounded-lg border border-zinc-850 px-2 py-1 gap-1.5">
-                    <span className="text-[9px] font-sans text-zinc-500 font-bold uppercase">Pitch:</span>
-                    <button 
-                      onClick={() => setMobileTransposeStep(p => p - 1)}
-                      className="text-xs font-mono font-extrabold text-zinc-400 hover:text-white"
-                    >
-                      -
-                    </button>
-                    <span className="text-[10px] font-mono font-bold text-amber-400">
-                      {mobileTransposeStep === 0 ? '0' : (mobileTransposeStep > 0 ? `+${mobileTransposeStep}` : mobileTransposeStep)}
-                    </span>
-                    <button 
-                      onClick={() => setMobileTransposeStep(p => p + 1)}
-                      className="text-xs font-mono font-extrabold text-zinc-400 hover:text-white"
-                    >
-                      +
-                    </button>
-                  </div>
-                )}
-              </div>
+              {/* Quick transposition and chord toggles removed to keep lyrics presentation simple */}
             </div>
 
             {/* Title Block */}
@@ -2159,7 +2406,6 @@ export default function WorshipEvents({
               <h3 className="text-xl font-black text-amber-500 leading-snug">{activeLyricsSong.title}</h3>
               <div className="flex items-center justify-between mt-1 text-[10px] text-zinc-500 font-mono">
                 {activeLyricsSong.author && <span>By: {activeLyricsSong.author}</span>}
-                {activeLyricsSong.key && <span>Original Key: {activeLyricsSong.key}</span>}
               </div>
             </div>
 
@@ -2173,10 +2419,7 @@ export default function WorshipEvents({
                 className="whitespace-pre-wrap font-sans leading-relaxed text-zinc-200 tracking-wide pb-20 font-medium"
                 style={{ fontSize: `${mobileFontSize}px` }}
               >
-                {mobileShowChords 
-                  ? transposeLyrics(activeLyricsSong.lyrics, mobileTransposeStep)
-                  : stripChords(activeLyricsSong.lyrics)
-                }
+                {stripChords(activeLyricsSong.lyrics)}
               </pre>
             </div>
 

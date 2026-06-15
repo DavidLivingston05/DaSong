@@ -135,16 +135,18 @@ app.post('/api/auth', asyncHandler(async (req, res) => {
 // GET /api/songs
 app.get('/api/songs', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  const songs = await db.collection('songs').find({}).toArray();
+  const query = getQueryWithServer(req);
+  const songs = await db.collection('songs').find(query).toArray();
   res.json(songs);
 }));
 
 // GET /api/songs/sync-check
 app.get('/api/songs/sync-check', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  const count = await db.collection('songs').countDocuments({});
+  const query = getQueryWithServer(req);
+  const count = await db.collection('songs').countDocuments(query);
   const latestSong = await db.collection('songs')
-    .find({}, { projection: { updatedAt: 1, createdAt: 1 } })
+    .find(query, { projection: { updatedAt: 1, createdAt: 1 } })
     .sort({ updatedAt: -1, createdAt: -1 })
     .limit(1)
     .toArray();
@@ -158,7 +160,8 @@ app.get('/api/songs/sync-check', asyncHandler(async (req, res) => {
 app.get('/api/songs/metadata', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const since = parseInt(req.query.since, 10) || 0;
-  const query = since > 0 ? { $or: [{ updatedAt: { $gt: since } }, { createdAt: { $gt: since } }] } : {};
+  const sinceQuery = since > 0 ? { $or: [{ updatedAt: { $gt: since } }, { createdAt: { $gt: since } }] } : {};
+  const query = getQueryWithServer(req, sinceQuery);
   const metadata = await db.collection('songs').find(query, {
     projection: {
       id: 1,
@@ -182,7 +185,8 @@ app.post('/api/songs/fetch-batch', asyncHandler(async (req, res) => {
   if (!Array.isArray(ids)) {
     return res.status(400).json({ error: 'ids must be an array of IDs' });
   }
-  const songs = await db.collection('songs').find({ id: { $in: ids } }).toArray();
+  const query = getQueryWithServer(req, { id: { $in: ids } });
+  const songs = await db.collection('songs').find(query).toArray();
   res.json(songs);
 }));
 
@@ -195,9 +199,10 @@ app.post('/api/songs', asyncHandler(async (req, res) => {
     // Bulk upsert songs
     const bulkOps = body.map(song => {
       const { _id, ...songData } = song; // Strip immutable _id before $set
+      songData.serverId = req.serverId; // Ensure serverId is set
       return {
         updateOne: {
-          filter: { id: songData.id },
+          filter: getQueryWithServer(req, { id: songData.id }),
           update: { $set: songData },
           upsert: true
         }
@@ -215,8 +220,9 @@ app.post('/api/songs', asyncHandler(async (req, res) => {
 
     // Use upsert to insert or update the song (strip _id to avoid immutable field error)
     const { _id: _songId, ...songData } = song;
+    songData.serverId = req.serverId; // Ensure serverId is set
     await db.collection('songs').updateOne(
-      { id: songData.id },
+      getQueryWithServer(req, { id: songData.id }),
       { $set: songData },
       { upsert: true }
     );
@@ -227,7 +233,8 @@ app.post('/api/songs', asyncHandler(async (req, res) => {
 // DELETE /api/songs
 app.delete('/api/songs', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  await db.collection('songs').deleteMany({});
+  const query = getQueryWithServer(req);
+  await db.collection('songs').deleteMany(query);
   res.json({ success: true });
 }));
 
@@ -235,8 +242,9 @@ app.delete('/api/songs', asyncHandler(async (req, res) => {
 app.delete('/api/songs/:id', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const { id } = req.params;
+  const query = getQueryWithServer(req, { id });
   
-  await db.collection('songs').deleteOne({ id });
+  await db.collection('songs').deleteOne(query);
   res.json({ success: true });
 }));
 

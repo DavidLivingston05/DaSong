@@ -1,23 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Minimize, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Columns, Type, Check, RefreshCw, ChevronLeft, ChevronRight, Presentation, FileText, Radio } from 'lucide-react';
 import { Song, PresentationConfig } from '../types';
-import { transposeLyrics, stripChords } from '../utils/chordTransposer';
+import { stripChords } from '../utils/chordTransposer';
 import { getBroadcastState } from '../lib/db';
 
 interface StageModeProps {
   song: Song;
-  activeTranspose: number;
   onClose: () => void;
   broadcastSlideIndex?: number;
   onSelectSong?: (id: string) => void;
 }
 
-export default function StageMode({ song, activeTranspose, onClose, broadcastSlideIndex, onSelectSong }: StageModeProps) {
+export default function StageMode({ song, onClose, broadcastSlideIndex, onSelectSong }: StageModeProps) {
   const [lyrics, setLyrics] = useState<string>('');
   const [config, setConfig] = useState<PresentationConfig>({
     fontSize: 28,
     theme: 'dark',
-    showChords: false,
     twoColumns: false,
     autoScrollSpeed: 0 // 0 means stopped
   });
@@ -144,22 +142,10 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
     }
   }, [broadcastSlideIndex, viewMode]);
 
-  // Sync transpose and chord preferences to display lyrics
+  // Sync display lyrics
   useEffect(() => {
-    let baseLyrics = song.lyrics;
-    
-    // First apply transposition
-    if (activeTranspose !== 0) {
-      baseLyrics = transposeLyrics(baseLyrics, activeTranspose);
-    }
-    
-    // Strip chords if hidden
-    if (!config.showChords) {
-      baseLyrics = stripChords(baseLyrics);
-    }
-
-    setLyrics(baseLyrics);
-  }, [song.lyrics, activeTranspose, config.showChords]);
+    setLyrics(stripChords(song.lyrics));
+  }, [song.lyrics]);
 
   // Handle auto scrolling
   useEffect(() => {
@@ -195,18 +181,42 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
     };
   }, [scrolling, config.autoScrollSpeed]);
 
-  // Auto-hide control header when scrolling starts
+  // Auto-hide control header when scrolling starts or when idle in slides mode
   useEffect(() => {
     let timer: number;
+    
+    const resetTimer = () => {
+      setShowHeader(true);
+      clearTimeout(timer);
+      // Auto hide after 3 seconds of inactivity
+      timer = window.setTimeout(() => {
+        setShowHeader(false);
+      }, 3000);
+    };
+
     if (scrolling) {
       timer = window.setTimeout(() => {
         setShowHeader(false);
       }, 2500);
+    } else if (viewMode === 'slides') {
+      resetTimer();
+
+      window.addEventListener('mousemove', resetTimer);
+      window.addEventListener('mousedown', resetTimer);
+      window.addEventListener('touchstart', resetTimer);
+      window.addEventListener('keydown', resetTimer);
     } else {
       setShowHeader(true);
     }
-    return () => clearTimeout(timer);
-  }, [scrolling]);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('mousedown', resetTimer);
+      window.removeEventListener('touchstart', resetTimer);
+      window.removeEventListener('keydown', resetTimer);
+    };
+  }, [scrolling, viewMode]);
 
 
   // Key shortcuts
@@ -279,54 +289,7 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
             
             const highlightClass = 'transition-all duration-200';
 
-            // Check if line contains bracketed chords
-            if (config.showChords && line.includes('[')) {
-              // Parse chords and separate them above the lyrics block for authentic musical sheets
-              const chordLine: { chord: string; index: number }[] = [];
-              let cleanLine = '';
-              let charIndex = 0;
 
-              // Parse matching [CHORD] markers
-              const segments = line.split(/(\[[^[\]]+\])/);
-              segments.forEach((seg) => {
-                if (seg.startsWith('[') && seg.endsWith(']')) {
-                  const chord = seg.slice(1, -1);
-                  chordLine.push({ chord, index: charIndex });
-                } else {
-                  cleanLine += seg;
-                  charIndex += seg.length;
-                }
-              });
-
-              // Assign custom pro color schemes depending on physical theme
-              const isLightTheme = config.theme === 'parchment' || config.theme === 'classic';
-              const chordsColor = isLightTheme ? 'text-amber-700' : 'text-amber-400 font-black drop-shadow-[0_0_8px_rgba(245,158,11,0.25)]';
-              const lyricsColor = isSectionHighlighted
-                ? 'text-white font-extrabold tracking-wide'
-                : (isLightTheme ? 'text-stone-900 font-bold' : 'text-zinc-350 font-medium tracking-wide');
-
-              return (
-                <div key={lIdx} id={lineId} className={`mb-3.5 leading-relaxed p-1 ${highlightClass}`}>
-                  {/* Chords Line */}
-                  <div className={`h-5 font-mono text-xs font-bold select-none relative whitespace-pre flex ${chordsColor}`}>
-                    {chordLine.map((c, cIdx) => {
-                      const prevOffset = cIdx > 0 ? chordLine[cIdx - 1].index : 0;
-                      const spacing = ' '.repeat(Math.max(0, c.index - prevOffset - (cIdx > 0 ? chordLine[cIdx - 1].chord.length : 0)));
-                      return (
-                        <span key={cIdx}>
-                          {spacing}
-                          <span className="hover:text-amber-500 cursor-pointer">{c.chord}</span>
-                        </span>
-                      );
-                    })}
-                  </div>
-                  {/* Lyrics Text Line */}
-                  <div className={`font-serif leading-none tracking-wide uppercase ${lyricsColor}`} style={{ fontSize: `${config.fontSize}px` }}>
-                    {cleanLine || ' '}
-                  </div>
-                </div>
-              );
-            }
 
             // Normal line or raw header line
             const isLightTheme = config.theme === 'parchment' || config.theme === 'classic';
@@ -372,16 +335,13 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
       activeSlideLineOffset += sections[sIdx].split('\n').length;
     }
 
+    const slideLineCount = lines.length;
+    const hasActiveLineOnSlide = highlightedLineIndex >= activeSlideLineOffset && highlightedLineIndex < activeSlideLineOffset + slideLineCount;
+
     return (
-      <div 
-        className={`w-full max-w-4xl px-8 py-10 md:py-14 rounded-3xl text-center select-none animate-fadeIn ${
-          isChorus 
-            ? 'border-2 border-amber-500/20 bg-amber-500/5 shadow-[0_0_30px_rgba(245,158,11,0.05)]' 
-            : 'bg-zinc-900/10 border border-white/5 shadow-lg'
-        }`}
-      >
+      <div className="w-full max-w-5xl px-6 py-6 text-center select-none animate-fadeIn">
         {isChorus && (
-          <span className="text-[10px] md:text-[11px] font-mono tracking-widest text-amber-400 uppercase font-black px-3 py-1 bg-amber-500/10 border border-amber-500/25 rounded-full select-none mb-6 inline-block">
+          <span className="text-[11px] font-mono tracking-widest text-amber-500/80 uppercase font-bold select-none mb-6 block">
             Chorus
           </span>
         )}
@@ -391,50 +351,18 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
             const currentLineIndex = activeSlideLineOffset + lIdx;
             const isHighlighted = currentLineIndex === highlightedLineIndex;
             
-            const highlightClass = isHighlighted
-              ? 'bg-amber-500/15 border-l-2 border-amber-500 px-4 py-1.5 rounded-xl transition-all duration-300 shadow-[0_0_12px_rgba(245,158,11,0.1)]'
-              : 'transition-all duration-205';
+            const highlightClass = hasActiveLineOnSlide
+              ? (isHighlighted
+                  ? 'scale-[1.03] opacity-100 transition-all duration-300 origin-center'
+                  : 'opacity-35 transition-all duration-300 origin-center')
+              : 'opacity-100 transition-all duration-300 origin-center';
 
             if (isChorus && line.toLowerCase().startsWith('chorus:')) {
               const remaining = line.slice(7).trim();
               if (!remaining) return null;
             }
 
-            if (config.showChords && line.includes('[')) {
-              const chordLine: { chord: string; index: number }[] = [];
-              let cleanLine = '';
-              let charIndex = 0;
 
-              const segments = line.split(/(\[[^[\]]+\])/);
-              segments.forEach((seg) => {
-                if (seg.startsWith('[') && seg.endsWith(']')) {
-                  const chord = seg.slice(1, -1);
-                  chordLine.push({ chord, index: charIndex });
-                } else {
-                  cleanLine += seg;
-                  charIndex += seg.length;
-                }
-              });
-
-              const isLightTheme = config.theme === 'parchment' || config.theme === 'classic';
-              const chordsColor = isLightTheme ? 'text-amber-700 font-bold' : 'text-amber-400 font-extrabold drop-shadow-[0_0_12px_rgba(245,158,11,0.3)]';
-              const lyricsColor = isLightTheme ? 'text-stone-900 font-black' : 'text-white font-black tracking-wide';
-
-              return (
-                <div key={lIdx} className={`mb-4 leading-relaxed text-center p-1 rounded-xl ${highlightClass}`}>
-                  <div className={`h-6 font-mono text-sm font-black justify-center flex gap-4 ${chordsColor}`}>
-                    {chordLine.map((c, cIdx) => (
-                      <span key={cIdx} className="cursor-pointer hover:text-amber-500 transition-colors">
-                        [{c.chord}]
-                      </span>
-                    ))}
-                  </div>
-                  <div className={`font-serif uppercase tracking-wide leading-normal ${lyricsColor}`} style={{ fontSize: `${config.fontSize * 1.3}px` }}>
-                    {cleanLine || ' '}
-                  </div>
-                </div>
-              );
-            }
 
             const isLightTheme = config.theme === 'parchment' || config.theme === 'classic';
             const headingColor = isLightTheme ? 'text-amber-800 font-bold' : 'text-amber-500 font-black';
@@ -443,7 +371,7 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
             return (
               <div
                 key={lIdx}
-                className={`font-serif leading-relaxed p-1 rounded-xl ${highlightClass} ${
+                className={`font-serif leading-relaxed p-1 ${highlightClass} ${
                   line.endsWith(':')
                     ? `text-sm uppercase tracking-widest ${headingColor} mb-4`
                     : `${normalColor}`
@@ -493,14 +421,6 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
 
   return (
     <div className={`fixed inset-0 z-50 flex flex-col transition-all duration-300 ${currentThemeClasses()}`}>
-      
-      {/* Dynamic Background Staff Notation Watermark */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03] select-none flex items-center justify-center overflow-hidden">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-[120%] h-[120%] text-amber-900 fill-current">
-          <path d="M10,20 H90 M10,30 H90 M10,40 H90 M10,50 H90 M10,60 H90" stroke="currentColor" strokeWidth="0.5" />
-          <text x="15" y="48" fontSize="24" fontFamily="serif" className="font-bold">𝄞</text>
-        </svg>
-      </div>
 
       {/* Presentation Top bar Controls */}
       <div id="stage-bar" className={`flex items-center justify-between p-3.5 border-b border-white/10 bg-[#070708] backdrop-blur-md z-10 font-sans transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full absolute w-full'}`}>
@@ -749,7 +669,7 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
           {currentSlideIndex > 0 ? (
             <button
               onClick={() => setCurrentSlideIndex(prev => Math.max(0, prev - 1))}
-              className="absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-slate-450 hover:text-white cursor-pointer active-touch z-25 shadow-lg"
+              className={`absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-slate-450 hover:text-white cursor-pointer active-touch z-25 shadow-lg duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
               title="Previous Slide"
             >
               <ChevronLeft className="h-6 w-6 stroke-[3]" />
@@ -762,7 +682,7 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
           {currentSlideIndex < (lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n+/).filter(Boolean).length - 1) ? (
             <button
               onClick={() => setCurrentSlideIndex(prev => Math.min(lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n+/).filter(Boolean).length - 1, prev + 1))}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-slate-450 hover:text-white cursor-pointer active-touch z-25 shadow-lg"
+              className={`absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-slate-450 hover:text-white cursor-pointer active-touch z-25 shadow-lg duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
               title="Next Slide"
             >
               <ChevronRight className="h-6 w-6 stroke-[3]" />
@@ -777,17 +697,17 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
           </div>
 
           {/* Bottom Slides progress navigation bar */}
-          <div className="w-full max-w-xl flex flex-col items-center gap-3.5 z-20 mt-6 bg-black/40 backdrop-blur-xs p-3 rounded-2xl border border-white/5 shadow-md">
+          <div className={`w-full max-w-xl flex flex-col items-center gap-2.5 z-20 mt-6 select-none transition-all duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             {/* Jump Dots Rack */}
-            <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-full">
+            <div className="flex flex-wrap items-center justify-center gap-2 max-w-full">
               {lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n+/).filter(Boolean).map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentSlideIndex(idx)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
+                  className={`w-1.5 h-1.5 rounded-full transition-all cursor-pointer ${
                     currentSlideIndex === idx
-                      ? 'bg-amber-500 scale-125 shadow-[0_0_10px_rgba(245,158,11,0.6)]'
-                      : 'bg-white/20 hover:bg-white/45'
+                      ? 'bg-amber-500 scale-125 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                      : 'bg-white/20 hover:bg-white/40'
                   }`}
                   title={`Go to Slide ${idx + 1}`}
                 />
@@ -795,8 +715,8 @@ export default function StageMode({ song, activeTranspose, onClose, broadcastSli
             </div>
             
             {/* Slide Index Summary */}
-            <div className="text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase">
-              Slide <span className="text-amber-500 font-extrabold">{currentSlideIndex + 1}</span> of {lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n+/).filter(Boolean).length}
+            <div className="text-[9px] font-mono tracking-widest text-zinc-500 uppercase">
+              Slide <span className="text-amber-500/80 font-bold">{currentSlideIndex + 1}</span> of {lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n+/).filter(Boolean).length}
             </div>
           </div>
 

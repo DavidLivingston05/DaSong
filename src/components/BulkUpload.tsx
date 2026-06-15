@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, Flame, AlertCircle, Copy, Check, Globe, Link, Save, ArrowRight } from 'lucide-react';
+import { Upload, FileText, CheckCircle, Flame, AlertCircle, Copy, Check, Globe, Link, Save, ArrowRight, Clipboard, Sparkles } from 'lucide-react';
 import { Song } from '../types';
 import { saveSongsBatch } from '../lib/db';
 import { parseTwoLineChords } from '../utils/lyricsParser';
+import { stripChords } from '../utils/chordTransposer';
 
 interface BulkUploadProps {
   onSuccess: (importedSongIds?: string[]) => void;
@@ -33,10 +34,10 @@ BPM: 72
 Category: Contemporary Worship
 
 Lyrics:
-[C] My hope is built on nothing less
-Than [F] Jesus' blood and [G] righteousness
-I [Am] dare not trust the [G] sweetest frame
-But [F] wholly [G] lean on [C] Jesus' name
+My hope is built on nothing less
+Than Jesus' blood and righteousness
+I dare not trust the sweetest frame
+But wholly lean on Jesus' name
 
 ---
 
@@ -47,10 +48,10 @@ BPM: 92
 Category: Classic Hymn
 
 Lyrics:
-[G] I heard an old, old story,
-How [C] a Savior came from [G] glory
-How He [G] gave His life on [Em] Calvary
-To [A7] save a wretch like [D] me`;
+I heard an old, old story,
+How a Savior came from glory
+How He gave His life on Calvary
+To save a wretch like me`;
 
   const copyTemplate = () => {
     navigator.clipboard.writeText(sampleTemplate);
@@ -261,8 +262,8 @@ To [A7] save a wretch like [D] me`;
 
       const data = await response.json();
       
-      // Auto-format two-line chords to bracket chords on the fly!
-      const formattedLyrics = parseTwoLineChords(data.lyrics || '');
+      // Auto-format two-line chords to bracket chords and then strip all chords on the fly!
+      const formattedLyrics = stripChords(parseTwoLineChords(data.lyrics || ''));
 
       setScrapePreview({
         title: data.title || 'Scraped Song',
@@ -321,33 +322,42 @@ To [A7] save a wretch like [D] me`;
           onClick={() => { setActiveImportTab('file'); setImportStats(null); }}
           className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             activeImportTab === 'file'
-              ? 'bg-amber-500 text-black font-extrabold shadow-sm'
+              ? 'bg-amber-600 text-white font-bold shadow-sm'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          📁 File Import
+          <div className="flex items-center justify-center gap-1.5">
+            <Upload className="h-3.5 w-3.5" />
+            <span>File Import</span>
+          </div>
         </button>
         <button
           type="button"
           onClick={() => { setActiveImportTab('paste'); setImportStats(null); }}
           className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             activeImportTab === 'paste'
-              ? 'bg-amber-500 text-black font-extrabold shadow-sm'
+              ? 'bg-amber-600 text-white font-bold shadow-sm'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          📋 Script Paste
+          <div className="flex items-center justify-center gap-1.5">
+            <Clipboard className="h-3.5 w-3.5" />
+            <span>Script Paste</span>
+          </div>
         </button>
         <button
           type="button"
           onClick={() => { setActiveImportTab('url'); setImportStats(null); }}
           className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             activeImportTab === 'url'
-              ? 'bg-amber-500 text-black font-extrabold shadow-sm'
+              ? 'bg-amber-600 text-white font-bold shadow-sm'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          🌐 Paste Web URL
+          <div className="flex items-center justify-center gap-1.5">
+            <Globe className="h-3.5 w-3.5" />
+            <span>Paste Web URL</span>
+          </div>
         </button>
       </div>
 
@@ -437,7 +447,7 @@ To [A7] save a wretch like [D] me`;
 Title: Cornerstone
 Author: Hillsong
 Lyrics:
-[C] My hope is built on nothing less`}
+My hope is built on nothing less`}
               className="w-full min-h-[220px] rounded-2xl border border-white/10 p-3.5 font-mono text-xs bg-[#09090b] text-slate-300 outline-none focus:border-amber-500"
             />
             <button
@@ -466,10 +476,10 @@ Lyrics:
         <div className="space-y-4">
           <div className="flex flex-col space-y-2.5 text-left">
             <label className="text-sm font-semibold text-slate-350 flex items-center gap-1.5">
-              <Globe className="h-4 w-4 text-amber-500" /> Fetch Songs & Chords from Web URL
+              <Globe className="h-4 w-4 text-amber-500" /> Fetch Songs & Lyrics from Web URL
             </label>
             <p className="text-[11px] text-slate-500 max-w-2xl mt-0.5 leading-relaxed">
-              Paste the URL of any song lyrics/chords page (e.g. from Ultimate-Guitar tabs, AZLyrics, Genius, or similar). We will fetch, clean, and format the chords into bracket notation automatically!
+              Paste the URL of any song lyrics page (e.g. from AZLyrics, Genius, or similar). We will fetch, clean, and format the lyrics automatically!
             </p>
             <div className="flex gap-2 items-center mt-2">
               <div className="relative flex-1">
@@ -478,7 +488,7 @@ Lyrics:
                   type="url"
                   value={scrapeUrl}
                   onChange={(e) => setScrapeUrl(e.target.value)}
-                  placeholder="Paste lyrics page URL (e.g. https://tabs.ultimate-guitar.com/tab/...)"
+                  placeholder="Paste lyrics page URL (e.g. https://www.azlyrics.com/lyrics/...)"
                   className="w-full pl-10 pr-4 py-3 text-xs rounded-xl border border-white/10 bg-[#09090b] text-white placeholder-slate-600 outline-none focus:border-amber-500 font-sans"
                 />
               </div>
@@ -546,19 +556,8 @@ Lyrics:
               </div>
 
               <div>
-                <label className="text-[10px] font-mono uppercase text-slate-400 font-bold flex items-center justify-between mb-1">
-                  <span>Lyrics Sheet preview (Bracket formatted Chords)</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!scrapePreview.lyrics) return;
-                      const formatted = parseTwoLineChords(scrapePreview.lyrics);
-                      setScrapePreview(p => p ? { ...p, lyrics: formatted } : null);
-                    }}
-                    className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/25 px-1.5 py-0.5 rounded font-bold transition-all hover:bg-amber-500/20"
-                  >
-                    🪄 Convert Two-Line Layout
-                  </button>
+                <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">
+                  <span>Lyrics Sheet Preview</span>
                 </label>
                 <textarea
                   value={scrapePreview.lyrics}

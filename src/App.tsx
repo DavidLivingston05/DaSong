@@ -270,7 +270,7 @@ export default function App() {
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   
   // Stage (full-screen presenting) control
-  const [stageModeSong, setStageModeSong] = useState<{ song: Song; transpose: number } | null>(null);
+  const [stageModeSong, setStageModeSong] = useState<Song | null>(null);
 
   // Manual Add Form structure
   const [addForm, setAddForm] = useState({
@@ -809,12 +809,12 @@ export default function App() {
   };
 
   // Presentation Trigger handlers
-  const handleEnterStageMode = async (transposeStep: number) => {
+  const handleEnterStageMode = async () => {
     if (!selectedSongId) return;
     try {
       const fullSong = await getSongById(selectedSongId);
       if (fullSong) {
-        setStageModeSong({ song: fullSong, transpose: transposeStep });
+        setStageModeSong(fullSong);
       }
     } catch (err) {
       alert('Error initializing stage mode: ' + err);
@@ -859,7 +859,7 @@ export default function App() {
             DaSong Songbook Portal
           </h1>
           <p className="text-sm md:text-base text-zinc-400 mt-4 leading-relaxed font-medium">
-            A secure multi-tenant platform for churches, choirs, and worship groups. Browse public song sheets, sync setlists, and manage team chord libraries.
+            A secure multi-tenant platform for churches, choirs, and worship groups. Browse public song sheets, sync setlists, and manage team lyric catalogs.
           </p>
         </div>
 
@@ -950,8 +950,9 @@ export default function App() {
             </div>
 
             {joinError && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-405 text-[11px] rounded-xl text-center font-bold">
-                ⚠️ {joinError}
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold flex items-center justify-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                <span>{joinError}</span>
               </div>
             )}
 
@@ -1005,7 +1006,7 @@ export default function App() {
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-2.5">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">{joinRole === 'admin' ? '👑 Admin' : '🧑‍🎤 Choir'} Access</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">{joinRole === 'admin' ? 'Admin' : 'Choir'} Access</h3>
                   <button 
                     onClick={() => { setJoinRole(null); setJoinError(''); }}
                     className="text-xs text-zinc-400 hover:text-white font-bold cursor-pointer transition-colors"
@@ -1077,7 +1078,7 @@ export default function App() {
                 DaSong Studio Portal
               </h1>
               <p className="text-sm md:text-base text-zinc-400 mt-4 leading-relaxed font-medium max-w-2xl mx-auto font-sans">
-                A secure multi-tenant platform for churches, choirs, and worship groups. Browse public song sheets, sync setlists, and manage team chord libraries.
+                A secure multi-tenant platform for churches, choirs, and worship groups. Browse public song sheets, sync setlists, and manage team lyric catalogs.
               </p>
             </div>
 
@@ -1096,7 +1097,7 @@ export default function App() {
                   <div className="mt-4">
                     <h3 className="text-base font-extrabold text-white group-hover:text-amber-450 transition-colors">Guest Mode</h3>
                     <p className="text-xs text-zinc-400 mt-2 leading-relaxed font-sans">
-                      Browse offline songs, transpose, create local setlists, and access offline calendar. Stored locally on your device!
+                      Browse offline songs, read lyrics, create local setlists, and access offline calendar. Stored locally on your device!
                     </p>
                   </div>
                   <span className="text-[10px] font-mono font-bold text-amber-500/80 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
@@ -1154,7 +1155,7 @@ export default function App() {
               <div className="w-full max-w-md mx-auto p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative z-10 animate-in fade-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
                   <h3 className="font-bold text-base text-white flex items-center gap-1.5 font-sans">
-                    🔌 Join Church Server
+                    <Layers className="h-4 w-4 text-amber-500" /> Join Church Server
                   </h3>
                   <button
                     onClick={() => {
@@ -1170,8 +1171,9 @@ export default function App() {
                 </div>
 
                 {joinError && (
-                  <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-405 text-[11px] rounded-xl text-center font-bold">
-                    ⚠️ {joinError}
+                  <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold flex items-center justify-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                    <span>{joinError}</span>
                   </div>
                 )}
 
@@ -1297,7 +1299,7 @@ export default function App() {
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                               Join as Choir Member
                             </p>
-                            <p className="text-[10px] text-zinc-550 mt-1">Read sheets, transpose, and suggest songs.</p>
+                            <p className="text-[10px] text-zinc-550 mt-1">Read lyrics, build setlists, and suggest songs.</p>
                           </div>
                           <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
                         </button>
@@ -1334,7 +1336,7 @@ export default function App() {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between border-b border-white/5 pb-2">
                           <h4 className="text-xs font-bold text-amber-500 uppercase font-mono tracking-wider">
-                            {joinRole === 'admin' ? '👑 Admin Login' : '🧑‍🎤 Choir Member Name'}
+                            {joinRole === 'admin' ? 'Admin Login' : 'Choir Member Name'}
                           </h4>
                           <button 
                             onClick={() => { setJoinRole(null); setJoinError(''); }}
@@ -1394,7 +1396,7 @@ export default function App() {
               <div className="w-full max-w-md mx-auto p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative z-10 animate-in fade-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
                   <h3 className="font-bold text-base text-white flex items-center gap-1.5 font-sans">
-                    ➕ Create Server Workspace
+                    <Plus className="h-4.5 w-4.5 text-amber-500" /> Create Server Workspace
                   </h3>
                   <button
                     onClick={() => {
@@ -1408,8 +1410,9 @@ export default function App() {
                 </div>
 
                 {createError && (
-                  <div className="p-3 bg-red-500/10 border border-red-550/20 text-red-405 text-[11px] rounded-xl text-center font-bold mb-4 font-sans">
-                    ⚠️ {createError}
+                  <div className="p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold mb-4 font-sans flex items-center justify-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                    <span>{createError}</span>
                   </div>
                 )}
 
@@ -1493,260 +1496,180 @@ export default function App() {
   }
 
   return (
-    <div id="app-root" className={`bg-[#08080a] text-zinc-300 transition-colors duration-300 flex flex-col font-sans relative ${selectedSongId ? 'h-[100dvh] overflow-hidden' : 'min-h-[100dvh]'}`}>
+    <div id="app-root" className="bg-[#08080a] text-zinc-300 transition-colors duration-300 flex flex-col font-sans relative min-h-[100dvh]">
       {/* Dynamic hardware grid pattern */}
       <div className="absolute inset-0 pointer-events-none opacity-2 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
       
-      {/* Top Professional Navigation Header - Styled like a premium MIDI master strip */}
-      <header id="main-header" className={`bg-zinc-950/95 text-white shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-20 px-3 pb-3 pt-safe md:p-4 relative backdrop-blur-md border-0 border-transparent ${selectedSongId ? 'hidden md:block' : ''}`}>
-        <div className="w-full max-w-[1850px] mx-auto flex flex-col gap-3.5">
-          {/* Row 1: Brand Logo & Telemetry Strip */}
-          <div className="flex flex-wrap items-center justify-between w-full gap-y-2 gap-x-4">
-          <div className="flex items-center space-x-3 select-none transition-all duration-300 hover:scale-[1.02] hover:brightness-110 border-0 border-transparent">
-            <div className="flex items-center text-orange-500 border-0 border-transparent">
-              <svg className="h-9 w-9 md:h-11 md:w-11 border-0 border-transparent" fill="none" viewBox="0 0 24 24">
-                <path d="M12 3v18M17 7v10M22 10v4M7 5v14M2 9v6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-              </svg>
-            </div>
-            
-            <div className="flex items-baseline font-sans border-0 border-transparent">
-              <span className="text-2xl font-black tracking-tight text-white md:text-3.5xl">
-                DaSong
-              </span>
-              <span className="ml-2 text-xs font-bold uppercase tracking-widest text-orange-500 md:text-sm">
-                Studio
-              </span>
+      {/* Top Professional Navigation Header - Single Row Consolidated Navbar */}
+      <header id="main-header" className={`bg-zinc-950/80 border-b border-zinc-900 text-white z-20 px-4 py-3 relative backdrop-blur-md ${selectedSongId ? 'hidden md:block' : ''}`}>
+        <div className="w-full max-w-[1850px] mx-auto flex items-center justify-between gap-6">
+          {/* Brand Logo */}
+          <div className="flex items-center space-x-2.5 select-none transition-all hover:opacity-90 shrink-0">
+            <Music className="h-5.5 w-5.5 text-amber-500 stroke-[2]" />
+            <div className="flex items-baseline">
+              <span className="text-xl font-serif font-semibold tracking-tight text-white">DaSong</span>
+              <span className="ml-1 text-[8.5px] font-mono font-medium uppercase tracking-widest text-zinc-550">Studio</span>
             </div>
           </div>
 
-          {/* Real-time sync counters & Telemetry strip */}
-          <div id="stats-dashboard" className="flex items-center gap-3 md:gap-3.5 flex-wrap ml-auto">
-            {activeServerId !== 'default' && (
-              <div className="text-right hidden md:block">
-                <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Workspace</span>
-                <span className="font-mono text-xs leading-none text-zinc-300 block font-black max-w-[120px] truncate">
-                  {localStorage.getItem(`dasong_server_name_${activeServerId}`) || activeServerId}
-                </span>
-              </div>
-            )}
-
-            <div className="text-right hidden md:block">
-              <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Total Songs</span>
-              <span className="font-mono text-xs leading-none text-zinc-300 block font-black">
-                {stats.total.toLocaleString()} Songs
-              </span>
-            </div>
-
-            <div className="h-5 w-[1px] bg-zinc-800 hidden md:block" />
-
-            {/* Quick theme selections and toggles */}
-            <div className="flex items-center gap-2">
-              
-              {activeServerId === 'default' ? (
-                <>
-                  {showInstallBanner && !isInstalled && (
-                    <button 
-                      onClick={handleInstallApp}
-                      className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer active-touch shrink-0"
-                      title="Install DaSong Songbook App"
-                    >
-                      <Download className="h-3.5 w-3.5 stroke-[2.5]" /> Install App
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setShowJoinModal(true);
-                      fetchServers();
-                    }}
-                    className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-450 text-black font-extrabold px-3 py-1.5 rounded-full text-[10px] uppercase font-mono tracking-wider transition-all cursor-pointer active-touch shrink-0"
-                  >
-                    🔌 Join Server
-                  </button>
-                  <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="flex items-center gap-1 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-350 hover:text-white font-extrabold px-3 py-1.5 rounded-full text-[10px] uppercase font-mono tracking-wider transition-all cursor-pointer active-touch shrink-0"
-                  >
-                    ➕ Add Server
-                  </button>
-                </>
-              ) : (
-                session && (
-                  <div className="flex items-center gap-2 sm:gap-3">
-
-                    {/* MongoDB Cloud Sync Status Badge */}
-                    <button
-                      id="mongodb-sync-status-badge"
-                      onClick={handleForceSync}
-                      disabled={mongoStatus === 'connecting'}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer active-touch shrink-0 ${
-                        mongoStatus === 'connected'
-                          ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
-                          : mongoStatus === 'connecting'
-                            ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 animate-pulse'
-                            : mongoStatus === 'error'
-                              ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
-                              : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800'
-                      }`}
-                      title="Click to Force Sync with Cloud Database"
-                    >
-                      <span className="text-xs leading-none">🍃</span>
-                      <span>
-                        {mongoStatus === 'connected'
-                          ? <><span className="hidden xs:inline">Cloud Saved</span><span className="xs:hidden">Saved</span></>
-                          : mongoStatus === 'connecting'
-                            ? 'Syncing...'
-                            : mongoStatus === 'error'
-                              ? <><span className="hidden xs:inline">Sync Error</span><span className="xs:hidden">Error</span></>
-                              : 'Offline'}
-                      </span>
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        mongoStatus === 'connected'
-                          ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]'
-                          : mongoStatus === 'connecting'
-                            ? 'bg-amber-500 animate-pulse shadow-[0_0_6px_#f59e0b]'
-                            : mongoStatus === 'error'
-                              ? 'bg-rose-500 shadow-[0_0_6px_#ef4444]'
-                              : 'bg-zinc-650'
-                      }`} />
-                    </button>
-
-
-                    
-                    {/* Secondary Header PWA Install Shortcut Badge */}
-                    {showInstallBanner && !isInstalled && (
-                      <button 
-                        onClick={handleInstallApp}
-                        className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer active-touch mr-1 shrink-0 animate-in fade-in"
-                        title="Install DaSong Songbook App"
-                      >
-                        <Download className="h-3.5 w-3.5 stroke-[2.5]" /> Install App
-                      </button>
-                    )}
-                    
-                    {/* User Profile Pill - Highly optimized and space-efficient on mobile */}
-                    <div 
-                      className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-2 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] shrink-0"
-                      title={`${session.role}: ${session.name}`}
-                    >
-                      <span className={`text-[10px] font-mono font-extrabold px-1.5 py-0.2 rounded border uppercase shrink-0 ${
-                        session.role === 'admin' 
-                          ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.1)]' 
-                          : session.role === 'choir'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-                      }`}>
-                        <span className="sm:hidden">
-                          {session.role === 'admin' ? '👑' : session.role === 'choir' ? '🧑‍🎤' : '👤'}
-                        </span>
-                        <span className="hidden sm:inline">{session.role}</span>
-                      </span>
-                      <span className="hidden sm:inline text-xs text-zinc-300 font-bold max-w-[120px] truncate">
-                        {session.role === 'choir' ? `👋 ${session.name}` : session.name}
-                      </span>
-                    </div>
-                    
-                    {/* Compact Sign Out / Leave Server */}
-                    <button 
-                      onClick={handleLeaveServer}
-                      className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-1.5 text-xs font-bold bg-zinc-900 hover:bg-rose-950/20 text-zinc-400 hover:text-rose-455 rounded-full border border-zinc-800 hover:border-rose-900/45 transition-all cursor-pointer active:scale-95 active-touch shrink-0"
-                      title="Leave Server Workspace"
-                    >
-                      <LogOut className="w-3.5 h-3.5 text-rose-455" />
-                      <span className="hidden xs:inline">Leave Workspace</span>
-                    </button>
-                  </div>
-                )
-              )}
-
-            </div>
-
-          </div>
-        </div>
-
-        {/* Row 2: Unified Action & Navigation Bar */}
-        <div id="unified-action-bar" className="hidden md:flex items-center justify-between w-full border-t border-zinc-800/80 pt-3 relative">
-          <div className="flex items-center gap-2.5">
-            {/* Dashboard Home Button */}
-            <button 
-              id="tab-dashboard"
+          {/* Centered Navigation Tabs */}
+          <nav className="hidden md:flex items-center space-x-1.5">
+            <button
               onClick={() => navigateTo('dashboard')}
-              className={`flex items-center gap-2 px-4 rounded-xl text-xs font-black tracking-wider transition-all h-10 border cursor-pointer select-none ${
-                activeTab === 'dashboard' 
-                  ? 'bg-zinc-950 border-amber-500 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-black' 
-                  : 'bg-zinc-900/60 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'dashboard'
+                  ? 'bg-zinc-900 text-amber-500 border border-zinc-800/80 font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              {activeTab === 'dashboard' ? (
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444] mr-0.5 shrink-0" />
-              ) : (
-                <span className="w-2 h-2 rounded-full bg-zinc-800 mr-0.5 shrink-0" />
-              )}
-              🏠 Home
+              <Home className="h-3.5 w-3.5" />
+              <span>Home</span>
             </button>
-
-            {/* Song Library Navigation */}
-            <button 
-              id="tab-search"
+            <button
               onClick={() => navigateTo('search')}
-              className={`flex items-center gap-2 px-4 rounded-xl text-xs font-black tracking-wider transition-all h-10 border cursor-pointer select-none ${
-                activeTab === 'search' 
-                  ? 'bg-zinc-950 border-amber-500 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-black' 
-                  : 'bg-zinc-900/60 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'search'
+                  ? 'bg-zinc-900 text-amber-500 border border-zinc-800/80 font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              {activeTab === 'search' ? (
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_#f59e0b] mr-0.5 shrink-0" />
-              ) : (
-                <span className="w-2 h-2 rounded-full bg-zinc-800 mr-0.5 shrink-0" />
-              )}
-              📖 Song Library
+              <BookOpen className="h-3.5 w-3.5" />
+              <span>Library</span>
             </button>
-
-            {/* Worship Setlists Navigation (Available to All Roles) */}
             {session && (
-              <button 
-                id="tab-calendar"
+              <button
                 onClick={() => navigateTo('calendar')}
-                className={`flex items-center gap-2 px-4 rounded-xl text-xs font-black tracking-wider transition-all h-10 border cursor-pointer select-none ${
-                  activeTab === 'calendar' 
-                    ? 'bg-zinc-950 border-amber-500 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-black' 
-                    : 'bg-zinc-900/60 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'calendar'
+                    ? 'bg-zinc-900 text-amber-500 border border-zinc-800/80 font-semibold'
+                    : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                {activeTab === 'calendar' ? (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981] mr-0.5 shrink-0" />
-                ) : (
-                  <span className="w-2 h-2 rounded-full bg-zinc-800 mr-0.5 shrink-0" />
-                )}
-                <Calendar className="h-3.5 w-3.5 shrink-0" /> Worship Setlists
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Setlists</span>
               </button>
             )}
-          </div>
+          </nav>
 
-          {/* Right Side: Admin/Guest Tools */}
-          {session && (session.role === 'admin' || session.role === 'guest') && (
-            <div className="flex items-center gap-2 ml-auto">
-              <button 
-                onClick={() => setShowAddModal(true)}
-                className="bg-amber-500 hover:bg-amber-400 text-black font-black px-4 rounded-xl text-xs transition-all shadow-[0_0_10px_rgba(245,158,11,0.1)] flex items-center gap-1.5 h-10 cursor-pointer active:scale-95"
-              >
-                <Plus className="h-4 w-4 text-black stroke-[3]" /> Add Song
-              </button>
-              
-              <button 
-                onClick={() => setShowUploadModal(true)}
-                className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-4 rounded-xl text-xs font-bold border border-zinc-800 transition-all h-10 cursor-pointer flex items-center gap-1.5 active:scale-95"
-              >
-                <Database className="h-4 w-4 text-amber-500" /> Import File
-              </button>
-            </div>
-          )}
-        </div>
+          {/* Right Action / Profile Controls */}
+          <div className="flex items-center gap-3">
+            {activeServerId === 'default' ? (
+              <div className="flex items-center gap-2">
+                {showInstallBanner && !isInstalled && (
+                  <button 
+                    onClick={handleInstallApp}
+                    className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer active-touch shrink-0"
+                    title="Install DaSong Songbook App"
+                  >
+                    <Download className="h-3.5 w-3.5 stroke-[2]" />
+                    <span>Install App</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowJoinModal(true);
+                    fetchServers();
+                  }}
+                  className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 px-3 py-1.5 rounded-full text-[10px] uppercase font-mono tracking-wider transition-all cursor-pointer shrink-0"
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  <span>Join Server</span>
+                </button>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-350 hover:text-white px-3 py-1.5 rounded-full text-[10px] uppercase font-mono tracking-wider transition-all cursor-pointer shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Server</span>
+                </button>
+              </div>
+            ) : (
+              session && (
+                <div className="flex items-center gap-3">
+                  {/* MongoDB Cloud Sync Status Badge */}
+                  <button
+                    id="mongodb-sync-status-badge"
+                    onClick={handleForceSync}
+                    disabled={mongoStatus === 'connecting'}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer shrink-0 ${
+                      mongoStatus === 'connected'
+                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                        : mongoStatus === 'connecting'
+                          ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 animate-pulse'
+                          : mongoStatus === 'error'
+                            ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20'
+                            : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800'
+                    }`}
+                    title="Click to Force Sync with Cloud Database"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${mongoStatus === 'connecting' ? 'animate-spin' : ''}`} />
+                    <span className="hidden xs:inline">
+                      {mongoStatus === 'connected' ? 'Synced' : mongoStatus === 'connecting' ? 'Syncing' : mongoStatus === 'error' ? 'Sync Error' : 'Offline'}
+                    </span>
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      mongoStatus === 'connected' ? 'bg-emerald-500' :
+                      mongoStatus === 'connecting' ? 'bg-amber-500' :
+                      mongoStatus === 'error' ? 'bg-rose-500' : 'bg-zinc-650'
+                    }`} />
+                  </button>
+
+                  {/* Add Song & Import File buttons for admin/guest */}
+                  {(session.role === 'admin' || session.role === 'guest') && (
+                    <div className="hidden lg:flex items-center gap-2">
+                      <button 
+                        onClick={() => setShowAddModal(true)}
+                        className="bg-amber-550/15 hover:bg-amber-550/25 text-amber-400 border border-amber-500/20 hover:border-amber-500/40 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span>Add Song</span>
+                      </button>
+                      
+                      <button 
+                        onClick={() => setShowUploadModal(true)}
+                        className="bg-zinc-900 hover:bg-zinc-850 text-zinc-350 hover:text-white px-3 py-1.5 rounded-full text-xs font-semibold border border-zinc-800 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                      >
+                        <Database className="h-3.5 w-3.5 text-amber-500" />
+                        <span>Import</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* User Profile Capsule */}
+                  <div 
+                    className="flex items-center gap-2 bg-zinc-900 border border-zinc-850 px-2.5 py-1.5 rounded-full shrink-0"
+                    title={`${session.role}: ${session.name}`}
+                  >
+                    <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 ${
+                      session.role === 'admin' 
+                        ? 'bg-amber-500/10 text-amber-500 border-amber-500/25' 
+                        : session.role === 'choir'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                          : 'bg-zinc-850 text-zinc-450 border-zinc-800'
+                    }`}>
+                      {session.role}
+                    </span>
+                    <span className="hidden sm:inline text-xs text-zinc-350 font-medium max-w-[100px] truncate">
+                      {session.name}
+                    </span>
+                  </div>
+
+                  {/* Exit Workspace */}
+                  <button 
+                    onClick={handleLeaveServer}
+                    className="flex items-center justify-center p-2 text-zinc-400 hover:text-rose-455 hover:bg-rose-500/10 rounded-full transition-all border border-transparent hover:border-rose-950/30 cursor-pointer shrink-0"
+                    title="Leave Workspace"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
+              )
+            )}
+          </div>
         </div>
       </header>
 
       {/* Main content body grid splits */}
-      <main className={`flex-1 p-4 md:p-6 pb-20 md:pb-6 max-w-[1850px] mx-auto w-full flex flex-col ${selectedSongId ? 'min-h-0 overflow-hidden h-full' : 'overflow-visible'}`}>
+      <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 max-w-[1850px] mx-auto w-full flex flex-col overflow-visible">
         <AnimatePresence mode="wait">
           {/* VIEW 1: CLEAN LANDING DASHBOARD */}
           {activeTab === 'dashboard' && (
@@ -1786,9 +1709,9 @@ export default function App() {
             <div className="md:hidden w-full flex items-center justify-between mb-4 px-1">
               <div>
                 <p className="text-[11px] font-mono text-zinc-500 uppercase tracking-widest">Active Session</p>
-                <h2 className="text-lg font-black text-white tracking-tight leading-tight">
+                <h2 className="text-lg font-bold text-white tracking-tight leading-tight">
                   Welcome, <span className="text-amber-500">{session?.name?.split(' ')[0] || 'User'}</span>
-                  <span className="ml-1.5 text-base">{session?.role === 'admin' ? '👑' : session?.role === 'choir' ? '🧑‍🎤' : '👤'}</span>
+                  <span className="ml-1.5 text-xs text-zinc-400 font-normal">({session?.role})</span>
                 </h2>
               </div>
               <div className="flex items-center gap-2">
@@ -1797,11 +1720,11 @@ export default function App() {
                   mongoStatus === 'connecting' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                   'bg-zinc-800 text-zinc-500 border-zinc-700'
                 }`}>
-                  {mongoStatus === 'connected' ? '● Live' : mongoStatus === 'connecting' ? '◌ Sync' : '○ Local'}
+                  {mongoStatus === 'connected' ? 'Live' : mongoStatus === 'connecting' ? 'Sync' : 'Local'}
                 </span>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-1 px-2.5 py-1 bg-zinc-900 hover:bg-rose-950/20 text-rose-400 border border-zinc-800 hover:border-rose-950/40 rounded-lg transition-all text-[11px] font-mono font-bold cursor-pointer active-touch"
+                  className="flex items-center gap-1 px-2.5 py-1 bg-zinc-900 hover:bg-rose-955/20 text-rose-400 border border-zinc-800 hover:border-rose-955/40 rounded-lg transition-all text-[11px] font-mono font-bold cursor-pointer active-touch"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>Exit</span>
@@ -1811,10 +1734,9 @@ export default function App() {
 
 
             {/* === DESKTOP GREETING CARD (hidden on mobile) === */}
-            <div className="hidden md:block w-full text-left mb-6 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 rounded-3xl border border-zinc-800/80 shadow-lg relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-36 h-36 bg-amber-500/5 rounded-full blur-3xl"></div>
-              <span className="text-[9px] font-mono tracking-widest text-amber-500 font-extrabold uppercase bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Active Session</span>
-              <h2 className="text-xl md:text-3xl font-black text-white tracking-tight mt-2.5">
+            <div className="hidden md:block w-full text-left mb-6 bg-zinc-950/40 p-6 rounded-3xl border border-zinc-850 shadow-md relative overflow-hidden">
+              <span className="text-[9px] font-mono tracking-widest text-amber-500 font-bold uppercase bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Active Session</span>
+              <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight mt-2.5">
                 Welcome back, <span className="text-amber-500">{session?.name || 'User'}</span>
               </h2>
               <p className="text-xs text-zinc-400 mt-1 select-none font-mono">
@@ -1826,10 +1748,9 @@ export default function App() {
             {activeServerId !== 'default' && (
               <div className={`w-full p-5 rounded-3xl border transition-all duration-300 ${
                 isFollowing 
-                  ? 'bg-amber-500/10 border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.1)]' 
-                  : 'bg-zinc-950/40 border-zinc-800/80 hover:border-zinc-700/80'
+                  ? 'bg-amber-500/5 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.05)]' 
+                  : 'bg-zinc-955/20 border-zinc-850 hover:border-zinc-800'
               } mb-6 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
-                <div className="absolute top-1/2 -right-4 -translate-y-1/2 w-36 h-36 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
                 <div className="flex items-start gap-3.5 relative z-10">
                   <div className="pt-0.5 shrink-0">
                     <span className="relative flex h-3 w-3">
@@ -1850,13 +1771,13 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => handleToggleFollow(!isFollowing)}
-                  className={`relative z-10 px-5 py-2.5 rounded-full text-xs font-extrabold font-mono tracking-wider uppercase transition-all cursor-pointer active-touch shrink-0 ${
+                  className={`relative z-10 px-5 py-2.5 rounded-full text-xs font-bold font-mono tracking-wider uppercase transition-all cursor-pointer active-touch shrink-0 ${
                     isFollowing 
                       ? 'bg-amber-500 text-black shadow-md hover:bg-amber-400 shadow-amber-500/25' 
                       : 'bg-zinc-900 border border-zinc-800 text-zinc-350 hover:text-white hover:border-zinc-700'
                   }`}
                 >
-                  {isFollowing ? '🔊 Syncing' : '🔇 Follow'}
+                  {isFollowing ? 'Syncing' : 'Follow'}
                 </button>
               </div>
             )}
@@ -1870,7 +1791,7 @@ export default function App() {
                 {/* Close Button top-right */}
                 <button 
                   onClick={handleDismissInstall}
-                  className="absolute top-3.5 right-3.5 p-1.5 rounded-full text-zinc-500 hover:text-zinc-350 hover:bg-white/5 transition-colors cursor-pointer active-touch"
+                  className="absolute top-3.5 right-3.5 p-1.5 rounded-full text-zinc-505 hover:text-zinc-350 hover:bg-white/5 transition-colors cursor-pointer active-touch"
                   title="Dismiss Banner"
                 >
                   <X className="h-4 w-4" />
@@ -1906,7 +1827,7 @@ export default function App() {
                     </button>
                     <button 
                       onClick={handleInstallApp}
-                      className="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-4 py-2 rounded-full text-[11px] transition-all shadow-md active-touch flex items-center justify-center gap-1.5 cursor-pointer shadow-amber-500/15"
+                      className="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-400 text-black font-bold px-4 py-2 rounded-full text-[11px] transition-all shadow-md active-touch flex items-center justify-center gap-1.5 cursor-pointer shadow-amber-500/15"
                     >
                       <Download className="h-3.5 w-3.5 stroke-[3]" /> Install Now
                     </button>
@@ -1915,23 +1836,23 @@ export default function App() {
               </div>
             )}
 
-            {/* ⚡ Quick Song Access (Phonetic Search Engine) */}
+            {/* Quick Song Access */}
             <div className="w-full mb-6 relative">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Search className="h-4.5 w-4.5 text-zinc-500" />
+                  <Search className="h-4.5 w-4.5 text-zinc-550" />
                 </div>
                 <input
                   type="text"
-                  placeholder="⚡ Quick song access... (Type title, author, or lyrics)"
+                  placeholder="Quick song access... (Type title, author, or lyrics)"
                   value={quickSearchInput}
                   onChange={(e) => setQuickSearchInput(e.target.value)}
-                  className="block w-full pl-11 pr-10 py-3.5 border border-zinc-800 rounded-2xl leading-5 bg-zinc-900 text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 text-sm transition-all shadow-md"
+                  className="block w-full pl-11 pr-10 py-3.5 border border-zinc-900 rounded-2xl leading-5 bg-[#090a0f] text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-amber-500/30 focus:ring-1 focus:ring-amber-500/30 text-sm transition-all shadow-sm"
                 />
                 {quickSearchInput && (
                   <button
                     onClick={() => setQuickSearchInput('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-500 hover:text-zinc-350 cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-500 hover:text-zinc-355 cursor-pointer"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -1940,7 +1861,7 @@ export default function App() {
 
               {/* Autocomplete Popup List */}
               {quickSearchInput.trim() && (
-                <div className="absolute left-0 right-0 mt-2 bg-zinc-950 border border-zinc-850 rounded-2xl shadow-2xl z-30 overflow-hidden max-h-[350px] overflow-y-auto divide-y divide-zinc-900 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute left-0 right-0 mt-2 bg-zinc-950 border border-zinc-900 rounded-2xl shadow-2xl z-30 overflow-hidden max-h-[350px] overflow-y-auto divide-y divide-zinc-900 animate-in fade-in slide-in-from-top-2 duration-150">
                   {quickSearchMatches.length === 0 ? (
                     <div className="p-4 text-center text-zinc-500 text-xs font-sans italic">
                       No matching songs found
@@ -1962,7 +1883,7 @@ export default function App() {
                             <Music className="h-4 w-4" />
                           </div>
                           <div className="truncate">
-                            <div className="text-xs font-bold text-zinc-200 group-hover:text-amber-450 transition-colors truncate">
+                            <div className="text-xs font-semibold text-zinc-200 group-hover:text-amber-450 transition-colors truncate">
                               {song.title}
                             </div>
                             <div className="text-[10px] text-zinc-550 font-mono mt-0.5">
@@ -1971,7 +1892,7 @@ export default function App() {
                           </div>
                         </div>
                         {song.category && (
-                          <span className="text-[9px] font-extrabold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2 py-0.5 rounded shrink-0">
+                          <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-550 px-2 py-0.5 rounded shrink-0">
                             {song.category}
                           </span>
                         )}
@@ -1984,26 +1905,26 @@ export default function App() {
 
             {/* Quick Metrics Cards — 2 cols on mobile, 3 on sm+ */}
             <div className="grid grid-cols-3 gap-2 md:gap-3 w-full mb-5 select-none">
-              <div className="premium-glass-card p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
-                <span className="text-[9px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Songs</span>
-                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-black mt-1">
+              <div className="bg-zinc-955/20 border border-zinc-900 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
+                <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-550">Songs</span>
+                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-semibold mt-1">
                   {stats.total}
                 </span>
-                <span className="text-[9px] md:text-[10px] text-zinc-500 mt-0.5 block font-sans">Total</span>
+                <span className="text-[9px] text-zinc-500 mt-0.5 block font-sans">Total</span>
               </div>
-              <div className="premium-glass-card p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
-                <span className="text-[9px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Stars</span>
-                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-black mt-1">
+              <div className="bg-zinc-955/20 border border-zinc-900 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
+                <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-550">Stars</span>
+                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-semibold mt-1">
                   {stats.favorites}
                 </span>
-                <span className="text-[9px] md:text-[10px] text-zinc-500 mt-0.5 block font-sans">Favorites</span>
+                <span className="text-[9px] text-zinc-500 mt-0.5 block font-sans">Favorites</span>
               </div>
-              <div className="premium-glass-card p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
-                <span className="text-[9px] md:text-[9px] font-mono tracking-widest uppercase block text-zinc-500">Cats</span>
-                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-black mt-1">
+              <div className="bg-zinc-955/20 border border-zinc-900 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
+                <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-550">Categories</span>
+                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-semibold mt-1">
                   {stats.categories}
                 </span>
-                <span className="text-[9px] md:text-[10px] text-zinc-500 mt-0.5 block font-sans">Categories</span>
+                <span className="text-[9px] text-zinc-500 mt-0.5 block font-sans">Unique</span>
               </div>
             </div>
             
@@ -2011,23 +1932,27 @@ export default function App() {
             <div className="grid grid-cols-2 gap-3 md:gap-4 w-full">
               <button 
                 onClick={() => setActiveTab('search')}
-                className="p-4 md:p-5 bg-zinc-900/60 hover:bg-zinc-800/40 border border-zinc-850 hover:border-amber-500/30 rounded-2xl md:rounded-3xl text-left transition-all cursor-pointer shadow-lg group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
+                className="p-4 md:p-5 bg-zinc-955/20 hover:bg-zinc-900/40 border border-zinc-900 hover:border-amber-500/20 rounded-2xl md:rounded-3xl text-left transition-all cursor-pointer group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
               >
-                <div className="text-2xl md:text-3xl p-2.5 md:p-3 bg-zinc-950 border border-zinc-800 rounded-xl md:rounded-2xl group-hover:scale-110 transition-transform w-fit">🎵</div>
+                <div className="p-2.5 md:p-3 bg-zinc-950 border border-zinc-900 rounded-xl md:rounded-2xl group-hover:scale-105 transition-transform w-fit shrink-0">
+                  <BookOpen className="w-5 h-5 text-amber-500" />
+                </div>
                 <div>
-                  <div className="text-[13px] md:text-sm font-bold text-white tracking-wide">Song Library</div>
-                  <p className="text-[11px] md:text-xs text-zinc-400 mt-0.5 md:mt-1">Search and browse all songs.</p>
+                  <div className="text-[13px] md:text-sm font-semibold text-white tracking-wide">Song Library</div>
+                  <p className="text-[11px] md:text-xs text-zinc-500 mt-0.5 md:mt-1">Search and browse all songs.</p>
                 </div>
               </button>
               
               <button 
                 onClick={() => setActiveTab('calendar')}
-                className="p-4 md:p-5 bg-zinc-900/60 hover:bg-zinc-800/40 border border-zinc-850 hover:border-amber-500/30 rounded-2xl md:rounded-3xl text-left transition-all cursor-pointer shadow-lg group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
+                className="p-4 md:p-5 bg-zinc-955/20 hover:bg-zinc-900/40 border border-zinc-900 hover:border-amber-500/20 rounded-2xl md:rounded-3xl text-left transition-all cursor-pointer group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
               >
-                <div className="text-2xl md:text-3xl p-2.5 md:p-3 bg-zinc-950 border border-zinc-800 rounded-xl md:rounded-2xl group-hover:scale-110 transition-transform w-fit">📅</div>
+                <div className="p-2.5 md:p-3 bg-zinc-950 border border-zinc-900 rounded-xl md:rounded-2xl group-hover:scale-105 transition-transform w-fit shrink-0">
+                  <Calendar className="w-5 h-5 text-amber-500" />
+                </div>
                 <div>
-                  <div className="text-[13px] md:text-sm font-bold text-white tracking-wide">Worship Setlists</div>
-                  <p className="text-[11px] md:text-xs text-zinc-400 mt-0.5 md:mt-1">Plan services and arrange setlists.</p>
+                  <div className="text-[13px] md:text-sm font-semibold text-white tracking-wide">Worship Setlists</div>
+                  <p className="text-[11px] md:text-xs text-zinc-500 mt-0.5 md:mt-1">Plan services and arrange setlists.</p>
                 </div>
               </button>
             </div>
@@ -2035,13 +1960,12 @@ export default function App() {
             {/* === RESPONSIVE JUMP BACK IN === */}
             {recentSongs.length > 0 && (
               <div className="w-full mt-6">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black block mb-3 pl-0.5 text-left">
-                  ⚡ Jump Back In
+                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-semibold block mb-3 pl-0.5 text-left">
+                  Jump Back In
                 </span>
                 
                 {/* Desktop View: list */}
-                <div className="hidden md:block space-y-2 bg-zinc-900/60 p-5 md:p-6 rounded-3xl border border-zinc-850 shadow-md relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/[0.02] rounded-full blur-2xl"></div>
+                <div className="hidden md:block space-y-2 bg-zinc-955/20 p-5 md:p-6 rounded-3xl border border-zinc-900 shadow-sm relative overflow-hidden">
                   {recentSongs.map(song => (
                     <button
                       key={song.id}
@@ -2050,19 +1974,19 @@ export default function App() {
                         setSongSourceTab('search');
                         handleSelectSong(song.id);
                       }}
-                      className="w-full p-3.5 bg-zinc-950/50 hover:bg-zinc-950 hover:border-amber-500/30 border border-zinc-850 rounded-2xl flex items-center justify-between gap-3 text-left transition-all cursor-pointer group active-touch"
+                      className="w-full p-3.5 bg-[#090a0f]/40 hover:bg-zinc-900/45 hover:border-amber-500/20 border border-zinc-900/80 rounded-2xl flex items-center justify-between gap-3 text-left transition-all cursor-pointer group active-touch"
                     >
                       <div className="flex items-center gap-3 truncate">
-                        <div className="h-7 w-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
+                        <div className="h-7 w-7 rounded-lg bg-zinc-950 border border-zinc-900 flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
                           <Music className="h-3.5 w-3.5" />
                         </div>
                         <div className="truncate">
-                          <div className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors truncate">{song.title}</div>
-                          <div className="text-[10px] text-zinc-500 font-mono mt-0.5">{song.author || 'Traditional'}</div>
+                          <div className="text-xs font-semibold text-white group-hover:text-amber-400 transition-colors truncate">{song.title}</div>
+                          <div className="text-[10px] text-zinc-550 font-mono mt-0.5">{song.author || 'Traditional'}</div>
                         </div>
                       </div>
                       {song.category && (
-                        <span className="text-[9px] font-extrabold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2 py-0.5 rounded shrink-0">
+                        <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-550 px-2 py-0.5 rounded shrink-0">
                           {song.category}
                         </span>
                       )}
@@ -2083,9 +2007,9 @@ export default function App() {
                       className="recent-song-pill active-touch text-left shrink-0"
                     >
                       <div className="text-[13px] font-bold text-white truncate leading-tight">{song.title}</div>
-                      <div className="text-[10px] text-zinc-500 font-mono mt-1 truncate">{song.author || 'Traditional'}</div>
+                      <div className="text-[10px] text-zinc-555 font-mono mt-1 truncate">{song.author || 'Traditional'}</div>
                       {song.category && (
-                        <div className="text-[9px] font-extrabold uppercase text-amber-500/90 mt-1">{song.category}</div>
+                        <div className="text-[9px] font-bold uppercase text-amber-500/90 mt-1">{song.category}</div>
                       )}
                     </button>
                   ))}
@@ -2098,29 +2022,29 @@ export default function App() {
             {session?.role === 'admin' && (
               <div className="lg:sticky lg:top-6 flex flex-col gap-5 md:gap-6 h-fit w-full mt-5 lg:mt-0">
                 {/* Administrative Quick Actions Console */}
-                <div className="w-full text-left premium-glass-card p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-md select-none">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black">Admin Actions</span>
+                <div className="w-full text-left bg-zinc-955/20 border border-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm select-none">
+                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-semibold">Admin Actions</span>
                 <div className="grid grid-cols-2 gap-2.5 mt-3">
                   <button
                     onClick={() => setShowAddModal(true)}
-                    className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-4 py-3.5 rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active-touch"
+                    className="bg-amber-600 hover:bg-amber-550 text-white font-semibold px-4 py-3.5 rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer active-touch"
                   >
-                    <Plus className="h-4 w-4 text-black stroke-[3]" /> Create Song
+                    <Plus className="h-4 w-4 text-white stroke-[2.5]" /> Create Song
                   </button>
                   <button
                     onClick={() => setShowUploadModal(true)}
-                    className="bg-zinc-950 hover:bg-zinc-900 text-zinc-350 hover:text-white px-4 py-3.5 rounded-xl text-xs font-bold border border-zinc-800 transition-all flex items-center justify-center gap-2 cursor-pointer active-touch"
+                    className="bg-zinc-900 hover:bg-zinc-850 text-zinc-350 hover:text-white px-4 py-3.5 rounded-xl text-xs font-semibold border border-zinc-800 transition-all flex items-center justify-center gap-2 cursor-pointer active-touch"
                   >
-                    <Database className="h-4 w-4 text-amber-500" /> Import Files
+                    <Database className="h-4 w-4 text-amber-550" /> Import Files
                   </button>
                 </div>
               </div>
 
               {/* Choir Requests Review Panel */}
-              <div className="w-full text-left premium-glass-card p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-md">
-                <div className="flex items-center justify-between border-b border-zinc-850 pb-3 mb-4 select-none">
+              <div className="w-full text-left bg-zinc-955/20 border border-zinc-900 p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-sm">
+                <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-4 select-none">
                   <div>
-                    <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-black">Song Requests</span>
+                    <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-semibold">Song Requests</span>
                     <h3 className="text-sm font-bold text-white tracking-wide mt-1">Choir Requests Review</h3>
                   </div>
                   <span className="bg-amber-500/10 text-amber-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-500/20">
@@ -2133,12 +2057,12 @@ export default function App() {
                     {suggestions.map((sug) => (
                       <div 
                         key={sug.id} 
-                        className="p-4 bg-zinc-950/60 hover:bg-zinc-950 border border-zinc-850/80 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all"
+                        className="p-4 bg-zinc-955/20 hover:bg-zinc-900/40 border border-zinc-900 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all"
                       >
                         <div className="text-left">
-                          <h4 className="text-xs font-black text-white">{sug.songTitle}</h4>
+                          <h4 className="text-xs font-bold text-white">{sug.songTitle}</h4>
                           <p className="text-[10px] text-zinc-500 mt-1 font-mono">
-                            Suggested by <span className="text-zinc-400 font-bold">{sug.suggestedBy || 'Choir Member'}</span> • {new Date(sug.timestamp).toLocaleDateString()} at {new Date(sug.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            Suggested by <span className="text-zinc-400 font-bold">{sug.suggestedBy || 'Choir Member'}</span> • {new Date(sug.timestamp).toLocaleDateString()}
                           </p>
                         </div>
                         
@@ -2150,9 +2074,9 @@ export default function App() {
                               handleSelectSong(sug.songId);
                               setActiveTab('search');
                             }}
-                            className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-4 py-2 rounded-xl text-[11px] uppercase font-mono tracking-wider transition-all active:scale-95 cursor-pointer active-touch flex items-center gap-1 min-h-[40px]"
+                            className="bg-amber-600 hover:bg-amber-550 text-white font-semibold px-4 py-2 rounded-xl text-[11px] uppercase font-mono tracking-wider transition-all active:scale-95 cursor-pointer active-touch flex items-center gap-1 min-h-[40px]"
                           >
-                            🔍 View
+                            View
                           </button>
                           
                           <button
@@ -2161,7 +2085,7 @@ export default function App() {
                                 handleDismissSuggestion(sug.id);
                               }
                             }}
-                            className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-rose-450 px-4 py-2 rounded-xl text-[11px] uppercase font-mono tracking-wider transition-all active:scale-95 cursor-pointer active-touch min-h-[40px]"
+                            className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-rose-455 px-4 py-2 rounded-xl text-[11px] uppercase font-mono tracking-wider transition-all active:scale-95 cursor-pointer active-touch min-h-[40px]"
                           >
                             Dismiss
                           </button>
@@ -2170,10 +2094,10 @@ export default function App() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-10 bg-zinc-950/30 rounded-2xl border border-dashed border-zinc-850/65 select-none">
-                    <Music className="h-8 w-8 text-zinc-800 mx-auto mb-2.5 animate-pulse" />
-                    <p className="font-bold text-zinc-500 text-[10px] font-mono uppercase tracking-widest">Request Queue Empty</p>
-                    <p className="text-[9.5px] text-zinc-650 mt-1 uppercase font-mono">
+                  <div className="text-center py-10 bg-[#090a0f]/20 rounded-2xl border border-dashed border-zinc-900 select-none">
+                    <Music className="h-8 w-8 text-zinc-850 mx-auto mb-2.5" />
+                    <p className="font-bold text-zinc-650 text-[10px] font-mono uppercase tracking-widest">Request Queue Empty</p>
+                    <p className="text-[9.5px] text-zinc-700 mt-1 uppercase font-mono">
                       Song requests submitted by choir members will appear here in real-time.
                     </p>
                   </div>
@@ -2194,11 +2118,11 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18 }}
-              className={`w-full min-h-0 ${selectedSongId ? 'flex-1 flex flex-col h-full' : ''}`}
+              className="w-full min-h-0"
             >
             {selectedSongId ? (
               /* Dedicated full-page lyric reading panel */
-              <div className="w-full flex-1 flex flex-col min-h-0 h-full">
+              <div className="w-full flex flex-col">
                 <SongDetail 
                   songId={selectedSongId}
                   onClose={() => {
@@ -2322,7 +2246,7 @@ export default function App() {
             >
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <h3 className="font-bold text-lg text-white flex items-center gap-1.5">
-                  🔌 Join Church Server
+                  <Layers className="h-4.5 w-4.5 text-amber-500" /> Join Church Server
                 </h3>
                 <button
                   onClick={() => {
@@ -2338,8 +2262,9 @@ export default function App() {
               </div>
 
               {joinError && (
-                <div className="p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold">
-                  ⚠️ {joinError}
+                <div className="p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold flex items-center justify-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                  <span>{joinError}</span>
                 </div>
               )}
 
@@ -2466,7 +2391,7 @@ export default function App() {
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             Join as Choir Member
                           </p>
-                          <p className="text-[10px] text-zinc-500 mt-1">Read sheets, transpose, and suggest songs.</p>
+                          <p className="text-[10px] text-zinc-500 mt-1">Read lyrics, build setlists, and suggest songs.</p>
                         </div>
                         <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
                       </button>
@@ -2503,7 +2428,7 @@ export default function App() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between border-b border-white/5 pb-2">
                         <h4 className="text-xs font-bold text-amber-500 uppercase font-mono tracking-wider">
-                          {joinRole === 'admin' ? '👑 Admin Login' : '🧑‍🎤 Choir Member Name'}
+                          {joinRole === 'admin' ? 'Admin Login' : 'Choir Member Name'}
                         </h4>
                         <button 
                           onClick={() => { setJoinRole(null); setJoinError(''); }}
@@ -2593,7 +2518,7 @@ export default function App() {
             >
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <h3 className="font-bold text-lg text-white flex items-center gap-1.5">
-                  ➕ Add New Server Workspace
+                  <Plus className="h-4.5 w-4.5 text-amber-500" /> Add New Server Workspace
                 </h3>
                 <button
                   onClick={() => {
@@ -2607,8 +2532,9 @@ export default function App() {
               </div>
 
               {createError && (
-                <div className="p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold">
-                  ⚠️ {createError}
+                <div className="p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold flex items-center justify-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                  <span>{createError}</span>
                 </div>
               )}
 
@@ -2788,23 +2714,8 @@ export default function App() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-400 flex items-center justify-between">
-                  <span>Lyrics Sheet with Bracket Chords *</span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!addForm.lyrics) return;
-                        const formatted = parseTwoLineChords(addForm.lyrics);
-                        setAddForm(p => ({ ...p, lyrics: formatted }));
-                      }}
-                      className="text-[9px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono font-bold transition-all cursor-pointer"
-                      title="Convert traditional chords-above-lyrics formatting into bracketed format"
-                    >
-                      🪄 Auto-Format Two-Line Chords
-                    </button>
-                    <span className="text-[10px] text-amber-450 font-mono hidden sm:inline">Format: [C] Amazing...</span>
-                  </div>
+                <label className="text-xs font-semibold text-slate-400">
+                  Song Lyrics / Content *
                 </label>
                 <textarea
                   id="add-lyrics"
@@ -2813,8 +2724,8 @@ export default function App() {
                   value={addForm.lyrics}
                   onChange={(e) => setAddForm(p => ({ ...p, lyrics: e.target.value }))}
                   className="mt-1 w-full text-xs p-3 rounded-xl border border-white/10 bg-[#09090B] text-white font-mono outline-none focus:border-amber-500"
-                  placeholder={`[G] Amazing grace! How [C] sweet the [G] sound
-That [G] saved a wretch like [D] me!`}
+                  placeholder={`Amazing grace! How sweet the sound
+That saved a wretch like me!`}
                 />
               </div>
 
@@ -2895,13 +2806,12 @@ That [G] saved a wretch like [D] me!`}
       {/* Full-screen Presentation View Overlay triggers if loaded */}
       {stageModeSong && (
         <StageMode 
-          song={stageModeSong.song}
-          activeTranspose={stageModeSong.transpose}
+          song={stageModeSong}
           onClose={() => setStageModeSong(null)}
           onSelectSong={(id) => {
             getSongById(id).then(fullSong => {
               if (fullSong) {
-                setStageModeSong({ song: fullSong, transpose: 0 });
+                setStageModeSong(fullSong);
               }
             });
             handleSelectSong(id);
@@ -3017,7 +2927,7 @@ That [G] saved a wretch like [D] me!`}
 
             <div className="space-y-4">
               <div className="p-3 bg-amber-500/5 rounded-2xl border border-amber-500/10 text-[11px] text-amber-400 font-medium leading-relaxed flex gap-2">
-                <span className="text-sm shrink-0">💡</span>
+                <HelpCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                 <p>
                   To install, you must open this website in the iOS <strong className="text-white">Safari</strong> browser. Third-party in-app browsers do not support direct addition.
                 </p>

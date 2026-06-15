@@ -9,7 +9,7 @@
 
 /* Force dark style defaults globally if we are in Elegant Dark */
 body {
-  background-color: #09090B;
+  background-color: #07080d;
   color: #CBD5E1; /* Slate 300 */
 }
 
@@ -18,8 +18,8 @@ body {
 #lyrics-scroll-container::-webkit-scrollbar,
 #song-search-results::-webkit-scrollbar,
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 #lyric-sheet::-webkit-scrollbar-track,
@@ -33,25 +33,25 @@ body {
 #lyrics-scroll-container::-webkit-scrollbar-thumb,
 #song-search-results::-webkit-scrollbar-thumb,
 ::-webkit-scrollbar-thumb {
-  background: rgba(245, 158, 11, 0.15); /* amber backdrop */
+  background: rgba(217, 119, 6, 0.1); /* refined amber/gold backdrop */
   border-radius: 99px;
   transition: background-color 0.2s;
 }
 
 #lyric-sheet::-webkit-scrollbar-thumb:hover,
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 158, 11, 0.3);
+  background: rgba(217, 119, 6, 0.2);
 }
 
 /* Glassmorphism utility for modern music design controls */
 .glass-effect {
-  background: rgba(9, 9, 11, 0.8);
-  backdrop-filter: blur(12px);
+  background: rgba(9, 10, 15, 0.82);
+  backdrop-filter: blur(20px);
 }
 
 /* Immersive Elegant dark radial light beam mapping */
 .atmosphere-overlay {
-  background-image: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+  background-image: radial-gradient(circle at 50% 0%, rgba(217, 119, 6, 0.02) 0%, transparent 60%);
 }
 
 @keyframes fadeIn {
@@ -250,10 +250,9 @@ input, select, textarea {
 
 /* Premium Glassmorphism Effect */
 .premium-glass-card {
-  background: rgba(18, 18, 24, 0.75) !important;
-  backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
-  transition: all 0.3s ease-in-out !important;
+  background: #0c0d12 !important;
+  border: 1px solid rgba(255, 255, 255, 0.02) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 /* Subtle Amber Glow Background */
@@ -264,30 +263,28 @@ input, select, textarea {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(245, 158, 11, 0.05) 0%, transparent 70%);
+  background: radial-gradient(circle at center, rgba(217, 119, 6, 0.01) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
 
 /* Premium Hover Lift & Glow */
 .premium-hover-card {
-  transition: all 0.3s ease-in-out !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   cursor: pointer !important;
 }
 .premium-hover-card:hover {
-  transform: translateY(-4px) !important;
-  box-shadow: 0 10px 30px -5px rgba(245, 158, 11, 0.12), 0 8px 16px -6px rgba(245, 158, 11, 0.12) !important;
-  border-color: rgba(245, 158, 11, 0.2) !important;
+  border-color: rgba(217, 119, 6, 0.15) !important;
+  background: #0f1016 !important;
 }
 
 /* Tactile Song Row Hover (Slide right + amber bg tint) */
 .song-row-card {
-  transition: all 0.3s ease-in-out !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 .song-row-card:hover {
-  transform: translateX(4px) !important;
-  background-color: rgba(245, 158, 11, 0.05) !important;
-  border-color: rgba(245, 158, 11, 0.15) !important;
+  background-color: rgba(217, 119, 6, 0.02) !important;
+  border-color: rgba(217, 119, 6, 0.08) !important;
 }
 
 /* Sync Badge breathing animations */

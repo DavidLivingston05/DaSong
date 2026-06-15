@@ -22,7 +22,6 @@ export interface MetronomeConfig {
 export interface PresentationConfig {
   fontSize: number; // 12px to 48px
   theme: 'parchment' | 'dark' | 'classic' | 'retro-terminal';
-  showChords: boolean;
   twoColumns: boolean;
   autoScrollSpeed: number; // 0 to 10 scale
 }

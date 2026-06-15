@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Music, Star, Trash2, Layers, ChevronRight, Search } from 'lucide-react';
+import { Music, Star, Trash2, Layers, ChevronRight, Search, Plus, Database, BookOpen } from 'lucide-react';
 import { SongMetadata } from '../lib/db';
 import { UserRole } from '../types';
 
@@ -22,6 +22,9 @@ function SongList({
   onSelectSong,
   onToggleFavorite,
   onDeleteSong,
+  onOpenAddModal,
+  onOpenUploadModal,
+  onClearLibrary,
   currentRole
 }: SongListProps) {
   const [visibleCount, setVisibleCount] = useState<number>(20);
@@ -138,8 +141,34 @@ function SongList({
   };
 
   return (
-    <div id="song-list-module" className="flex flex-col space-y-3.5 text-zinc-300">
+    <div id="song-list-module" className="flex flex-col space-y-5 text-zinc-300">
       
+      {/* Page Title & Actions */}
+      <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-zinc-900/40">
+        <div>
+          <h2 className="text-xl md:text-2xl font-serif font-bold text-white tracking-tight flex items-center gap-2">
+            <BookOpen className="h-5.5 w-5.5 text-amber-500" /> Song Library
+          </h2>
+          <p className="text-[11px] text-zinc-500 mt-1.5">Browse public song sheets and manage workspace lyrics.</p>
+        </div>
+        {(currentRole === 'admin' || currentRole === 'guest') && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onOpenAddModal}
+              className="bg-amber-600 hover:bg-amber-550 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-[0_2px_10px_rgba(217,119,6,0.1)] flex items-center gap-1.5 h-10 cursor-pointer active:scale-95"
+            >
+              <Plus className="h-4 w-4 text-white stroke-[2.5]" /> Add Song
+            </button>
+            <button
+              onClick={onOpenUploadModal}
+              className="bg-zinc-900 hover:bg-zinc-850 text-zinc-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold border border-zinc-800 transition-all h-10 cursor-pointer flex items-center gap-1.5 active:scale-95"
+            >
+              <Database className="h-4 w-4 text-amber-550" /> Import File
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Search Input */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">

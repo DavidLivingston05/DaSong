@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio } from 'lucide-react';
+import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock } from 'lucide-react';
 import { Song, UserRole, WorshipEvent } from '../types';
 import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions, getLocalWorshipEvents, saveWorshipEvent, broadcastState, getBroadcastState } from '../lib/db';
-import { transposeLyrics, stripChords } from '../utils/chordTransposer';
+import { stripChords } from '../utils/chordTransposer';
 import { parseTwoLineChords } from '../utils/lyricsParser';
 import Metronome from './Metronome';
 
@@ -10,7 +10,7 @@ import Metronome from './Metronome';
 interface SongDetailProps {
   songId: string;
   onClose: () => void;
-  onEnterStageMode: (transposeStep: number) => void;
+  onEnterStageMode: () => void;
   onToggleFavorite: (id: string, currentVal: boolean) => void;
   onLyricsUpdated: () => void; // Trigger list metadata refresh if changed
   onSelectSong: (id: string, setlistSongIds?: string[]) => void;
@@ -247,9 +247,6 @@ export default function SongDetail({
     }
   };
   
-  // Custom interactive musician transposition controls
-  const [transposeStep, setTransposeStep] = useState<number>(0);
-  const [showChords, setShowChords] = useState<boolean>(false);
   const [fontSize, setFontSize] = useState<number>(16);
   const [showMobileDrawer, setShowMobileDrawer] = useState<boolean>(false);
 
@@ -264,23 +261,7 @@ export default function SongDetail({
     }
   }, [copyToast]);
 
-  const handleCopyChords = async () => {
-    try {
-      let processed = song.lyrics;
-      if (transposeStep !== 0) {
-        processed = transposeLyrics(processed, transposeStep);
-      }
-      const header = `${song.title}\nBy: ${song.author || 'Traditional'}\nKey: ${transposedKey}\nBPM: ${song.bpm || 72}\n\n`;
-      await navigator.clipboard.writeText(header + processed);
-      setCopyToast('Chords copied to clipboard!');
-      setShowShareDropdown(false);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to copy chords');
-    }
-  };
-
-  const handleCopyLyricsOnly = async () => {
+  const handleCopyLyrics = async () => {
     try {
       let processed = stripChords(song.lyrics);
       const rawLines = processed.split('\n');
@@ -329,34 +310,6 @@ export default function SongDetail({
       alert('Failed to copy link');
     }
   };
-
-  // Compute transposed key
-  const transposedKey = useMemo(() => {
-    const originalKey = song?.key || 'G';
-    if (transposeStep === 0) return originalKey;
-
-    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    const flats: Record<string, string> = {
-      'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#',
-      'db': 'C#', 'eb': 'D#', 'gb': 'F#', 'ab': 'G#', 'bb': 'A#'
-    };
-    
-    let cleanKey = originalKey.trim();
-    const isMinor = cleanKey.endsWith('m') && cleanKey.length > 1 && !cleanKey.endsWith('im');
-    let baseNote = isMinor ? cleanKey.slice(0, -1) : cleanKey;
-    
-    if (flats[baseNote]) {
-      baseNote = flats[baseNote];
-    }
-    
-    let idx = notes.findIndex(n => n.toUpperCase() === baseNote.toUpperCase());
-    if (idx === -1) return originalKey;
-    
-    let targetIdx = (idx + transposeStep) % 12;
-    if (targetIdx < 0) targetIdx += 12;
-    
-    return notes[targetIdx] + (isMinor ? 'm' : '');
-  }, [song?.key, transposeStep]);
 
   
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -417,20 +370,6 @@ export default function SongDetail({
           setAutoScrollSpeed(speed => Math.max(speed - 1, 1));
           setScrolling(true);
           break;
-        case '+':
-        case '=':
-          e.preventDefault();
-          if (showChords) setTransposeStep(prev => prev + 1);
-          break;
-        case '-':
-        case '_':
-          e.preventDefault();
-          if (showChords) setTransposeStep(prev => prev - 1);
-          break;
-        case '0':
-          e.preventDefault();
-          if (showChords) setTransposeStep(0);
-          break;
         case 'ArrowRight':
         case 'd':
         case 'D':
@@ -456,7 +395,7 @@ export default function SongDetail({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [songId, nextSongId, prevSongId, worshipSetList, showChords, autoScrollSpeed, isEditing, onClose, onSelectSong]);
+  }, [songId, nextSongId, prevSongId, worshipSetList, autoScrollSpeed, isEditing, onClose, onSelectSong]);
 
 
 
@@ -482,7 +421,6 @@ export default function SongDetail({
       try {
         if (songId === 'dalyric-broadcast-temp' && tempBroadcastSong) {
           setSong(tempBroadcastSong);
-          setTransposeStep(0);
           setEditForm({
             title: tempBroadcastSong.title,
             author: tempBroadcastSong.author || 'DaLyric Broadcast',
@@ -495,7 +433,6 @@ export default function SongDetail({
           const fullSong = await getSongById(songId);
           if (fullSong) {
             setSong(fullSong);
-            setTransposeStep(0);
             setEditForm({
               title: fullSong.title,
               author: fullSong.author || 'Unknown Author',
@@ -673,12 +610,7 @@ export default function SongDetail({
   }
   processedLyrics = cleanLyricsLines.join('\n').trim();
 
-  if (transposeStep !== 0) {
-    processedLyrics = transposeLyrics(processedLyrics, transposeStep);
-  }
-  if (!showChords) {
-    processedLyrics = stripChords(processedLyrics);
-  }
+  processedLyrics = stripChords(processedLyrics);
 
   // Normalize CRLF to LF and handle spaces/tabs on empty lines separating paragraphs
   const normalizedLyrics = processedLyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -782,22 +714,16 @@ export default function SongDetail({
               <div className="absolute right-0 bottom-14 md:bottom-auto md:top-14 w-48 bg-zinc-950 border border-zinc-850 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
                 <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-zinc-900">Share / Copy Options</p>
                 <button
-                  onClick={handleCopyChords}
+                  onClick={handleCopyLyrics}
                   className="w-full text-left p-2 rounded-xl text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
                 >
-                  📋 Copy Chord Sheet
-                </button>
-                <button
-                  onClick={handleCopyLyricsOnly}
-                  className="w-full text-left p-2 rounded-xl text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
-                >
-                  📄 Copy Lyrics Only
+                  <FileText className="h-3.5 w-3.5 text-zinc-500" /> Copy Lyrics
                 </button>
                 <button
                   onClick={handleCopyWebLink}
                   className="w-full text-left p-2 rounded-xl text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
                 >
-                  🔗 Copy Song Link
+                  <Link className="h-3.5 w-3.5 text-zinc-500" /> Copy Song Link
                 </button>
               </div>
             )}
@@ -864,7 +790,7 @@ export default function SongDetail({
           {/* Fullscreen Presentation Trigger Selection */}
           <button
             id="stage-presentation-trigger"
-            onClick={() => onEnterStageMode(transposeStep)}
+            onClick={() => onEnterStageMode()}
             className="h-12 w-12 sm:w-auto sm:px-5 bg-amber-500 hover:bg-amber-400 text-black rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer active:scale-95 shrink-0"
             title="Present Fullscreen"
           >
@@ -877,7 +803,7 @@ export default function SongDetail({
       {/* Editing panel state */}
       {isEditing ? (
         <div className="p-5 flex-1 overflow-y-auto space-y-4 bg-[#050506]">
-          <h4 className="font-bold text-sm text-white uppercase tracking-wider">Manual Chord Sheet Editor</h4>
+          <h4 className="font-bold text-sm text-white uppercase tracking-wider">Manual Lyrics Editor</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             <div>
               <label className="text-xs font-mono text-slate-400">Song Title</label>
@@ -937,29 +863,8 @@ export default function SongDetail({
             </div>
           </div>
           <div>
-            <label className="text-xs font-mono text-slate-400 flex items-center justify-between">
-              <span>Sheet Content (Brackets formatted chords for transposing)</span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!editForm.lyrics) return;
-                  const before = editForm.lyrics;
-                  const formatted = parseTwoLineChords(editForm.lyrics);
-                  setEditForm(p => ({ ...p, lyrics: formatted }));
-                  const added = (formatted.match(/\[/g) || []).length - (before.match(/\[/g) || []).length;
-                  setFormatMsg(added > 0 ? `✓ ${added} chord marker${added !== 1 ? 's' : ''} added` : '⚠ No two-line chords found');
-                  setTimeout(() => setFormatMsg(''), 3000);
-                }}
-                className="text-[9px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono font-bold transition-all cursor-pointer"
-                title="Convert traditional chords-above-lyrics formatting into bracketed format"
-              >
-                🪄 Auto-Format Two-Line Chords
-              </button>
-              {formatMsg && (
-                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${formatMsg.startsWith('✓') ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {formatMsg}
-                </span>
-              )}
+            <label className="text-xs font-mono text-slate-400 block mb-1">
+              <span>Song Lyrics / Content</span>
             </label>
             <textarea
               id="edit-lyrics"
@@ -990,88 +895,12 @@ export default function SongDetail({
           {/* Main Lyrics Area */}
           <div className="flex-1 flex flex-col min-h-0">
             {/* Custom Interactive Musician Control Ribbon - Highly Optimized for both Mobile Touch and Desktop Windows */}
-            <div className="hidden md:flex p-4 border-b border-white/10 bg-[#050506] flex-col md:flex-row md:items-center md:justify-between gap-4 select-none">
+            <div className="hidden md:flex p-4 border-b border-white/10 bg-[#050506] items-center justify-between gap-4 select-none">
 
-              
-              {/* 1. CHORD VISIBILITY TRIGGER */}
-              <div className="flex-1 flex items-center justify-between sm:justify-start gap-3">
-                <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest block md:hidden">Display:</span>
-                <button
-                  onClick={() => {
-                    setShowChords(!showChords);
-                    // Reset transpose if chords are being turned off
-                    if (showChords) setTransposeStep(0);
-                  }}
-                  className={`flex-1 sm:flex-initial h-12 px-6 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-2 border cursor-pointer active:scale-95 shadow-lg ${
-                    showChords
-                      ? 'bg-amber-500/10 hover:bg-amber-500/15 border-amber-500/30 text-amber-400 font-extrabold shadow-[inset_0_1px_0_rgba(245,158,11,0.05),0_4px_12px_rgba(245,158,11,0.06)]'
-                      : 'bg-zinc-900 hover:bg-zinc-850 border-zinc-800 text-zinc-400 hover:text-zinc-200 shadow-sm'
-                  }`}
-                >
-                  {showChords ? (
-                    <>
-                      <Eye className="h-4 w-4 animate-pulse stroke-[2.5]" />
-                      <span>Chords & Lyrics Active</span>
-                    </>
-                  ) : (
-                    <>
-                      <EyeOff className="h-4 w-4 stroke-[2.5]" />
-                      <span>Lyrics Only Mode</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* 2. DYNAMIC CHORD TRANSPOSER (Only active & highlighted if chords are turned on) */}
-              <div className="flex-1 flex items-center justify-between sm:justify-start md:justify-center gap-3">
-                <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest block md:hidden">Key Pitch:</span>
-                <div className={`flex items-center gap-1.5 p-1 rounded-2xl border transition-all w-full sm:w-auto ${
-                  showChords 
-                    ? 'bg-zinc-900 border-zinc-800' 
-                    : 'bg-zinc-950 border-zinc-900/60 opacity-45 pointer-events-none'
-                }`}>
-                  <button
-                    disabled={!showChords}
-                    onClick={() => setTransposeStep(p => p - 1)}
-                    className="w-10 h-10 flex items-center justify-center bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl border border-zinc-800 active:scale-90 transition-all cursor-pointer disabled:opacity-50"
-                    title="Transpose Down (Flat ♭)"
-                  >
-                    <Minus className="h-4 w-4 stroke-[2.5]" />
-                  </button>
-
-                  <button
-                    disabled={!showChords || transposeStep === 0}
-                    onClick={() => setTransposeStep(0)}
-                    className={`px-4 h-10 flex flex-col items-center justify-center rounded-xl text-[10px] font-mono font-black tracking-wider transition-all min-w-[100px] sm:min-w-[120px] ${
-                      transposeStep !== 0
-                        ? 'bg-amber-500 text-zinc-950 cursor-pointer scale-105 shadow-md shadow-amber-500/10'
-                        : 'bg-zinc-950 text-zinc-505 font-bold'
-                    }`}
-                    title="Click to reset key pitch"
-                  >
-                    <span className="text-[9px] uppercase tracking-normal opacity-70">
-                      Key: <span className="underline font-bold">{transposeStep === 0 ? (song.key || 'G') : `${song.key || 'G'} → ${transposedKey}`}</span>
-                    </span>
-                    <span className="font-bold leading-none mt-0.5 text-xs">
-                      {transposeStep === 0 ? 'Original' : `${transposeStep > 0 ? '+' : ''}${transposeStep} Shift`}
-                    </span>
-                  </button>
-
-                  <button
-                    disabled={!showChords}
-                    onClick={() => setTransposeStep(p => p + 1)}
-                    className="w-10 h-10 flex items-center justify-center bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl border border-zinc-800 active:scale-90 transition-all cursor-pointer disabled:opacity-50"
-                    title="Transpose Up (Sharp ♯)"
-                  >
-                    <Plus className="h-4 w-4 stroke-[2.5]" />
-                  </button>
-                </div>
-              </div>
-
-              {/* 3. COMFORTABLE FONT SIZE ADJUSTMENTS */}
-              <div className="flex-1 flex items-center justify-between sm:justify-start md:justify-center gap-3">
-                <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest block md:hidden">Size:</span>
-                <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-900 border border-zinc-800 w-full sm:w-auto">
+              {/* 1. COMFORTABLE FONT SIZE ADJUSTMENTS */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest">Size:</span>
+                <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-900 border border-zinc-800">
                   <button
                     onClick={() => setFontSize(p => Math.max(12, p - 1))}
                     className="w-10 h-10 flex items-center justify-center bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl border border-zinc-800 active:scale-90 transition-all cursor-pointer"
@@ -1094,10 +923,10 @@ export default function SongDetail({
                 </div>
               </div>
 
-              {/* 4. AUTO SCROLL CONTROLLER */}
-              <div className="flex-1 flex items-center justify-between sm:justify-start md:justify-end gap-3">
-                <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest block md:hidden">Scroll:</span>
-                <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-900 border border-zinc-800 w-full sm:w-auto">
+              {/* 2. AUTO SCROLL CONTROLLER */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest">Scroll:</span>
+                <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-900 border border-zinc-800">
                   <button
                     onClick={() => {
                       if (autoScrollSpeed === 0) setAutoScrollSpeed(2);
@@ -1128,7 +957,6 @@ export default function SongDetail({
                   )}
                 </div>
               </div>
-
             </div>
 
             {/* Scrolling Lyric Sheet Canvas */}
@@ -1143,7 +971,7 @@ export default function SongDetail({
                 <span className="text-xs font-bold font-mono text-amber-500 tracking-wider uppercase block mb-1">
                   {song.category || 'Uploaded General'}
                 </span>
-                <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight">{song.title}</h3>
+                <h3 className="text-2xl md:text-3xl font-serif font-black text-white tracking-tight leading-snug">{song.title}</h3>
                 <p className="text-xs text-slate-400 mt-1.5 font-medium">
                   Author/Credits: <span className="text-slate-300 font-semibold">{song.author || 'Traditional'}</span>
                 </p>
@@ -1187,52 +1015,7 @@ export default function SongDetail({
                           
                           const highlightClass = 'transition-all duration-200';
 
-                          // Superscript rendering logic for active musician chords
-                          if (showChords && line.includes('[')) {
-                            const chordLine: { chord: string; index: number }[] = [];
-                            let cleanLine = '';
-                            let charIndex = 0;
 
-                            const segments = line.split(/(\[[^[\]]+\])/);
-                            segments.forEach((seg) => {
-                              if (seg.startsWith('[') && seg.endsWith(']')) {
-                                const chord = seg.slice(1, -1);
-                                chordLine.push({ chord, index: charIndex });
-                              } else {
-                                cleanLine += seg;
-                                charIndex += seg.length;
-                              }
-                            });
-
-                            return (
-                              <div
-                                key={lIdx}
-                                id={lineId}
-                                onClick={clickHandler}
-                                className={`mb-2.5 leading-tight cursor-pointer hover:bg-white/5 p-1 rounded ${highlightClass}`}
-                              >
-                                {/* Superscript chords line */}
-                                <div className="h-5.5 font-mono text-[10px] font-bold text-amber-400 select-none relative whitespace-pre flex items-center mb-1">
-                                  {chordLine.map((c, cIdx) => {
-                                    const prevOffset = cIdx > 0 ? chordLine[cIdx - 1].index : 0;
-                                    const spacing = ' '.repeat(Math.max(0, c.index - prevOffset - (cIdx > 0 ? chordLine[cIdx - 1].chord.length : 0)));
-                                    return (
-                                      <span key={cIdx}>
-                                        {spacing}
-                                        <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 px-1 py-0.5 rounded-md font-extrabold mx-0.5 shadow-sm transition-all cursor-pointer">
-                                          {c.chord}
-                                        </span>
-                                      </span>
-                                    );
-                                  })}
-                                </div>
-                                {/* Lyrics Line */}
-                                <div className={`${isSectionHighlighted ? 'text-white font-semibold' : 'text-slate-200'} font-medium tracking-wide`}>
-                                  {cleanLine || ' '}
-                                </div>
-                              </div>
-                            );
-                          }
 
                           // Normal lyric block
                           return (
@@ -1282,21 +1065,24 @@ export default function SongDetail({
                       className="w-full sm:w-auto h-12 px-5 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-850 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shadow-md shrink-0"
                       title={`Previous: ${prevSongTitle}`}
                     >
-                      <span>← PREV: {prevSongTitle}</span>
+                      <ChevronLeft className="h-4 w-4" />
+                      <span>PREV: {prevSongTitle}</span>
                     </button>
                   )}
 
                   {hasNextSong ? (
                     <button
                       onClick={() => onSelectSong(nextSongId!, worshipSetList)}
-                      className="w-full sm:w-auto h-12 px-6 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shadow-[0_4px_15px_rgba(245,158,11,0.2)]"
+                      className="w-full sm:w-auto h-12 px-6 rounded-xl bg-amber-600 hover:bg-amber-550 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shadow-[0_2px_10px_rgba(217,119,6,0.1)]"
                       title={`Next up: ${nextSongTitle}`}
                     >
-                      <span className="font-extrabold">NEXT: {nextSongTitle} →</span>
+                      <span>NEXT: {nextSongTitle}</span>
+                      <ChevronRight className="h-4 w-4" />
                     </button>
                   ) : (
                     <div className="w-full sm:w-auto h-12 px-5 rounded-xl border border-zinc-800/60 bg-zinc-900/30 text-zinc-500 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                      <span>🎉 LAST SONG IN SETLIST</span>
+                      <Sparkles className="h-4 w-4 text-amber-550" />
+                      <span>LAST SONG IN SETLIST</span>
                     </div>
                   )}
 
@@ -1305,7 +1091,8 @@ export default function SongDetail({
                       onClick={handleSuggestThisSong}
                       className="w-full sm:w-auto bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-400 text-xs font-mono uppercase tracking-wider font-bold px-4 h-12 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
-                      📝 Suggest Set
+                      <Heart className="h-4 w-4 text-amber-500" />
+                      <span>Suggest Set</span>
                     </button>
                   )}
                 </div>
@@ -1322,9 +1109,10 @@ export default function SongDetail({
                   {currentRole === 'choir' && (
                     <button
                       onClick={handleSuggestThisSong}
-                      className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-black text-xs font-mono uppercase tracking-wider font-black px-5 py-3 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+                      className="w-full sm:w-auto bg-amber-600 hover:bg-amber-550 text-white text-xs font-mono uppercase tracking-wider font-bold px-5 py-3 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
                     >
-                      📝 Suggest Set
+                      <Heart className="h-4 w-4 text-white" />
+                      <span>Suggest Set</span>
                     </button>
                   )}
                 </div>
@@ -1388,65 +1176,10 @@ export default function SongDetail({
             {/* Header Handle */}
             <div className="flex flex-col items-center gap-1.5 cursor-pointer pb-2" onClick={() => setShowMobileDrawer(false)}>
               <div className="w-12 h-1 bg-zinc-800 rounded-full"></div>
-              <span className="text-[10px] font-mono font-bold tracking-widest text-zinc-500 uppercase mt-1">Musician Deck Console</span>
+              <span className="text-[10px] font-mono font-bold tracking-widest text-zinc-500 uppercase mt-1">Reader Settings</span>
             </div>
 
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-              {/* Display Options */}
-              <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
-                <div className="text-left">
-                  <span className="text-xs font-bold text-white block">Chord Sheets</span>
-                  <span className="text-[10px] text-zinc-550">Show bracketed pitch chords inline</span>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowChords(!showChords);
-                    if (showChords) setTransposeStep(0);
-                  }}
-                  className={`h-10 px-4 rounded-xl text-xs font-bold transition-all active-touch cursor-pointer ${
-                    showChords ? 'bg-amber-500 text-black' : 'bg-zinc-900 text-zinc-400 border border-zinc-850'
-                  }`}
-                >
-                  {showChords ? 'ACTIVE' : 'MUTED'}
-                </button>
-              </div>
-
-              {/* Transposer Shifts */}
-              <div className={`space-y-2.5 border-b border-zinc-900 pb-4 ${!showChords ? 'opacity-40 pointer-events-none' : ''}`}>
-                <div className="flex items-center justify-between">
-                  <div className="text-left">
-                    <span className="text-xs font-bold text-white block">Key Pitch shift</span>
-                    <span className="text-[10px] text-zinc-550">
-                      {transposeStep === 0 ? `Current Key: ${song?.key || 'G'}` : `Key: ${song?.key || 'G'} → ${transposedKey}`}
-                    </span>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 uppercase">
-                    {transposeStep === 0 ? 'Original' : `${transposeStep > 0 ? '+' : ''}${transposeStep} Shift`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setTransposeStep(p => p - 1)}
-                    className="flex-1 h-11 bg-zinc-900 border border-zinc-850 hover:bg-zinc-800 text-zinc-200 rounded-xl active-touch font-mono font-bold cursor-pointer"
-                  >
-                    ♭ Flat
-                  </button>
-                  <button
-                    onClick={() => setTransposeStep(0)}
-                    disabled={transposeStep === 0}
-                    className="flex-1 h-11 bg-zinc-950 border border-zinc-850 text-zinc-400 hover:text-white rounded-xl active-touch text-xs font-mono font-bold disabled:opacity-30 cursor-pointer"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    onClick={() => setTransposeStep(p => p + 1)}
-                    className="flex-1 h-11 bg-zinc-900 border border-zinc-850 hover:bg-zinc-800 text-zinc-200 rounded-xl active-touch font-mono font-bold cursor-pointer"
-                  >
-                    ♯ Sharp
-                  </button>
-                </div>
-              </div>
-
               {/* Font scaling */}
               <div className="space-y-2.5 border-b border-zinc-900 pb-4">
                 <div className="flex items-center justify-between">
@@ -1533,7 +1266,7 @@ export default function SongDetail({
                 <button
                   onClick={() => {
                     setShowMobileDrawer(false);
-                    onEnterStageMode(transposeStep);
+                    onEnterStageMode();
                   }}
                   className="w-full h-12 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl active-touch transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md"
                 >
