@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Square, Volume2, VolumeX, Music, Compass } from 'lucide-react';
+import { Play, Square, Volume2, VolumeX, Compass } from 'lucide-react';
 import { PlaybackStatus } from '../types';
 
 interface MetronomeProps {
@@ -127,26 +127,26 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
   };
 
   return (
-    <div id="metronome" className={`rounded-2xl border border-white/10 bg-[#070708] p-4 shadow-xl transition-all duration-300 ${
+    <div id="metronome" className={`rounded-md border border-[#1E202B] bg-[#12131A] p-4.5 transition-all duration-300 ${
       compact ? 'w-full' : 'max-w-md'
     }`}>
-      <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
+      <div className="flex items-center justify-between mb-4 border-b border-zinc-900/20 pb-2.5 select-none">
         <div className="flex items-center gap-2">
-          <Compass className="h-4 w-4 text-amber-400 animate-spin" style={{ animationDuration: status === 'playing' ? `${60 / bpm * 2}s` : '8s' }} />
-          <span className="text-xs font-bold text-white uppercase tracking-wider">Worship Metronome</span>
+          <Compass className="h-4.5 w-4.5 text-amber-500 animate-spin" style={{ animationDuration: status === 'playing' ? `${60 / bpm * 2}s` : '8s' }} />
+          <span className="text-[10px] font-mono font-bold text-white uppercase tracking-widest">Worship Metronome</span>
         </div>
-        <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-lg border border-white/10">
-          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded text-amber-400">
-            {beatsPerMeasure}/4
+        <div className="flex items-center gap-1.5 bg-zinc-900/60 px-2.5 py-0.5 rounded border border-[#1E202B]">
+          <span className="text-[9px] font-mono font-bold text-amber-500 tracking-wider">
+            {beatsPerMeasure}/4 TIME
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-4">
         {/* Large Dial & Controls */}
-        <div className="flex flex-col items-center justify-center py-2 relative">
+        <div className="flex flex-col items-center justify-center py-2 relative select-none">
           {/* Swinging Pendulum Visualizer */}
-          <div className="w-full flex justify-center gap-2.5 mb-2 h-7 items-end relative overflow-hidden">
+          <div className="w-full flex justify-center gap-3 mb-3.5 h-8 items-end relative overflow-hidden">
             {Array.from({ length: beatsPerMeasure }).map((_, index) => {
               const isActive = currentBeat === index + 1;
               const isFirst = index === 0;
@@ -154,12 +154,12 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
                 <div
                   key={index}
                   style={{ transition: 'all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
-                  className={`h-4 rounded-full ${
+                  className={`h-4.5 rounded-full ${
                     isActive
                       ? isFirst
-                        ? 'w-7 bg-amber-500 scale-125 shadow-[0_0_12px_rgba(245,158,11,0.6)]' 
-                        : 'w-5 bg-amber-400 scale-110 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
-                      : 'w-4 bg-white/10'
+                        ? 'w-8 bg-amber-500 scale-125' 
+                        : 'w-6 bg-amber-500 scale-110'
+                      : 'w-4.5 bg-zinc-900/80'
                   }`}
                 />
               );
@@ -168,16 +168,16 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
 
           <div className="text-center">
             <div className="text-3xl font-mono font-bold text-white tracking-tight leading-none">
-              {bpm} <span className="text-xs font-sans tracking-wide font-normal text-slate-500">BPM</span>
+              {bpm} <span className="text-[10px] font-sans tracking-widest font-extrabold uppercase text-zinc-550 ml-1">BPM</span>
             </div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-amber-400/80 mt-1">
+            <div className="text-[9px] font-mono uppercase tracking-widest text-amber-500 mt-1.5 font-bold">
               {bpm <= 60 ? 'Adagio (Largo)' : bpm <= 76 ? 'Andante' : bpm <= 120 ? 'Moderato' : bpm <= 156 ? 'Allegro' : 'Presto'}
             </div>
           </div>
         </div>
 
         {/* BPM Slider */}
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <input
             id="bpm-slider"
             type="range"
@@ -185,9 +185,9 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
             max="220"
             value={bpm}
             onChange={(e) => setBpm(parseInt(e.target.value))}
-            className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+            className="w-full h-1.5 bg-zinc-900 rounded appearance-none cursor-pointer accent-amber-500 focus:outline-none"
           />
-          <div className="flex justify-between text-[10px] font-mono text-slate-500">
+          <div className="flex justify-between text-[9px] font-mono text-zinc-550 font-bold select-none">
             <span>40</span>
             <span>72</span>
             <span>100</span>
@@ -197,8 +197,8 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
         </div>
 
         {/* Control Button Strip */}
-        <div className="flex items-center justify-between gap-2.5 pt-1.5 border-t border-white/10">
-          <div className="flex gap-1 bg-white/5 p-0.5 rounded-lg border border-white/10">
+        <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-zinc-900/20">
+          <div className="flex gap-1 bg-zinc-900/40 p-0.5 rounded select-none">
             {[2, 3, 4, 6].map((bt) => (
               <button
                 key={bt}
@@ -206,10 +206,10 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
                   setBeatsPerMeasure(bt);
                   stopMetronome();
                 }}
-                className={`px-2 py-1 text-xs font-mono font-medium rounded-md transition-all ${
+                className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded transition-all cursor-pointer ${
                   beatsPerMeasure === bt
-                    ? 'bg-amber-500 text-black font-bold shadow-xs'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-amber-500 text-black font-extrabold shadow-sm'
+                    : 'text-zinc-500 hover:text-white hover:bg-zinc-900/60'
                 }`}
               >
                 {bt}
@@ -220,19 +220,19 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
           <button
             id="metronome-toggle-sound"
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-1 px-2 text-slate-400 bg-white/5 rounded-lg hover:text-white cursor-pointer border border-white/10"
-            title={soundEnabled ? 'Mute sound click' : 'Enable sound click'}
+            className="p-1.5 px-3 text-zinc-400 bg-zinc-900/40 hover:bg-zinc-900 rounded hover:text-white cursor-pointer transition-colors"
+            title={soundEnabled ? 'Mute click sound' : 'Enable click sound'}
           >
-            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-rose-500" />}
+            {soundEnabled ? <Volume2 className="h-4.5 w-4.5 text-amber-500" /> : <VolumeX className="h-4.5 w-4.5 text-rose-500" />}
           </button>
 
           <button
             id="metronome-play-btn"
             onClick={toggleMetronome}
-            className={`cursor-pointer px-4 py-1.5 rounded-full text-xs font-bold leading-normal flex items-center gap-1.5 shadow-sm transition-all duration-300 transform active:scale-95 ${
+            className={`cursor-pointer px-4 py-2 rounded text-[10px] font-mono uppercase tracking-widest font-extrabold leading-normal flex items-center gap-1.5 shadow-sm transition-all duration-300 transform active:scale-95 ${
               status === 'playing'
-                ? 'bg-white/5 border border-white/10 text-amber-400 shadow-inner'
-                : 'bg-amber-500 hover:bg-amber-400 hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] text-black'
+                ? 'bg-zinc-900/60 text-amber-500 shadow-inner'
+                : 'bg-amber-500 hover:bg-amber-400 text-black'
             }`}
           >
             {status === 'playing' ? (
@@ -241,7 +241,7 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
               </>
             ) : (
               <>
-                <Play className="h-3.5 w-3.5 fill-current" /> Beat
+                <Play className="h-3.5 w-3.5 fill-current" /> Play
               </>
             )}
           </button>

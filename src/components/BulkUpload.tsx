@@ -316,7 +316,7 @@ To save a wretch like me`;
     <div className="space-y-6">
       
       {/* Import Tab Switcher Switch */}
-      <div className="flex bg-[#09090b] border border-white/10 p-1 rounded-2xl max-w-md select-none">
+      <div className="flex bg-[#09090b] p-1 rounded-2xl max-w-md select-none">
         <button
           type="button"
           onClick={() => { setActiveImportTab('file'); setImportStats(null); }}
@@ -376,7 +376,7 @@ To save a wretch like me`;
               className={`flex-1 min-h-[220px] rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-all duration-200 ${
                 isDragging
                   ? 'border-amber-500 bg-amber-500/5'
-                  : 'border-white/10 bg-[#09090b]/40 hover:bg-white/[0.02] hover:border-white/20'
+                  : 'border-white/[0.08] bg-[#09090b]/40 hover:bg-white/[0.02] hover:border-white/20'
               }`}
             >
               <input
@@ -394,12 +394,12 @@ To save a wretch like me`;
               <p className="text-[11px] text-slate-500 mt-1 max-w-xs mx-auto">
                 Drop multiple files at once. The app will extract song configurations automatically.
               </p>
-              <span className="mt-4 px-3 py-1.5 bg-amber-500/10 text-amber-400 text-xs font-bold rounded-xl border border-amber-500/20">
+              <span className="mt-4 px-3 py-1.5 bg-amber-500/10 text-amber-400 text-xs font-bold rounded-xl">
                 Select Files
               </span>
             </div>
             {loading && (
-              <div className="bg-[#09090b] border border-white/5 rounded-2xl p-4 space-y-2">
+              <div className="bg-[#09090b] rounded-2xl p-4 space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="font-semibold text-white animate-pulse">{progress.stage}</span>
                   <span className="text-amber-500">{progress.current} / {progress.total}</span>
@@ -413,7 +413,7 @@ To save a wretch like me`;
               </div>
             )}
           </div>
-          <div className="md:col-span-4 bg-[#09090b]/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-center text-center">
+          <div className="md:col-span-4 bg-[#09090b]/30 rounded-2xl p-5 flex flex-col justify-center text-center">
             <FileText className="h-8 w-8 text-slate-600 mx-auto mb-2" />
             <h5 className="font-bold text-xs text-slate-300 uppercase tracking-wider">File Requirements</h5>
             <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
@@ -489,7 +489,7 @@ My hope is built on nothing less`}
                   value={scrapeUrl}
                   onChange={(e) => setScrapeUrl(e.target.value)}
                   placeholder="Paste lyrics page URL (e.g. https://www.azlyrics.com/lyrics/...)"
-                  className="w-full pl-10 pr-4 py-3 text-xs rounded-xl border border-white/10 bg-[#09090b] text-white placeholder-slate-600 outline-none focus:border-amber-500 font-sans"
+                  className="w-full pl-10 pr-4 py-3 text-xs rounded-xl border border-white/[0.04] bg-[#09090b] text-white placeholder-slate-600 outline-none focus:border-amber-500 font-sans"
                 />
               </div>
               <button
@@ -506,7 +506,7 @@ My hope is built on nothing less`}
 
           {/* URL Scraped Preview Editor Form */}
           {scrapePreview && (
-            <div className="bg-[#050506] border border-amber-500/20 rounded-2xl p-5 space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+            <div className="bg-[#050506] rounded-2xl p-5 space-y-4 shadow-[0_0_20px_rgba(245,158,11,0.04)] animate-in slide-in-from-bottom-2 duration-300">
               <h4 className="font-bold text-xs text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Preview Scraped Lyric Sheet
               </h4>
@@ -518,7 +518,7 @@ My hope is built on nothing less`}
                     type="text"
                     value={scrapePreview.title}
                     onChange={(e) => setScrapePreview(p => p ? { ...p, title: e.target.value } : null)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans font-bold"
+                    className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans font-bold"
                   />
                 </div>
                 <div>
@@ -527,7 +527,7 @@ My hope is built on nothing less`}
                     type="text"
                     value={scrapePreview.author}
                     onChange={(e) => setScrapePreview(p => p ? { ...p, author: e.target.value } : null)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans"
+                    className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans"
                   />
                 </div>
                 <div>
@@ -535,7 +535,7 @@ My hope is built on nothing less`}
                   <select
                     value={scrapePreview.category}
                     onChange={(e) => setScrapePreview(p => p ? { ...p, category: e.target.value } : null)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 cursor-pointer"
+                    className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 cursor-pointer"
                   >
                     <option value="Worship">Contemporary Worship</option>
                     <option value="Classic">Classic Lyric</option>
@@ -550,7 +550,7 @@ My hope is built on nothing less`}
                     type="number"
                     value={scrapePreview.bpm}
                     onChange={(e) => setScrapePreview(p => p ? { ...p, bpm: parseInt(e.target.value) || 72 } : null)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
+                    className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
                   />
                 </div>
               </div>
@@ -563,11 +563,11 @@ My hope is built on nothing less`}
                   value={scrapePreview.lyrics}
                   onChange={(e) => setScrapePreview(p => p ? { ...p, lyrics: e.target.value } : null)}
                   rows={8}
-                  className="w-full text-xs p-3.5 rounded-xl border border-white/10 bg-[#09090B] text-slate-200 font-mono outline-none focus:border-amber-500"
+                  className="w-full text-xs p-3.5 rounded-xl bg-[#09090B] text-slate-200 font-mono outline-none focus:border-amber-500"
                 />
               </div>
 
-              <div className="flex gap-2 justify-end border-t border-white/5 pt-3.5">
+              <div className="flex gap-2 justify-end border-t border-white/[0.03] pt-3.5">
                 <button
                   type="button"
                   onClick={() => setScrapePreview(null)}
@@ -590,7 +590,7 @@ My hope is built on nothing less`}
 
       {/* Success Stat Reporting */}
       {importStats && (
-        <div className="bg-[#0b1710] border border-emerald-500/15 rounded-2xl p-4 flex items-center gap-3.5 text-emerald-400 select-none animate-in fade-in duration-200">
+        <div className="bg-[#0b1710] rounded-2xl p-4 flex items-center gap-3.5 text-emerald-400 select-none animate-in fade-in duration-200">
           <CheckCircle className="h-8 w-8 text-emerald-500 flex-shrink-0" />
           <div className="text-left">
             <h5 className="font-bold text-sm text-white">Import Successful!</h5>

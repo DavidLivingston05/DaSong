@@ -846,41 +846,38 @@ export default function App() {
 
   const renderGuestWelcome = () => {
     return (
-      <div className="flex flex-col items-center py-8 md:py-16 px-4 w-full max-w-5xl mx-auto select-none">
-        {/* Ambient glow backgrounds */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-amber-500/[0.03] rounded-full blur-3xl pointer-events-none"></div>
-
+      <div className="flex flex-col items-center py-12 md:py-20 px-4 w-full max-w-6xl mx-auto select-none relative">
+        
         {/* Hero Section */}
-        <div className="text-center max-w-2xl mb-12 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider mb-4 animate-bounce">
-            <Sparkles className="w-3.5 h-3.5" /> Premium Worship Companion
+        <div className="text-center max-w-3xl mb-16 relative z-10">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-450 rounded text-[11px] font-mono uppercase tracking-wider mb-6">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Premium Worship Companion
           </div>
-          <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-            DaSong Songbook Portal
+          <h1 className="text-4xl md:text-6xl font-serif font-bold text-white tracking-tight leading-none">
+            DaSong <span className="text-amber-500 font-sans font-black">Studio</span>
           </h1>
-          <p className="text-sm md:text-base text-zinc-400 mt-4 leading-relaxed font-medium">
+          <p className="text-sm md:text-base text-zinc-400 mt-5 leading-relaxed font-medium max-w-2xl mx-auto">
             A secure multi-tenant platform for churches, choirs, and worship groups. Browse public song sheets, sync setlists, and manage team lyric catalogs.
           </p>
         </div>
 
         {/* Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full relative z-10">
           {/* Browse Library */}
           <div 
             onClick={() => setActiveTab('search')}
-            className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800/80 hover:border-amber-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[240px]"
+            className="group p-8 bg-[#12131A] border border-[#1E202B] hover:border-amber-500/50 rounded-md transition-all duration-150 text-center cursor-pointer flex flex-col items-center justify-between min-h-[280px] active-touch"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300">
+            <div className="w-14 h-14 rounded bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-amber-550 group-hover:scale-110 transition-transform duration-150">
               <BookOpen className="w-6 h-6" />
             </div>
-            <div className="mt-4">
-              <h3 className="text-base font-extrabold text-white group-hover:text-amber-450 transition-colors">Offline Songbook & Setlists</h3>
-              <p className="text-xs text-zinc-450 mt-2 leading-relaxed">
-                Browse songs, create custom setlists, and practice. Stored locally on your device for offline use!
+            <div className="mt-6">
+              <h3 className="text-base font-extrabold text-white group-hover:text-amber-400 transition-colors">Offline Songbook & Setlists</h3>
+              <p className="text-xs text-zinc-400 mt-2 leading-relaxed font-sans">
+                Browse cataloged songbooks, transpose chords, and practice. Stored locally on your device for offline use!
               </p>
             </div>
-            <span className="text-[10px] font-mono font-bold text-amber-500/80 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+            <span className="text-[10px] font-mono font-bold text-amber-500/80 mt-6 group-hover:translate-x-1.5 transition-transform inline-flex items-center gap-1">
               Browse Songs <ChevronRight className="w-3.5 h-3.5" />
             </span>
           </div>
@@ -891,19 +888,18 @@ export default function App() {
               setShowJoinModal(true);
               fetchServers();
             }}
-            className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800/80 hover:border-amber-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[240px]"
+            className="group p-8 bg-[#12131A] border border-[#1E202B] hover:border-emerald-500/50 rounded-md transition-all duration-150 text-center cursor-pointer flex flex-col items-center justify-between min-h-[280px] active-touch"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-emerald-450 group-hover:scale-110 transition-transform duration-300">
+            <div className="w-14 h-14 rounded bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-emerald-450 group-hover:scale-110 transition-transform duration-150">
               <Layers className="w-6 h-6" />
             </div>
-            <div className="mt-4">
+            <div className="mt-6">
               <h3 className="text-base font-extrabold text-white group-hover:text-emerald-400 transition-colors">Join Church Server</h3>
-              <p className="text-xs text-zinc-450 mt-2 leading-relaxed">
-                Connect to an existing workspace for your local church choir or worship team.
+              <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                Connect to your local church choir or praise team workspace to view scheduled setlists and updates.
               </p>
             </div>
-            <span className="text-[10px] font-mono font-bold text-emerald-450 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+            <span className="text-[10px] font-mono font-bold text-emerald-450 mt-6 group-hover:translate-x-1.5 transition-transform inline-flex items-center gap-1">
               Find Server <ChevronRight className="w-3.5 h-3.5" />
             </span>
           </div>
@@ -911,19 +907,18 @@ export default function App() {
           {/* Create Server */}
           <div 
             onClick={() => setShowCreateModal(true)}
-            className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800/80 hover:border-amber-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[240px]"
+            className="group p-8 bg-[#12131A] border border-[#1E202B] hover:border-rose-500/50 rounded-md transition-all duration-150 text-center cursor-pointer flex flex-col items-center justify-between min-h-[280px] active-touch"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-rose-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-rose-450 group-hover:scale-110 transition-transform duration-300">
+            <div className="w-14 h-14 rounded bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-rose-550 group-hover:scale-110 transition-transform duration-150">
               <Plus className="w-6 h-6" />
             </div>
-            <div className="mt-4">
-              <h3 className="text-base font-extrabold text-white group-hover:text-rose-400 transition-colors">Create Server</h3>
-              <p className="text-xs text-zinc-455 mt-2 leading-relaxed">
-                Initialize a clean, dedicated workspace with isolated database and team permissions.
+            <div className="mt-6">
+              <h3 className="text-base font-extrabold text-white group-hover:text-rose-550 transition-colors">Create Server</h3>
+              <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                Initialize a dedicated team workspace with custom database isolation, roles, and cloud synchronization.
               </p>
             </div>
-            <span className="text-[10px] font-mono font-bold text-rose-455 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+            <span className="text-[10px] font-mono font-bold text-rose-500 mt-6 group-hover:translate-x-1.5 transition-transform inline-flex items-center gap-1">
               Start Workspace <ChevronRight className="w-3.5 h-3.5" />
             </span>
           </div>
@@ -936,43 +931,41 @@ export default function App() {
     if (activeServerId !== 'default') {
       const serverName = localStorage.getItem(`dasong_server_name_${activeServerId}`) || activeServerId;
       return (
-        <div id="login-portal" className="flex items-center justify-center min-h-[100dvh] bg-[#070708] text-white p-4 font-sans relative overflow-hidden">
+        <div id="login-portal" className="flex items-center justify-center min-h-[100dvh] bg-[#090A0F] text-white p-4 font-sans relative overflow-hidden">
           {/* Backdrop patterns */}
-          <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px]"></div>
-          <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-rose-500/5 rounded-full blur-3xl"></div>
+          <div className="absolute inset-0 pointer-events-none opacity-3 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:20px_20px]"></div>
 
-          <div className="w-full max-w-md p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_40px_rgba(245,158,11,0.05)] relative z-10 animate-in fade-in zoom-in-95 duration-350">
-            <div className="text-center mb-6">
-              <h1 className="text-2xl font-black tracking-tight text-white mb-2">{serverName}</h1>
-              <p className="text-zinc-550 text-xs font-mono uppercase tracking-widest">Workspace ID: {activeServerId}</p>
-              <p className="text-zinc-400 text-xs mt-2">Select your access role to enter this church server workspace.</p>
+          <div className="w-full max-w-md p-8 bg-[#12131A] rounded-md border border-[#1E202B] relative z-10 animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-serif font-bold text-white mb-2">{serverName}</h1>
+              <p className="text-zinc-500 text-[10px] font-mono uppercase tracking-widest bg-[#090A0F] w-fit mx-auto px-2.5 py-0.5 rounded border border-[#1E202B]">Workspace ID: {activeServerId}</p>
+              <p className="text-zinc-400 text-xs mt-4">Select your access role to enter this church server workspace.</p>
             </div>
 
             {joinError && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold flex items-center justify-center gap-1.5">
+              <div className="mb-5 p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded text-center font-bold flex items-center justify-center gap-1.5 animate-pulse">
                 <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
                 <span>{joinError}</span>
               </div>
             )}
 
             {joinRole === null ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <button 
                   onClick={() => {
                     setJoinRole('choir');
                     setJoinError('');
                   }}
-                  className="w-full flex items-center justify-between p-4 bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-900 hover:border-amber-500/30 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
+                  className="w-full flex items-center justify-between p-5 bg-[#1A1C26] hover:bg-[#222433] border border-[#272A37] hover:border-amber-500/40 rounded transition-all text-left outline-none cursor-pointer group active-touch"
                 >
                   <div>
                     <p className="font-bold text-xs text-white flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-450 animate-pulse"></span>
                       Join as Choir Member
                     </p>
-                    <p className="text-[10px] text-zinc-500 mt-1 font-medium">Access songs, worship setlists, and suggest songs sheets.</p>
+                    <p className="text-[10px] text-zinc-400 mt-1 font-medium leading-relaxed">Access songs, worship setlists, and suggest songs sheets.</p>
                   </div>
-                  <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
+                  <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform text-sm">→</span>
                 </button>
 
                 <button 
@@ -980,24 +973,24 @@ export default function App() {
                     setJoinRole('admin');
                     setJoinError('');
                   }}
-                  className="w-full flex items-center justify-between p-4 bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-900 hover:border-amber-500/30 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
+                  className="w-full flex items-center justify-between p-5 bg-[#1A1C26] hover:bg-[#222433] border border-[#272A37] hover:border-amber-500/40 rounded transition-all text-left outline-none cursor-pointer group active-touch"
                 >
                   <div>
                     <p className="font-bold text-xs text-white flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                       Login as Administrator
                     </p>
-                    <p className="text-[10px] text-zinc-500 mt-1 font-medium">Enter password to unlock song creation, imports, and full management.</p>
+                    <p className="text-[10px] text-zinc-400 mt-1 font-medium leading-relaxed">Enter password to unlock song creation, imports, and full management.</p>
                   </div>
-                  <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
+                  <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform text-sm">→</span>
                 </button>
 
-                <div className="pt-4 border-t border-white/5 flex gap-2">
+                <div className="pt-4 border-t border-[#1E202B] flex gap-2">
                   <button 
                     onClick={async () => {
                       await handleSwitchServer('default');
                     }}
-                    className="w-full p-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold rounded-2xl text-center transition-all cursor-pointer active-touch"
+                    className="w-full premium-btn-secondary p-3 rounded text-xs transition-all cursor-pointer active-touch"
                   >
                     ← Return to Portal
                   </button>
@@ -1005,8 +998,8 @@ export default function App() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-2.5">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">{joinRole === 'admin' ? 'Admin' : 'Choir'} Access</h3>
+                <div className="flex items-center justify-between border-b border-[#1E202B] pb-3 mb-2">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-amber-500">{joinRole === 'admin' ? 'Admin' : 'Choir'} Access</h3>
                   <button 
                     onClick={() => { setJoinRole(null); setJoinError(''); }}
                     className="text-xs text-zinc-400 hover:text-white font-bold cursor-pointer transition-colors"
@@ -1016,14 +1009,14 @@ export default function App() {
                 </div>
 
                 {joinRole === 'admin' && (
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Admin Workspace Password</label>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase font-mono tracking-widest">Admin Workspace Password</label>
                     <input 
                       type="password"
                       placeholder="••••••••"
                       value={joinPasswordInput}
                       onChange={(e) => setJoinPasswordInput(e.target.value)}
-                      className="w-full p-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs font-mono tracking-widest shadow-inner"
+                      className="w-full p-3 rounded text-white outline-none text-xs font-mono tracking-widest premium-input"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleJoinServerSubmit();
@@ -1033,14 +1026,14 @@ export default function App() {
                 )}
 
                 {joinRole === 'choir' && (
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-zinc-500 mb-1 uppercase font-mono tracking-wider">Enter Your Name</label>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase font-mono tracking-widest">Enter Your Name</label>
                     <input 
                       type="text"
-                      placeholder="e.g. John"
+                      placeholder="e.g. David"
                       value={joinNameInput}
                       onChange={(e) => setJoinNameInput(e.target.value)}
-                      className="w-full p-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs font-sans shadow-inner"
+                      className="w-full p-3 rounded text-white outline-none text-xs font-sans premium-input"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleJoinServerSubmit();
@@ -1051,7 +1044,7 @@ export default function App() {
 
                 <button 
                   onClick={handleJoinServerSubmit}
-                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-3 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md active:scale-98 active-touch"
+                  className="w-full premium-btn-primary py-3 px-4 rounded text-xs font-bold transition-all cursor-pointer active-touch"
                 >
                   Access Server Workspace
                 </button>
@@ -1062,45 +1055,42 @@ export default function App() {
       );
     } else {
       return (
-        <div id="welcome-portal" className="flex flex-col items-center justify-center min-h-[100dvh] bg-[#070708] text-white p-4 font-sans relative overflow-hidden">
+        <div id="welcome-portal" className="flex flex-col items-center justify-center min-h-[100dvh] bg-[#090A0F] text-white p-4 font-sans relative overflow-hidden">
           {/* Backdrop patterns */}
-          <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px]"></div>
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-amber-500/[0.03] rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-rose-500/5 rounded-full blur-3xl"></div>
+          <div className="absolute inset-0 pointer-events-none opacity-3 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:20px_20px]"></div>
 
-          <div className="w-full max-w-4xl px-4 py-8 relative z-10">
+          <div className="w-full max-w-5xl px-4 py-8 relative z-10">
             {/* Header/Hero Section */}
-            <div className="text-center mb-12 animate-in fade-in slide-in-from-top duration-500">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider mb-4 animate-bounce">
-                <Sparkles className="w-3.5 h-3.5" /> Premium Worship Companion
+            <div className="text-center mb-16 animate-in fade-in slide-in-from-top duration-500">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 text-amber-450 rounded text-[11px] font-mono uppercase tracking-wider mb-6">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Premium Worship Companion
               </div>
-              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-                DaSong Studio Portal
+              <h1 className="text-4xl md:text-6xl font-serif font-bold text-white tracking-tight leading-none">
+                DaSong <span className="text-amber-500 font-sans font-black">Studio Portal</span>
               </h1>
-              <p className="text-sm md:text-base text-zinc-400 mt-4 leading-relaxed font-medium max-w-2xl mx-auto font-sans">
+              <p className="text-sm md:text-base text-zinc-400 mt-5 leading-relaxed font-medium max-w-2xl mx-auto">
                 A secure multi-tenant platform for churches, choirs, and worship groups. Browse public song sheets, sync setlists, and manage team lyric catalogs.
               </p>
             </div>
 
             {/* Conditional Subviews */}
             {portalView === 'menu' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full animate-in fade-in zoom-in-95 duration-200">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full animate-in fade-in zoom-in-95 duration-200">
                 {/* Guest Card */}
                 <div 
                   onClick={handleSelectGuestMode}
-                  className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-850 hover:border-amber-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[260px]"
+                  className="group p-8 bg-[#12131A] border border-[#1E202B] hover:border-amber-500/50 rounded-md transition-all duration-150 text-center cursor-pointer flex flex-col items-center justify-between min-h-[260px] active-touch"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300">
+                  <div className="w-14 h-14 rounded bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-amber-550 group-hover:scale-110 transition-transform duration-150">
                     <BookOpen className="w-6 h-6" />
                   </div>
                   <div className="mt-4">
-                    <h3 className="text-base font-extrabold text-white group-hover:text-amber-450 transition-colors">Guest Mode</h3>
+                    <h3 className="text-base font-extrabold text-white group-hover:text-amber-400 transition-colors">Guest Mode</h3>
                     <p className="text-xs text-zinc-400 mt-2 leading-relaxed font-sans">
                       Browse offline songs, read lyrics, create local setlists, and access offline calendar. Stored locally on your device!
                     </p>
                   </div>
-                  <span className="text-[10px] font-mono font-bold text-amber-500/80 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                  <span className="text-[10px] font-mono font-bold text-amber-500/80 mt-4 group-hover:translate-x-1.5 transition-transform inline-flex items-center gap-1">
                     Enter Guest Mode <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
@@ -1111,19 +1101,18 @@ export default function App() {
                     setPortalView('join');
                     fetchServers();
                   }}
-                  className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-855 hover:border-emerald-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[260px]"
+                  className="group p-8 bg-[#12131A] border border-[#1E202B] hover:border-emerald-500/50 rounded-md transition-all duration-150 text-center cursor-pointer flex flex-col items-center justify-between min-h-[260px] active-touch"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-emerald-450 group-hover:scale-110 transition-transform duration-300">
+                  <div className="w-14 h-14 rounded bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-emerald-450 group-hover:scale-110 transition-transform duration-150">
                     <Layers className="w-6 h-6" />
                   </div>
                   <div className="mt-4">
-                    <h3 className="text-base font-extrabold text-white group-hover:text-emerald-450 transition-colors">Join Church Server</h3>
+                    <h3 className="text-base font-extrabold text-white group-hover:text-emerald-400 transition-colors">Join Church Server</h3>
                     <p className="text-xs text-zinc-400 mt-2 leading-relaxed font-sans">
                       Connect to an existing workspace for your local church choir or worship team.
                     </p>
                   </div>
-                  <span className="text-[10px] font-mono font-bold text-emerald-450 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                  <span className="text-[10px] font-mono font-bold text-emerald-450 mt-4 group-hover:translate-x-1.5 transition-transform inline-flex items-center gap-1">
                     Find Server <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
@@ -1131,19 +1120,18 @@ export default function App() {
                 {/* Create Server Card */}
                 <div 
                   onClick={() => setPortalView('create')}
-                  className="group relative p-6 bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-855 hover:border-rose-500/30 rounded-3xl transition-all duration-300 text-center cursor-pointer shadow-lg active-touch flex flex-col items-center justify-between min-h-[260px]"
+                  className="group p-8 bg-[#12131A] border border-[#1E202B] hover:border-rose-500/50 rounded-md transition-all duration-150 text-center cursor-pointer flex flex-col items-center justify-between min-h-[260px] active-touch"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-rose-500/[0.02] to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-rose-455 group-hover:scale-110 transition-transform duration-300">
+                  <div className="w-14 h-14 rounded bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform duration-150">
                     <Plus className="w-6 h-6" />
                   </div>
                   <div className="mt-4">
-                    <h3 className="text-base font-extrabold text-white group-hover:text-rose-400 transition-colors">Create Server</h3>
+                    <h3 className="text-base font-extrabold text-white group-hover:text-rose-500 transition-colors">Create Server</h3>
                     <p className="text-xs text-zinc-400 mt-2 leading-relaxed font-sans">
                       Initialize a clean, dedicated workspace with isolated database and team permissions.
                     </p>
                   </div>
-                  <span className="text-[10px] font-mono font-bold text-rose-455 mt-4 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                  <span className="text-[10px] font-mono font-bold text-rose-500 mt-4 group-hover:translate-x-1.5 transition-transform inline-flex items-center gap-1">
                     Start Workspace <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
@@ -1152,8 +1140,8 @@ export default function App() {
 
             {/* Portal Subview: Join Server */}
             {portalView === 'join' && (
-              <div className="w-full max-w-md mx-auto p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative z-10 animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
+              <div className="w-full max-w-md mx-auto p-8 bg-[#12131A] rounded-md border border-[#1E202B] relative z-10 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between border-b border-[#1E202B] pb-3 mb-4">
                   <h3 className="font-bold text-base text-white flex items-center gap-1.5 font-sans">
                     <Layers className="h-4 w-4 text-amber-500" /> Join Church Server
                   </h3>
@@ -1171,7 +1159,7 @@ export default function App() {
                 </div>
 
                 {joinError && (
-                  <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold flex items-center justify-center gap-1.5">
+                  <div className="mb-5 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] rounded text-center font-bold flex items-center justify-center gap-1.5 animate-pulse">
                     <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
                     <span>{joinError}</span>
                   </div>
@@ -1190,7 +1178,7 @@ export default function App() {
                         placeholder="Search church or choir server..."
                         value={serverSearchQuery}
                         onChange={(e) => setServerSearchQuery(e.target.value)}
-                        className="block w-full pl-10 pr-4 py-2.5 border border-zinc-805 rounded-xl bg-zinc-950 text-white placeholder-zinc-550 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-xs shadow-inner font-sans"
+                        className="block w-full pl-10 pr-4 py-2.5 rounded text-white placeholder-zinc-550 outline-none text-xs font-sans premium-input"
                       />
                     </div>
 
@@ -1220,7 +1208,7 @@ export default function App() {
                                 localStorage.setItem(`dasong_server_name_${s.id}`, s.name);
                                 setJoiningServer(s);
                               }}
-                              className="w-full p-3 bg-zinc-950/50 hover:bg-zinc-950 hover:border-amber-500/30 border border-zinc-850 rounded-xl flex items-center justify-between text-left transition-all cursor-pointer group active-touch"
+                              className="w-full p-4 bg-[#1A1C26]/40 hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/30 rounded flex items-center justify-between text-left transition-all cursor-pointer group active-touch"
                             >
                               <div>
                                 <div className="text-xs font-bold text-white group-hover:text-amber-450 transition-colors">
@@ -1240,7 +1228,7 @@ export default function App() {
                     </div>
 
                     {/* Private server entry */}
-                    <div className="pt-3 border-t border-white/5 space-y-2">
+                    <div className="pt-4 border-t border-[#1E202B] space-y-2">
                       <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold block">
                         Join Private Server (by ID)
                       </span>
@@ -1249,7 +1237,7 @@ export default function App() {
                           id="portal-private-server-id-input"
                           type="text"
                           placeholder="e.g. grace-chapel"
-                          className="flex-1 px-3 py-2 border border-zinc-850 bg-zinc-950 rounded-xl text-white outline-none focus:border-amber-500 text-xs font-mono"
+                          className="flex-1 px-3 py-2.5 rounded text-white outline-none text-xs font-mono premium-input"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               const val = (e.target as HTMLInputElement).value.trim().toLowerCase();
@@ -1269,7 +1257,7 @@ export default function App() {
                               setJoinError('Please enter a server ID.');
                             }
                           }}
-                          className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-350 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all active-touch"
+                          className="premium-btn-secondary px-5 py-2.5 rounded text-xs font-bold cursor-pointer transition-all active-touch"
                         >
                           Find
                         </button>
@@ -1277,12 +1265,11 @@ export default function App() {
                     </div>
                   </div>
                 ) : (
-                  // Screen 2: Choose role / credentials
                   <div className="space-y-4">
-                    <div className="p-3 bg-zinc-900 border border-zinc-850 rounded-xl text-center">
+                    <div className="p-4 bg-[#090A0F] border border-[#1E202B] rounded text-center">
                       <span className="text-[10px] font-mono uppercase text-zinc-550">Selected Workspace</span>
                       <h4 className="text-sm font-bold text-white mt-1">{joiningServer.name}</h4>
-                      <span className="text-[9px] font-mono text-zinc-555 block mt-0.5">ID: {joiningServer.id}</span>
+                      <span className="text-[9px] font-mono text-zinc-500 block mt-0.5">ID: {joiningServer.id}</span>
                     </div>
 
                     {joinRole === null ? (
@@ -1292,14 +1279,14 @@ export default function App() {
                             setJoinRole('choir');
                             setJoinError('');
                           }}
-                          className="w-full flex items-center justify-between p-4 bg-zinc-950 border border-zinc-900 hover:border-amber-500/20 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
+                          className="w-full flex items-center justify-between p-4 bg-[#1A1C26] hover:bg-[#222433] border border-[#272A37] hover:border-amber-500/40 rounded transition-all text-left outline-none cursor-pointer group active-touch"
                         >
                           <div>
                             <p className="font-bold text-xs text-white flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                               Join as Choir Member
                             </p>
-                            <p className="text-[10px] text-zinc-550 mt-1">Read lyrics, build setlists, and suggest songs.</p>
+                            <p className="text-[10px] text-zinc-400 mt-1">Read lyrics, build setlists, and suggest songs.</p>
                           </div>
                           <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
                         </button>
@@ -1309,14 +1296,14 @@ export default function App() {
                             setJoinRole('admin');
                             setJoinError('');
                           }}
-                          className="w-full flex items-center justify-between p-4 bg-zinc-950 border border-zinc-900 hover:border-amber-500/20 rounded-2xl transition-all text-left outline-none cursor-pointer group active-touch"
+                          className="w-full flex items-center justify-between p-4 bg-[#1A1C26] hover:bg-[#222433] border border-[#272A37] hover:border-amber-500/40 rounded transition-all text-left outline-none cursor-pointer group active-touch"
                         >
                           <div>
                             <p className="font-bold text-xs text-white flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                               Login as Admin
                             </p>
-                            <p className="text-[10px] text-zinc-550 mt-1">Prompts password to unlock libraries management.</p>
+                            <p className="text-[10px] text-zinc-400 mt-1">Prompts password to unlock libraries management.</p>
                           </div>
                           <span className="text-amber-500 font-bold group-hover:translate-x-1.5 transition-transform">→</span>
                         </button>
@@ -1327,14 +1314,14 @@ export default function App() {
                             setJoinRole(null);
                             setJoinError('');
                           }}
-                          className="w-full p-2.5 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-bold rounded-xl text-center cursor-pointer transition-colors"
+                          className="w-full p-3 bg-[#1A1C26] hover:bg-[#222433] border border-[#272A37] text-zinc-300 hover:text-white text-xs font-semibold rounded text-center cursor-pointer transition-colors"
                         >
                           ← Select Different Server
                         </button>
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <div className="flex items-center justify-between border-b border-[#1E202B] pb-2">
                           <h4 className="text-xs font-bold text-amber-500 uppercase font-mono tracking-wider">
                             {joinRole === 'admin' ? 'Admin Login' : 'Choir Member Name'}
                           </h4>
@@ -1347,14 +1334,14 @@ export default function App() {
                         </div>
 
                         {joinRole === 'admin' ? (
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             <label className="text-[10px] font-mono text-zinc-500 block uppercase">Admin Password</label>
                             <input 
                               type="password"
                               placeholder="Enter password..."
                               value={joinPasswordInput}
                               onChange={(e) => setJoinPasswordInput(e.target.value)}
-                              className="w-full p-2.5 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 text-xs font-mono tracking-widest"
+                              className="w-full p-3 rounded text-white outline-none text-xs font-mono tracking-widest premium-input"
                               autoFocus
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') handleJoinServerSubmit();
@@ -1362,14 +1349,14 @@ export default function App() {
                             />
                           </div>
                         ) : (
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             <label className="text-[10px] font-mono text-zinc-500 block uppercase">Enter Your Name</label>
                             <input 
                               type="text"
                               placeholder="e.g. John"
                               value={joinNameInput}
                               onChange={(e) => setJoinNameInput(e.target.value)}
-                              className="w-full p-2.5 bg-zinc-950 border border-zinc-900 rounded-xl text-white outline-none focus:border-amber-500 text-xs font-sans"
+                              className="w-full p-3 rounded text-white outline-none text-xs font-sans premium-input"
                               autoFocus
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') handleJoinServerSubmit();
@@ -1380,7 +1367,7 @@ export default function App() {
 
                         <button 
                           onClick={handleJoinServerSubmit}
-                          className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md active:scale-98"
+                          className="w-full premium-btn-primary py-3 px-4 rounded text-xs font-bold transition-all cursor-pointer active-touch"
                         >
                           Access Server Workspace
                         </button>
@@ -1393,8 +1380,8 @@ export default function App() {
 
             {/* Portal Subview: Create Server */}
             {portalView === 'create' && (
-              <div className="w-full max-w-md mx-auto p-6 bg-zinc-950/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative z-10 animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
+              <div className="w-full max-w-md mx-auto p-8 bg-[#12131A] rounded-md border border-[#1E202B] relative z-10 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between border-b border-[#1E202B] pb-3 mb-4">
                   <h3 className="font-bold text-base text-white flex items-center gap-1.5 font-sans">
                     <Plus className="h-4.5 w-4.5 text-amber-500" /> Create Server Workspace
                   </h3>
@@ -1410,7 +1397,7 @@ export default function App() {
                 </div>
 
                 {createError && (
-                  <div className="p-3 bg-red-500/10 border border-red-550/20 text-red-400 text-[11px] rounded-xl text-center font-bold mb-4 font-sans flex items-center justify-center gap-1.5">
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] rounded text-center mb-4 font-sans flex items-center justify-center gap-1.5 animate-pulse">
                     <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
                     <span>{createError}</span>
                   </div>
@@ -1425,32 +1412,32 @@ export default function App() {
                       placeholder="e.g. city-church-choir"
                       value={createForm.id}
                       onChange={(e) => setCreateForm(p => ({ ...p, id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
-                      className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
+                      className="w-full text-xs p-3 rounded font-mono premium-input"
                     />
-                    <span className="text-[9px] text-zinc-550 block mt-1">This forms your unique workspace identifier.</span>
+                    <span className="text-[9px] text-zinc-500 block mt-1">This forms your unique workspace identifier.</span>
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-450 block mb-1 font-sans">Church / Choir Name *</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1 font-sans">Church / Choir Name *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. City Church Praise Team"
                       value={createForm.name}
                       onChange={(e) => setCreateForm(p => ({ ...p, name: e.target.value }))}
-                      className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans"
+                      className="w-full text-xs p-3 rounded font-sans premium-input"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-455 block mb-1 font-sans">Admin Password *</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1 font-sans">Admin Password *</label>
                     <input
                       type="password"
                       required
                       placeholder="Create admin password..."
                       value={createForm.adminPassword}
                       onChange={(e) => setCreateForm(p => ({ ...p, adminPassword: e.target.value }))}
-                      className="w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono tracking-widest"
+                      className="w-full text-xs p-3 rounded font-mono tracking-widest premium-input"
                     />
                   </div>
 
@@ -1460,28 +1447,28 @@ export default function App() {
                       type="checkbox"
                       checked={createForm.showOnPublicList}
                       onChange={(e) => setCreateForm(p => ({ ...p, showOnPublicList: e.target.checked }))}
-                      className="w-4 h-4 rounded border-zinc-800 bg-zinc-950 text-amber-500 focus:ring-amber-500/20 cursor-pointer"
+                      className="w-4 h-4 rounded border-[#1E202B] bg-[#12131A] text-amber-500 focus:ring-amber-500/20 cursor-pointer"
                     />
                     <label htmlFor="portal-checkbox-show-list" className="text-xs text-zinc-400 cursor-pointer font-sans">
                       Show this workspace in the public servers directory
                     </label>
                   </div>
 
-                  <div className="flex gap-2 justify-end pt-3 border-t border-white/5">
+                  <div className="flex gap-2 justify-end pt-3 border-t border-[#1E202B]">
                     <button
                       type="button"
                       onClick={() => {
                         setPortalView('menu');
                         setCreateError('');
                       }}
-                      className="px-4 py-2 text-xs font-semibold bg-white/5 text-slate-350 hover:bg-white/10 rounded-xl cursor-pointer"
+                      className="premium-btn-secondary px-4 py-2 rounded text-xs font-semibold cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={creatingServerStatus}
-                      className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-2 rounded-full text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                      className="premium-btn-primary px-5 py-2 rounded text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
                     >
                       {creatingServerStatus ? 'Creating...' : 'Create Server'}
                     </button>
@@ -1496,19 +1483,22 @@ export default function App() {
   }
 
   return (
-    <div id="app-root" className="bg-[#08080a] text-zinc-300 transition-colors duration-300 flex flex-col font-sans relative min-h-[100dvh]">
-      {/* Dynamic hardware grid pattern */}
-      <div className="absolute inset-0 pointer-events-none opacity-2 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+    <div id="app-root" className="bg-[#090A0F] text-zinc-300 transition-colors duration-150 flex flex-col font-sans relative min-h-[100dvh]">
       
       {/* Top Professional Navigation Header - Single Row Consolidated Navbar */}
-      <header id="main-header" className={`bg-zinc-950/80 border-b border-zinc-900 text-white z-20 px-4 py-3 relative backdrop-blur-md ${selectedSongId ? 'hidden md:block' : ''}`}>
+      <header id="main-header" className={`bg-[#090A0F] border-b border-[#1E202B] text-white z-20 px-6 py-4 relative ${selectedSongId ? 'hidden md:block' : ''}`}>
         <div className="w-full max-w-[1850px] mx-auto flex items-center justify-between gap-6">
           {/* Brand Logo */}
-          <div className="flex items-center space-x-2.5 select-none transition-all hover:opacity-90 shrink-0">
-            <Music className="h-5.5 w-5.5 text-amber-500 stroke-[2]" />
-            <div className="flex items-baseline">
-              <span className="text-xl font-serif font-semibold tracking-tight text-white">DaSong</span>
-              <span className="ml-1 text-[8.5px] font-mono font-medium uppercase tracking-widest text-zinc-550">Studio</span>
+          <div 
+            onClick={() => navigateTo('dashboard')}
+            className="flex items-center space-x-3 select-none transition-all hover:opacity-90 shrink-0 cursor-pointer"
+          >
+            <div className="h-9 w-9 rounded bg-amber-500 flex items-center justify-center border border-amber-600">
+              <Music className="h-5 w-5 text-black stroke-[2.5]" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-base font-serif font-bold tracking-tight text-white leading-none">DaSong</span>
+              <span className="text-[10px] font-mono font-medium uppercase tracking-widest text-zinc-500">Studio</span>
             </div>
           </div>
 
@@ -1516,10 +1506,10 @@ export default function App() {
           <nav className="hidden md:flex items-center space-x-1.5">
             <button
               onClick={() => navigateTo('dashboard')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-4 py-2 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'dashboard'
-                  ? 'bg-zinc-900 text-amber-500 border border-zinc-800/80 font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-[#1E202B] text-amber-500 border border-amber-500/25'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1E202B]/40'
               }`}
             >
               <Home className="h-3.5 w-3.5" />
@@ -1527,10 +1517,10 @@ export default function App() {
             </button>
             <button
               onClick={() => navigateTo('search')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-4 py-2 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'search'
-                  ? 'bg-zinc-900 text-amber-500 border border-zinc-800/80 font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-[#1E202B] text-amber-500 border border-amber-500/25'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1E202B]/40'
               }`}
             >
               <BookOpen className="h-3.5 w-3.5" />
@@ -1539,10 +1529,10 @@ export default function App() {
             {session && (
               <button
                 onClick={() => navigateTo('calendar')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
                   activeTab === 'calendar'
-                    ? 'bg-zinc-900 text-amber-500 border border-zinc-800/80 font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-[#1E202B] text-amber-500 border border-amber-500/25'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1E202B]/40'
                 }`}
               >
                 <Calendar className="h-3.5 w-3.5" />
@@ -1558,7 +1548,7 @@ export default function App() {
                 {showInstallBanner && !isInstalled && (
                   <button 
                     onClick={handleInstallApp}
-                    className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer active-touch shrink-0"
+                    className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-450 border border-amber-500/20 px-3.5 py-1.5 rounded text-[10px] font-mono uppercase tracking-wider transition-all cursor-pointer active-touch shrink-0"
                     title="Install DaSong Songbook App"
                   >
                     <Download className="h-3.5 w-3.5 stroke-[2]" />
@@ -1570,14 +1560,14 @@ export default function App() {
                     setShowJoinModal(true);
                     fetchServers();
                   }}
-                  className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 px-3 py-1.5 rounded-full text-[10px] uppercase font-mono tracking-wider transition-all cursor-pointer shrink-0"
+                  className="flex items-center gap-1.5 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-emerald-500/35 text-emerald-450 px-3.5 py-1.5 rounded text-[10px] uppercase font-mono tracking-wider transition-all cursor-pointer shrink-0"
                 >
                   <Layers className="h-3.5 w-3.5" />
                   <span>Join Server</span>
                 </button>
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-350 hover:text-white px-3 py-1.5 rounded-full text-[10px] uppercase font-mono tracking-wider transition-all cursor-pointer shrink-0"
+                  className="flex items-center gap-1.5 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-zinc-700 text-zinc-350 hover:text-white px-3.5 py-1.5 rounded text-[10px] uppercase font-mono tracking-wider transition-all cursor-pointer shrink-0"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Add Server</span>
@@ -1591,14 +1581,14 @@ export default function App() {
                     id="mongodb-sync-status-badge"
                     onClick={handleForceSync}
                     disabled={mongoStatus === 'connecting'}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all cursor-pointer shrink-0 ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-mono font-bold border transition-all cursor-pointer shrink-0 ${
                       mongoStatus === 'connected'
-                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                        ? 'bg-[#12131A] hover:bg-[#1A1C26] text-emerald-450 border border-emerald-500/20'
                         : mongoStatus === 'connecting'
-                          ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 animate-pulse'
+                          ? 'bg-[#12131A] hover:bg-[#1A1C26] text-amber-450 border border-amber-500/25 animate-pulse'
                           : mongoStatus === 'error'
-                            ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20'
-                            : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800'
+                            ? 'bg-[#12131A] hover:bg-[#1A1C26] text-rose-455 border-rose-500/20'
+                            : 'bg-[#12131A] hover:bg-[#1A1C26] text-zinc-400 border-[#1E202B]'
                     }`}
                     title="Click to Force Sync with Cloud Database"
                   >
@@ -1618,7 +1608,7 @@ export default function App() {
                     <div className="hidden lg:flex items-center gap-2">
                       <button 
                         onClick={() => setShowAddModal(true)}
-                        className="bg-amber-550/15 hover:bg-amber-550/25 text-amber-400 border border-amber-500/20 hover:border-amber-500/40 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                        className="bg-amber-550/10 hover:bg-amber-550/20 text-amber-400 border border-amber-500/25 px-3.5 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         <span>Add Song</span>
@@ -1626,9 +1616,9 @@ export default function App() {
                       
                       <button 
                         onClick={() => setShowUploadModal(true)}
-                        className="bg-zinc-900 hover:bg-zinc-850 text-zinc-350 hover:text-white px-3 py-1.5 rounded-full text-xs font-semibold border border-zinc-800 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                        className="bg-[#12131A] hover:bg-[#1A1C26] text-zinc-350 hover:text-white px-3.5 py-1.5 rounded text-xs font-semibold border border-[#1E202B] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                       >
-                        <Database className="h-3.5 w-3.5 text-amber-500" />
+                        <Database className="h-3.5 w-3.5 text-amber-555" />
                         <span>Import</span>
                       </button>
                     </div>
@@ -1636,19 +1626,19 @@ export default function App() {
 
                   {/* User Profile Capsule */}
                   <div 
-                    className="flex items-center gap-2 bg-zinc-900 border border-zinc-850 px-2.5 py-1.5 rounded-full shrink-0"
+                    className="flex items-center gap-2 bg-[#12131A] border border-[#1E202B] px-3 py-1.5 rounded shrink-0"
                     title={`${session.role}: ${session.name}`}
                   >
                     <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 ${
                       session.role === 'admin' 
-                        ? 'bg-amber-500/10 text-amber-500 border-amber-500/25' 
+                        ? 'bg-amber-500/10 text-amber-555 border-amber-500/25' 
                         : session.role === 'choir'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
-                          : 'bg-zinc-850 text-zinc-450 border-zinc-800'
+                          ? 'bg-emerald-500/10 text-emerald-450 border-emerald-500/25'
+                          : 'bg-zinc-900 text-zinc-400 border-zinc-800'
                     }`}>
                       {session.role}
                     </span>
-                    <span className="hidden sm:inline text-xs text-zinc-350 font-medium max-w-[100px] truncate">
+                    <span className="hidden sm:inline text-xs text-zinc-300 font-medium max-w-[100px] truncate">
                       {session.name}
                     </span>
                   </div>
@@ -1656,7 +1646,7 @@ export default function App() {
                   {/* Exit Workspace */}
                   <button 
                     onClick={handleLeaveServer}
-                    className="flex items-center justify-center p-2 text-zinc-400 hover:text-rose-455 hover:bg-rose-500/10 rounded-full transition-all border border-transparent hover:border-rose-950/30 cursor-pointer shrink-0"
+                    className="flex items-center justify-center p-2 text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 rounded transition-all border border-[#1E202B] hover:border-rose-900/35 cursor-pointer shrink-0"
                     title="Leave Workspace"
                   >
                     <LogOut className="w-4 h-4" />
@@ -1836,7 +1826,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Quick Song Access */}
             <div className="w-full mb-6 relative">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -1847,7 +1836,7 @@ export default function App() {
                   placeholder="Quick song access... (Type title, author, or lyrics)"
                   value={quickSearchInput}
                   onChange={(e) => setQuickSearchInput(e.target.value)}
-                  className="block w-full pl-11 pr-10 py-3.5 border border-zinc-900 rounded-2xl leading-5 bg-[#090a0f] text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-amber-500/30 focus:ring-1 focus:ring-amber-500/30 text-sm transition-all shadow-sm"
+                  className="block w-full pl-11 pr-10 py-3 border border-[#1E202B] bg-[#12131A] text-white placeholder-zinc-550 focus:outline-none focus:border-amber-500/35 text-xs font-sans transition-all rounded"
                 />
                 {quickSearchInput && (
                   <button
@@ -1861,9 +1850,9 @@ export default function App() {
 
               {/* Autocomplete Popup List */}
               {quickSearchInput.trim() && (
-                <div className="absolute left-0 right-0 mt-2 bg-zinc-950 border border-zinc-900 rounded-2xl shadow-2xl z-30 overflow-hidden max-h-[350px] overflow-y-auto divide-y divide-zinc-900 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute left-0 right-0 mt-1.5 bg-[#12131A] border border-[#1E202B] rounded shadow-lg z-30 overflow-hidden max-h-[350px] overflow-y-auto divide-y divide-[#1E202B] animate-in fade-in slide-in-from-top-1 duration-150">
                   {quickSearchMatches.length === 0 ? (
-                    <div className="p-4 text-center text-zinc-500 text-xs font-sans italic">
+                    <div className="p-4 text-center text-zinc-550 text-xs font-sans italic">
                       No matching songs found
                     </div>
                   ) : (
@@ -1876,10 +1865,10 @@ export default function App() {
                           setActiveTab('search');
                           handleSelectSong(song.id);
                         }}
-                        className="w-full p-3.5 hover:bg-zinc-900/60 transition-colors flex items-center justify-between text-left cursor-pointer group"
+                        className="w-full p-3 hover:bg-[#1A1C26] transition-colors flex items-center justify-between text-left cursor-pointer group"
                       >
                         <div className="flex items-center gap-3 truncate">
-                          <div className="h-8 w-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
+                          <div className="h-8 w-8 rounded bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
                             <Music className="h-4 w-4" />
                           </div>
                           <div className="truncate">
@@ -1892,7 +1881,7 @@ export default function App() {
                           </div>
                         </div>
                         {song.category && (
-                          <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-550 px-2 py-0.5 rounded shrink-0">
+                          <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/25 text-amber-555 px-2 py-0.5 rounded shrink-0">
                             {song.category}
                           </span>
                         )}
@@ -1904,24 +1893,24 @@ export default function App() {
             </div>
 
             {/* Quick Metrics Cards — 2 cols on mobile, 3 on sm+ */}
-            <div className="grid grid-cols-3 gap-2 md:gap-3 w-full mb-5 select-none">
-              <div className="bg-zinc-955/20 border border-zinc-900 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
-                <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-550">Songs</span>
-                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-semibold mt-1">
+            <div className="grid grid-cols-3 gap-3 w-full mb-6 select-none">
+              <div className="bg-[#12131A] border border-[#1E202B] p-3.5 md:p-4 rounded text-center relative overflow-hidden">
+                <span className="text-[9px] font-mono tracking-wider uppercase block text-zinc-550">Songs</span>
+                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-bold mt-1">
                   {stats.total}
                 </span>
                 <span className="text-[9px] text-zinc-500 mt-0.5 block font-sans">Total</span>
               </div>
-              <div className="bg-zinc-955/20 border border-zinc-900 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
-                <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-550">Stars</span>
-                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-semibold mt-1">
+              <div className="bg-[#12131A] border border-[#1E202B] p-3.5 md:p-4 rounded text-center relative overflow-hidden">
+                <span className="text-[9px] font-mono tracking-wider uppercase block text-zinc-550">Stars</span>
+                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-bold mt-1">
                   {stats.favorites}
                 </span>
                 <span className="text-[9px] text-zinc-500 mt-0.5 block font-sans">Favorites</span>
               </div>
-              <div className="bg-zinc-955/20 border border-zinc-900 p-3 md:p-4 rounded-2xl text-center relative overflow-hidden group">
-                <span className="text-[9px] font-mono tracking-widest uppercase block text-zinc-550">Categories</span>
-                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-semibold mt-1">
+              <div className="bg-[#12131A] border border-[#1E202B] p-3.5 md:p-4 rounded text-center relative overflow-hidden">
+                <span className="text-[9px] font-mono tracking-wider uppercase block text-zinc-550">Categories</span>
+                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-bold mt-1">
                   {stats.categories}
                 </span>
                 <span className="text-[9px] text-zinc-500 mt-0.5 block font-sans">Unique</span>
@@ -1932,10 +1921,10 @@ export default function App() {
             <div className="grid grid-cols-2 gap-3 md:gap-4 w-full">
               <button 
                 onClick={() => setActiveTab('search')}
-                className="p-4 md:p-5 bg-zinc-955/20 hover:bg-zinc-900/40 border border-zinc-900 hover:border-amber-500/20 rounded-2xl md:rounded-3xl text-left transition-all cursor-pointer group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
+                className="p-4 md:p-5 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded text-left transition-all cursor-pointer group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
               >
-                <div className="p-2.5 md:p-3 bg-zinc-950 border border-zinc-900 rounded-xl md:rounded-2xl group-hover:scale-105 transition-transform w-fit shrink-0">
-                  <BookOpen className="w-5 h-5 text-amber-500" />
+                <div className="p-2.5 md:p-3 bg-[#1A1C26] border border-[#272A37] rounded group-hover:border-amber-500/20 transition-all w-fit shrink-0">
+                  <BookOpen className="w-5 h-5 text-amber-555" />
                 </div>
                 <div>
                   <div className="text-[13px] md:text-sm font-semibold text-white tracking-wide">Song Library</div>
@@ -1945,10 +1934,10 @@ export default function App() {
               
               <button 
                 onClick={() => setActiveTab('calendar')}
-                className="p-4 md:p-5 bg-zinc-955/20 hover:bg-zinc-900/40 border border-zinc-900 hover:border-amber-500/20 rounded-2xl md:rounded-3xl text-left transition-all cursor-pointer group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
+                className="p-4 md:p-5 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded text-left transition-all cursor-pointer group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
               >
-                <div className="p-2.5 md:p-3 bg-zinc-950 border border-zinc-900 rounded-xl md:rounded-2xl group-hover:scale-105 transition-transform w-fit shrink-0">
-                  <Calendar className="w-5 h-5 text-amber-500" />
+                <div className="p-2.5 md:p-3 bg-[#1A1C26] border border-[#272A37] rounded group-hover:border-amber-500/20 transition-all w-fit shrink-0">
+                  <Calendar className="w-5 h-5 text-amber-555" />
                 </div>
                 <div>
                   <div className="text-[13px] md:text-sm font-semibold text-white tracking-wide">Worship Setlists</div>
@@ -1965,7 +1954,7 @@ export default function App() {
                 </span>
                 
                 {/* Desktop View: list */}
-                <div className="hidden md:block space-y-2 bg-zinc-955/20 p-5 md:p-6 rounded-3xl border border-zinc-900 shadow-sm relative overflow-hidden">
+                <div className="hidden md:block space-y-2 bg-[#12131A] p-5 md:p-6 rounded-md border border-[#1E202B] relative overflow-hidden">
                   {recentSongs.map(song => (
                     <button
                       key={song.id}
@@ -1974,10 +1963,10 @@ export default function App() {
                         setSongSourceTab('search');
                         handleSelectSong(song.id);
                       }}
-                      className="w-full p-3.5 bg-[#090a0f]/40 hover:bg-zinc-900/45 hover:border-amber-500/20 border border-zinc-900/80 rounded-2xl flex items-center justify-between gap-3 text-left transition-all cursor-pointer group active-touch"
+                      className="w-full p-3 bg-[#1A1C26]/40 hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded flex items-center justify-between gap-3 text-left transition-all cursor-pointer group active-touch"
                     >
                       <div className="flex items-center gap-3 truncate">
-                        <div className="h-7 w-7 rounded-lg bg-zinc-950 border border-zinc-900 flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
+                        <div className="h-7 w-7 rounded bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
                           <Music className="h-3.5 w-3.5" />
                         </div>
                         <div className="truncate">
@@ -1986,7 +1975,7 @@ export default function App() {
                         </div>
                       </div>
                       {song.category && (
-                        <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/20 text-amber-550 px-2 py-0.5 rounded shrink-0">
+                        <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/25 text-amber-555 px-2 py-0.5 rounded shrink-0">
                           {song.category}
                         </span>
                       )}
@@ -2016,38 +2005,38 @@ export default function App() {
                 </div>
               </div>
             )}
-            </div> {/* Close Left Column wrapper */}
+          </div> {/* Close Left Column wrapper */}
 
-            {/* Right Column Wrapper (Admin Only) */}
-            {session?.role === 'admin' && (
-              <div className="lg:sticky lg:top-6 flex flex-col gap-5 md:gap-6 h-fit w-full mt-5 lg:mt-0">
-                {/* Administrative Quick Actions Console */}
-                <div className="w-full text-left bg-zinc-955/20 border border-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm select-none">
+          {/* Right Column Wrapper (Admin Only) */}
+          {session?.role === 'admin' && (
+            <div className="lg:sticky lg:top-6 flex flex-col gap-5 md:gap-6 h-fit w-full mt-5 lg:mt-0">
+              {/* Administrative Quick Actions Console */}
+              <div className="w-full text-left bg-[#12131A] border border-[#1E202B] p-4 md:p-5 rounded select-none">
                 <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-semibold">Admin Actions</span>
                 <div className="grid grid-cols-2 gap-2.5 mt-3">
                   <button
                     onClick={() => setShowAddModal(true)}
-                    className="bg-amber-600 hover:bg-amber-550 text-white font-semibold px-4 py-3.5 rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer active-touch"
+                    className="premium-btn-primary px-4 py-3.5 rounded text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer active-touch"
                   >
-                    <Plus className="h-4 w-4 text-white stroke-[2.5]" /> Create Song
+                    <Plus className="h-4 w-4 text-black stroke-[2.5]" /> Create Song
                   </button>
                   <button
                     onClick={() => setShowUploadModal(true)}
-                    className="bg-zinc-900 hover:bg-zinc-850 text-zinc-350 hover:text-white px-4 py-3.5 rounded-xl text-xs font-semibold border border-zinc-800 transition-all flex items-center justify-center gap-2 cursor-pointer active-touch"
+                    className="premium-btn-secondary px-4 py-3.5 rounded text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer active-touch"
                   >
-                    <Database className="h-4 w-4 text-amber-550" /> Import Files
+                    <Database className="h-4 w-4 text-amber-555" /> Import Files
                   </button>
                 </div>
               </div>
 
               {/* Choir Requests Review Panel */}
-              <div className="w-full text-left bg-zinc-955/20 border border-zinc-900 p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-sm">
-                <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-4 select-none">
+              <div className="w-full text-left bg-[#12131A] border border-[#1E202B] p-5 md:p-6 rounded shadow-sm">
+                <div className="flex items-center justify-between border-b border-[#1E202B] pb-3 mb-4 select-none">
                   <div>
                     <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-semibold">Song Requests</span>
                     <h3 className="text-sm font-bold text-white tracking-wide mt-1">Choir Requests Review</h3>
                   </div>
-                  <span className="bg-amber-500/10 text-amber-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-500/20">
+                  <span className="bg-amber-500/10 text-amber-555 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-500/25">
                     {suggestions.length} Requested
                   </span>
                 </div>
@@ -2057,14 +2046,14 @@ export default function App() {
                     {suggestions.map((sug) => (
                       <div 
                         key={sug.id} 
-                        className="p-4 bg-zinc-955/20 hover:bg-zinc-900/40 border border-zinc-900 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all"
+                        className="p-4 bg-[#1A1C26]/40 hover:bg-[#1A1C26] border border-[#1E202B] rounded flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all duration-150"
                       >
                         <div className="text-left flex-1 min-w-0">
                           <h4 className="text-xs font-bold text-white truncate">{sug.songTitle}</h4>
                           
                           {sug.eventTitle ? (
                             <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] text-amber-500 font-mono">
-                              <span className="bg-amber-500/10 text-amber-450 border border-amber-500/20 px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider shrink-0">
+                              <span className="bg-amber-500/10 text-amber-450 border border-amber-500/25 px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider shrink-0">
                                 Target Meeting
                               </span>
                               <span className="font-bold text-amber-400/90 truncate max-w-[150px] sm:max-w-xs">{sug.eventTitle}</span>
@@ -2076,7 +2065,7 @@ export default function App() {
                             </div>
                           ) : (
                             <div className="flex items-center gap-1 mt-1 text-[10px] text-zinc-500 font-mono">
-                              <span className="bg-zinc-900 text-zinc-400 border border-zinc-800 px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider shrink-0">
+                              <span className="bg-[#12131A] text-zinc-400 border border-[#1E202B] px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider shrink-0">
                                 General Catalog
                               </span>
                               <span className="truncate">Global Library suggestion</span>
@@ -2084,13 +2073,13 @@ export default function App() {
                           )}
                           
                           {sug.note && (
-                            <p className="text-[10.5px] text-zinc-450 italic mt-1.5 pl-2 border-l border-zinc-800 leading-normal max-w-xl break-words">
+                            <p className="text-[10.5px] text-zinc-455 italic mt-1.5 pl-2 border-l border-[#1E202B] leading-normal max-w-xl break-words">
                               "{sug.note}"
                             </p>
                           )}
                           
-                          <p className="text-[9.5px] text-zinc-600 mt-2 font-mono uppercase tracking-wider">
-                            Suggested by <span className="text-zinc-500 font-bold font-sans normal-case">{sug.suggestedBy || 'Choir Member'}</span> • {new Date(sug.timestamp).toLocaleDateString()}
+                          <p className="text-[9.5px] text-zinc-550 mt-2 font-mono uppercase tracking-wider">
+                            Suggested by <span className="text-zinc-450 font-bold font-sans normal-case">{sug.suggestedBy || 'Choir Member'}</span> • {new Date(sug.timestamp).toLocaleDateString()}
                           </p>
                         </div>
                         
@@ -2102,7 +2091,7 @@ export default function App() {
                               handleSelectSong(sug.songId);
                               setActiveTab('search');
                             }}
-                            className="bg-amber-600 hover:bg-amber-550 text-white font-semibold px-4 py-2 rounded-xl text-[11px] uppercase font-mono tracking-wider transition-all active:scale-95 cursor-pointer active-touch flex items-center gap-1 min-h-[40px]"
+                            className="premium-btn-primary px-4 py-2 rounded text-[11px] uppercase font-mono tracking-wider transition-all cursor-pointer active-touch flex items-center justify-center gap-1 min-h-[38px]"
                           >
                             View
                           </button>
@@ -2113,7 +2102,7 @@ export default function App() {
                                 handleDismissSuggestion(sug.id);
                               }
                             }}
-                            className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-rose-455 px-4 py-2 rounded-xl text-[11px] uppercase font-mono tracking-wider transition-all active:scale-95 cursor-pointer active-touch min-h-[40px]"
+                            className="premium-btn-secondary px-4 py-2 rounded text-[11px] uppercase font-mono tracking-wider hover:text-rose-500 transition-colors cursor-pointer active-touch min-h-[38px]"
                           >
                             Dismiss
                           </button>
@@ -2122,10 +2111,10 @@ export default function App() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-10 bg-[#090a0f]/20 rounded-2xl border border-dashed border-zinc-900 select-none">
-                    <Music className="h-8 w-8 text-zinc-850 mx-auto mb-2.5" />
-                    <p className="font-bold text-zinc-650 text-[10px] font-mono uppercase tracking-widest">Request Queue Empty</p>
-                    <p className="text-[9.5px] text-zinc-700 mt-1 uppercase font-mono">
+                  <div className="text-center py-10 bg-[#090a0f]/20 rounded border border-dashed border-[#1E202B] select-none">
+                    <Music className="h-8 w-8 text-zinc-800 mx-auto mb-2.5" />
+                    <p className="font-bold text-zinc-550 text-[10px] font-mono uppercase tracking-widest">Request Queue Empty</p>
+                    <p className="text-[9.5px] text-zinc-550 mt-1 uppercase font-mono">
                       Song requests submitted by choir members will appear here in real-time.
                     </p>
                   </div>
@@ -2659,16 +2648,16 @@ export default function App() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: '20px', opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="bg-[#070708] w-full h-full md:h-auto md:max-w-2xl rounded-t-3xl md:rounded-3xl p-5 md:p-6 space-y-4 shadow-2xl border-t md:border border-white/10 text-slate-350 overflow-y-auto pb-safe"
+              className="bg-[#12131A] w-full h-full md:h-auto md:max-w-2xl rounded-md p-5 md:p-6 space-y-4 shadow-lg border border-[#1E202B] text-zinc-300 overflow-y-auto pb-safe"
               onClick={(e) => e.stopPropagation()}
             >
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <h3 className="font-bold text-lg text-white flex items-center gap-1.5">
+            <div className="flex items-center justify-between border-b border-[#1E202B] pb-3">
+              <h3 className="font-bold text-lg text-white flex items-center gap-1.5 font-sans">
                 <BookOpen className="h-5 w-5 text-amber-500" /> Add New Lyric Sheet
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="p-2 hover:bg-white/5 rounded-full text-slate-400 cursor-pointer"
+                className="p-2 hover:bg-[#1A1C26] rounded text-zinc-400 cursor-pointer border border-[#1E202B] hover:text-white transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -2684,7 +2673,7 @@ export default function App() {
                     required
                     value={addForm.title}
                     onChange={(e) => setAddForm(p => ({ ...p, title: e.target.value }))}
-                    className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500"
+                    className="mt-1 w-full text-xs p-2.5 rounded border border-[#1E202B] bg-[#090A0F] text-white outline-none focus:border-amber-500/35 transition-all"
                     placeholder="e.g. Cornerstone"
                   />
                 </div>
@@ -2696,7 +2685,7 @@ export default function App() {
                     type="text"
                     value={addForm.author}
                     onChange={(e) => setAddForm(p => ({ ...p, author: e.target.value }))}
-                    className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500"
+                    className="mt-1 w-full text-xs p-2.5 rounded border border-[#1E202B] bg-[#090A0F] text-white outline-none focus:border-amber-500/35 transition-all"
                     placeholder="e.g. Hillsong Worship"
                   />
                 </div>
@@ -2708,7 +2697,7 @@ export default function App() {
                     type="text"
                     value={addForm.key}
                     onChange={(e) => setAddForm(p => ({ ...p, key: e.target.value }))}
-                    className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
+                    className="mt-1 w-full text-xs p-2.5 rounded border border-[#1E202B] bg-[#090A0F] text-white outline-none focus:border-amber-500/35 transition-all font-mono"
                     placeholder="e.g. G"
                   />
                 </div>
@@ -2720,7 +2709,7 @@ export default function App() {
                     type="number"
                     value={addForm.bpm}
                     onChange={(e) => setAddForm(p => ({ ...p, bpm: parseInt(e.target.value) || 72 }))}
-                    className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
+                    className="mt-1 w-full text-xs p-2.5 rounded border border-[#1E202B] bg-[#090A0F] text-white outline-none focus:border-amber-500/35 transition-all font-mono"
                   />
                 </div>
 
@@ -2730,7 +2719,7 @@ export default function App() {
                     id="add-category"
                     value={addForm.category}
                     onChange={(e) => setAddForm(p => ({ ...p, category: e.target.value }))}
-                    className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 cursor-pointer"
+                    className="mt-1 w-full text-xs p-2.5 rounded border border-[#1E202B] bg-[#090A0F] text-white outline-none focus:border-amber-500/35 transition-all cursor-pointer"
                   >
                     <option value="Worship">Contemporary Worship</option>
                     <option value="Classic">Classic Lyric</option>
@@ -2751,23 +2740,23 @@ export default function App() {
                   rows={8}
                   value={addForm.lyrics}
                   onChange={(e) => setAddForm(p => ({ ...p, lyrics: e.target.value }))}
-                  className="mt-1 w-full text-xs p-3 rounded-xl border border-white/10 bg-[#09090B] text-white font-mono outline-none focus:border-amber-500"
+                  className="mt-1 w-full text-xs p-3 rounded border border-[#1E202B] bg-[#090A0F] text-white font-mono outline-none focus:border-amber-500/35 transition-all"
                   placeholder={`Amazing grace! How sweet the sound
 That saved a wretch like me!`}
                 />
               </div>
 
-              <div className="flex gap-2 justify-end pt-2 border-t border-white/5 pb-6 md:pb-0">
+              <div className="flex gap-2 justify-end pt-2 border-t border-[#1E202B] pb-6 md:pb-0">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-semibold bg-white/5 text-slate-300 hover:bg-white/10 rounded-xl"
+                  className="premium-btn-secondary px-4 py-2 rounded text-xs font-bold"
                 >
                   Discard
                 </button>
                 <button
                   type="submit"
-                  className="bg-amber-500 hover:bg-amber-400 hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] text-black px-5 py-2 rounded-full text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+                  className="premium-btn-primary px-5 py-2 rounded text-xs font-bold flex items-center gap-1.5"
                 >
                   <Check className="h-4 w-4 stroke-[3]" /> Save Song to Library
                 </button>
@@ -2795,16 +2784,16 @@ That saved a wretch like me!`}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: '20px', opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="bg-[#070708] w-full h-full md:h-auto md:max-w-4xl rounded-t-3xl md:rounded-3xl p-5 md:p-6 space-y-4 shadow-2xl border-t md:border border-white/10 text-slate-350 overflow-y-auto pb-safe"
+              className="bg-[#12131A] w-full h-full md:h-auto md:max-w-4xl rounded-md p-5 md:p-6 space-y-4 shadow-lg border border-[#1E202B] text-zinc-300 overflow-y-auto pb-safe"
               onClick={(e) => e.stopPropagation()}
             >
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <h3 className="font-bold text-lg text-white flex items-center gap-1.5">
+            <div className="flex items-center justify-between border-b border-[#1E202B] pb-3">
+              <h3 className="font-bold text-lg text-white flex items-center gap-1.5 font-sans">
                 <Database className="h-5 w-5 text-amber-500" /> Bulk Lyrics Import Wizard
               </h3>
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="p-2 hover:bg-white/5 rounded-full text-slate-400 cursor-pointer"
+                className="p-2 hover:bg-[#1A1C26] rounded text-zinc-400 cursor-pointer border border-[#1E202B] hover:text-white transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -2817,11 +2806,11 @@ That saved a wretch like me!`}
               }
             }} />
 
-            <div className="flex gap-2 justify-end pt-3 border-t border-white/5 pb-6 md:pb-0">
+            <div className="flex gap-2 justify-end pt-3 border-t border-[#1E202B] pb-6 md:pb-0">
               <button
                 type="button"
                 onClick={() => setShowUploadModal(false)}
-                className="bg-white/5 hover:bg-white/10 hover:border-white/20 text-slate-200 border border-white/10 px-5 py-2 rounded-full text-xs font-bold shadow-xs transition-all"
+                className="premium-btn-secondary px-5 py-2 rounded text-xs font-bold"
               >
                 Done / Close Wizard
               </button>

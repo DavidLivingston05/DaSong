@@ -1289,14 +1289,14 @@ export default function WorshipEvents({
       {/* ----------------------------------------------------
           DESKTOP VIEW: Beautiful dual-pane side-by-side dashboard layout
          ---------------------------------------------------- */}
-      <div className="hidden md:flex bg-[#09090b] rounded-3xl border border-white/10 max-w-[1700px] w-full flex-row shadow-2xl overflow-hidden min-h-[700px] max-h-[850px] animate-in fade-in zoom-in-95 duration-250">
+      <div className="hidden md:flex bg-zinc-950/20 rounded-3xl border border-zinc-900/35 max-w-[1700px] w-full flex-row shadow-2xl overflow-hidden min-h-[700px] max-h-[850px] animate-in fade-in zoom-in-95 duration-250 backdrop-blur-md">
         
         {/* Left Google Calendar sidebar panel: Month visual grid & Create button */}
-        <div className="w-80 border-r border-white/10 p-5 bg-[#060608] flex flex-col justify-between select-none">
+        <div className="w-80 border-r border-zinc-900/35 p-5 bg-zinc-950/60 flex flex-col justify-between select-none">
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="h-7 w-7 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
+                <div className="h-7 w-7 bg-amber-500/10 rounded-lg flex items-center justify-center">
                   <CalendarIcon className="h-4 w-4 text-amber-500" />
                 </div>
                 <h4 className="text-sm font-bold text-white tracking-wide">Worship Setlists</h4>
@@ -1312,23 +1312,23 @@ export default function WorshipEvents({
                   setCreateTitle(`${getWeekdayName(selectedDateStr)} Worship`);
                   setShowCreateDialog(true);
                 }}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs py-3 rounded-2xl shadow-[0_0_20px_rgba(245,158,11,0.15)] flex items-center justify-center gap-2 cursor-pointer transition-all"
+                className="w-full premium-btn-primary font-bold text-xs py-3 rounded-2xl shadow-[0_0_20px_rgba(245,158,11,0.15)] flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
-                <Plus className="h-4 w-4 stroke-[3]" /> Create Setlist
+                <Plus className="h-4 w-4 stroke-[3] text-black" /> Create Setlist
               </button>
             )}
 
             {/* Interactive Monthly Grid */}
-            <div className="p-1 bg-[#09090b] rounded-2xl border border-white/5">
+            <div className="p-1 bg-zinc-950/40 rounded-2xl">
               <div className="flex items-center justify-between p-1">
                 <span className="text-xs font-bold text-white uppercase tracking-wider pl-1">
                   {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                 </span>
                 <div className="flex items-center gap-1">
-                  <button onClick={handlePrevMonth} className="p-1 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white cursor-pointer">
+                  <button onClick={handlePrevMonth} className="p-1 hover:bg-zinc-900/60 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors">
                     <ChevronLeft className="h-4 w-4" />
                   </button>
-                  <button onClick={handleNextMonth} className="p-1 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white cursor-pointer">
+                  <button onClick={handleNextMonth} className="p-1 hover:bg-zinc-900/60 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors">
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -1352,18 +1352,18 @@ export default function WorshipEvents({
                       key={idx}
                       onClick={() => setSelectedDateStr(cell.dateStr)}
                       className={`h-7 rounded-lg text-[10px] sm:text-xs font-mono relative flex items-center justify-center transition-all cursor-pointer ${
-                        !cell.isCurrentMonth ? 'text-slate-600' : 'text-slate-300'
+                        !cell.isCurrentMonth ? 'text-zinc-650' : 'text-slate-350 font-medium'
                       } ${
                         isSelected 
-                          ? 'bg-amber-500 text-black font-bold shadow-md' 
+                          ? 'bg-amber-500 text-black font-extrabold shadow-md' 
                           : isToday 
-                            ? 'bg-amber-500/10 border border-amber-500/40 text-amber-400 font-bold'
-                            : 'hover:bg-white/5'
+                            ? 'bg-amber-500/10 border border-amber-500/20 text-amber-450 font-bold'
+                            : 'hover:bg-zinc-900/40 text-slate-400'
                       }`}
                     >
                       <span>{cell.dayNum}</span>
                       {cell.hasEvent && !isSelected && (
-                        <span className="absolute bottom-1 left-1.5 right-1.5 h-1 rounded-full bg-amber-500" />
+                        <span className="absolute bottom-1 left-1.5 right-1.5 h-1 rounded-full bg-amber-550" />
                       )}
                     </button>
                   );
@@ -1373,11 +1373,11 @@ export default function WorshipEvents({
           </div>
 
           {/* Prompt footer */}
-          <div className="text-[10px] text-slate-500 leading-relaxed font-sans pt-4 border-t border-white/5">
-            <span className="font-semibold text-amber-500 flex items-center gap-1 mb-1">
+          <div className="text-[10px] text-zinc-550 leading-relaxed font-sans pt-4 border-t border-zinc-900/60">
+            <span className="font-semibold text-amber-550 flex items-center gap-1 mb-1 font-mono uppercase tracking-wider text-[9px]">
               <Sparkles className="h-3.5 w-3.5 text-amber-550" /> Interactive Setlists
             </span>
-            Select a date to inspect or build sets for services. Click songs to launch lyrics directly on the display stand.
+            Select a date to build setlists. Click songs to present lyrics on stage teleprompter.
           </div>
         </div>
 
@@ -1405,7 +1405,7 @@ export default function WorshipEvents({
               </button>
               <button 
                 onClick={onClose}
-                className="p-1.5 hover:bg-white/5 rounded-full text-slate-400 hover:text-white cursor-pointer transition-colors"
+                className="p-1.5 hover:bg-zinc-900 rounded-full text-slate-400 hover:text-white cursor-pointer transition-colors"
                 title="Close Panel"
               >
                 <X className="h-5 w-5" />
@@ -1416,10 +1416,10 @@ export default function WorshipEvents({
           {/* Agenda Grid or List representation */}
           <div className="flex-1 overflow-y-auto mt-4 space-y-4 pr-1">
             {dateEvents.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white/[0.01] rounded-3xl border border-white/5 border-dashed">
-                <CalendarIcon className="h-10 w-10 text-slate-700 animate-pulse mb-3" />
-                <h5 className="font-bold text-sm text-slate-300">No Setlists Scheduled</h5>
-                <p className="text-xs text-slate-500 max-w-xs mt-1">
+              <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-zinc-950/40 rounded-3xl border border-zinc-900/60 border-dashed">
+                <CalendarIcon className="h-10 w-10 text-zinc-700 animate-pulse mb-3" />
+                <h5 className="font-bold text-sm text-slate-350">No Setlists Scheduled</h5>
+                <p className="text-xs text-zinc-550 max-w-xs mt-1">
                   There are no song setlists for this day yet. Click "+ Create Setlist" to create one!
                 </p>
               </div>
@@ -1433,7 +1433,7 @@ export default function WorshipEvents({
                     className={`rounded-2xl border transition-all overflow-hidden ${
                       isExpanded 
                         ? 'bg-amber-500/[0.03] border-amber-500/30 shadow-lg' 
-                        : 'bg-white/[0.02] border-white/10 hover:border-white/20'
+                        : 'bg-zinc-950/20 border-zinc-900 hover:border-zinc-800'
                     }`}
                   >
                     {/* Event summary header box */}
@@ -1465,14 +1465,14 @@ export default function WorshipEvents({
                       <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => setEditingEventId(isExpanded ? null : ev.id)}
-                          className="text-[11px] font-bold text-slate-400 hover:text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-full cursor-pointer transition-colors"
+                          className="text-[11px] font-bold premium-btn-secondary px-3 py-1.5 rounded-full cursor-pointer hover:bg-zinc-900 transition-all"
                         >
                           {isExpanded ? 'Fold List' : (currentRole === 'admin' || currentRole === 'guest') ? `Manage Setup (${(ev.songIds || []).length})` : `View Setlist (${(ev.songIds || []).length})`}
                         </button>
                         {(currentRole === 'admin' || currentRole === 'guest') && (
                           <button 
                             onClick={(e) => handleDeleteEvent(ev.id, e)}
-                            className="p-2 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 rounded-xl cursor-pointer transition-colors"
+                            className="p-2 text-rose-500 hover:bg-rose-950/20 hover:text-rose-400 rounded-xl cursor-pointer transition-colors"
                             title="Wipe Schedule block"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1483,7 +1483,7 @@ export default function WorshipEvents({
 
                     {/* Expandable Worship Playlist manager */}
                     {isExpanded && (
-                      <div className="border-t border-white/10 p-4 bg-black/40">
+                      <div className="border-t border-zinc-900 p-4 bg-zinc-950/40">
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                           {/* Left Column: Setlist Arrangement Order */}
                           <div className="space-y-3">
@@ -1512,7 +1512,7 @@ export default function WorshipEvents({
                             </div>
 
                             {(ev.songIds || []).length === 0 ? (
-                              <div className="py-6 text-center text-xs text-slate-500 italic bg-white/[0.01] rounded-xl border border-white/5">
+                              <div className="py-6 text-center text-xs text-zinc-550 italic bg-zinc-950/60 rounded-xl border border-zinc-900">
                                 No songs currently placed. Link a song from your repertory catalogue on the right!
                               </div>
                             ) : (
@@ -1531,12 +1531,12 @@ export default function WorshipEvents({
                                       onDragStart={(e) => handleDragStart(e, ev.id, index)}
                                       onDragOver={handleDragOver}
                                       onDrop={(e) => handleDrop(e, ev.id, index)}
-                                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-all duration-205 ${
-                                        isDragging ? 'opacity-40 border-dashed border-amber-500/50 bg-amber-500/5' : ''
+                                      className={`p-2.5 rounded-xl flex items-center justify-between gap-3 text-xs transition-all duration-205 ${
+                                        isDragging ? 'opacity-40 bg-amber-500/5' : ''
                                       } ${
                                         isPlayActive 
-                                          ? 'border-amber-500/40 bg-amber-500/[0.04] shadow-md shadow-amber-500/[0.02]' 
-                                          : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10'
+                                          ? 'bg-amber-500/[0.04] shadow-md shadow-amber-500/[0.02]' 
+                                          : 'bg-zinc-950/20 hover:bg-zinc-900/40'
                                       } ${(currentRole === 'admin' || currentRole === 'guest') ? 'cursor-grab active:cursor-grabbing' : ''}`}
                                     >
                                       {/* Song title and metadata tags */}
@@ -1544,7 +1544,7 @@ export default function WorshipEvents({
                                         {(currentRole === 'admin' || currentRole === 'guest') && (
                                           <GripVertical className="h-3.5 w-3.5 text-slate-500 hover:text-slate-350 cursor-grab shrink-0" />
                                         )}
-                                        <span className="w-5.5 h-5.5 flex items-center justify-center rounded-lg bg-zinc-900 border border-zinc-800 text-amber-500 font-extrabold font-mono text-[9px] shrink-0 select-none">
+                                        <span className="w-5.5 h-5.5 flex items-center justify-center rounded-lg bg-zinc-900 text-amber-500 font-extrabold font-mono text-[9px] shrink-0 select-none">
                                           {String(index + 1).padStart(2, '0')}
                                         </span>
                                         <button
@@ -1562,12 +1562,12 @@ export default function WorshipEvents({
                                           </span>
                                         )}
                                         {matchSong.category && (
-                                          <span className="text-[9px] font-mono font-bold text-zinc-500 bg-zinc-900 border border-zinc-850 px-1.5 py-0.5 rounded-md truncate max-w-[85px] hidden sm:inline select-none uppercase tracking-wider">
+                                          <span className="text-[9px] font-mono font-bold text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded-md truncate max-w-[85px] hidden sm:inline select-none uppercase tracking-wider">
                                             {matchSong.category}
                                           </span>
                                         )}
                                         {matchSong.bpm && (
-                                          <span className="text-[9px] font-mono font-bold text-zinc-500 bg-zinc-900 border border-zinc-850 px-1.5 py-0.5 rounded-md shrink-0 hidden md:inline select-none">
+                                          <span className="text-[9px] font-mono font-bold text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded-md shrink-0 hidden md:inline select-none">
                                             {matchSong.bpm} BPM
                                           </span>
                                         )}
@@ -1602,7 +1602,7 @@ export default function WorshipEvents({
                                             setLiveSetlistSongIds(ev.songIds || []);
                                             setShowLiveConsole(true);
                                           }}
-                                          className="p-1 rounded-lg text-amber-500 hover:text-amber-400 hover:bg-white/5 cursor-pointer"
+                                          className="p-1 rounded-lg text-amber-500 hover:text-amber-400 hover:bg-zinc-900/60 cursor-pointer transition-colors"
                                           title="Full Screen Presentation"
                                         >
                                           <Maximize2 className="h-3.5 w-3.5" />
@@ -1612,7 +1612,7 @@ export default function WorshipEvents({
                                             <button
                                               disabled={index === 0}
                                               onClick={() => moveSongInEvent(ev.id, index, 'up')}
-                                              className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
+                                              className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-zinc-900/60 disabled:opacity-20 cursor-pointer transition-colors"
                                               title="Shift Up"
                                             >
                                               <MoveUp className="h-3.5 w-3.5" />
@@ -1620,14 +1620,14 @@ export default function WorshipEvents({
                                             <button
                                               disabled={index === (ev.songIds || []).length - 1}
                                               onClick={() => moveSongInEvent(ev.id, index, 'down')}
-                                              className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-20 cursor-pointer"
+                                              className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-zinc-900/60 disabled:opacity-20 cursor-pointer transition-colors"
                                               title="Shift Down"
                                             >
                                               <MoveDown className="h-3.5 w-3.5" />
                                             </button>
                                             <button
                                               onClick={() => toggleSongInEvent(ev.id, matchSong.id)}
-                                              className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                                              className="p-1 rounded-lg text-rose-500 hover:bg-rose-950/20 cursor-pointer transition-colors"
                                               title="De-list"
                                             >
                                               <X className="h-3.5 w-3.5" />
@@ -1647,7 +1647,7 @@ export default function WorshipEvents({
                           </div>
 
                           {/* Right Column: Fast inline song add search console */}
-                          <div className="space-y-3 xl:border-l xl:border-white/5 xl:pl-6 pt-4 xl:pt-0">
+                          <div className="space-y-3 xl:border-l xl:border-zinc-900 xl:pl-6 pt-4 xl:pt-0">
                             <div className="flex items-center justify-between">
                               <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
                                 {(currentRole === 'admin' || currentRole === 'guest') ? 'Link Catalog Songs:' : 'Search Catalog Songs:'}
@@ -1673,14 +1673,14 @@ export default function WorshipEvents({
                             </div>
                             <div className="relative">
                               <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                                <Search className="h-3 w-3 text-slate-505" />
+                                <Search className="h-3 w-3 text-slate-500" />
                               </div>
                               <input
                                 type="text"
                                 placeholder="Search songs to add..."
                                 value={songSearchInput}
                                 onChange={(e) => setSongSearchInput(e.target.value)}
-                                className="block w-full pl-8 pr-3 py-1.5 border border-white/10 rounded-lg bg-black/40 text-slate-300 placeholder-slate-500 focus:outline-none focus:border-amber-500/50 text-[11px] transition-all"
+                                className="block w-full pl-8 pr-3 py-1.5 border border-zinc-900 rounded-lg bg-zinc-950 text-slate-300 placeholder-slate-500 focus:outline-none focus:border-amber-500/50 text-[11px] transition-all premium-input"
                               />
                             </div>
 
@@ -1697,7 +1697,7 @@ export default function WorshipEvents({
                                     className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 cursor-pointer ${
                                       isSel
                                         ? 'bg-amber-550 border-amber-600 text-black font-black'
-                                        : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                                        : 'bg-zinc-900/60 border-zinc-900 text-slate-400 hover:text-white hover:bg-zinc-900/80'
                                     }`}
                                   >
                                     {displayLabel}
@@ -1726,7 +1726,7 @@ export default function WorshipEvents({
                                       className={`p-2 rounded-xl text-left border text-[11px] transition-all flex items-center justify-between gap-2 cursor-pointer ${
                                         isAdded 
                                           ? 'border-emerald-500/30 bg-emerald-500/[0.03] text-emerald-400 font-bold' 
-                                          : 'border-white/5 bg-white/[0.01] hover:bg-white/5 text-slate-300'
+                                          : 'border-zinc-900 bg-zinc-950/20 hover:bg-zinc-900/40 text-slate-350 hover:border-zinc-800'
                                       }`}
                                     >
                                       <div className="flex items-center gap-1.5 truncate">
@@ -1782,7 +1782,7 @@ export default function WorshipEvents({
 
       {/* Dynamic sliding panel: Rotation Analytics Sidebar */}
         {showAnalytics && (
-          <div className="w-80 border-l border-white/10 p-5 bg-[#060608] flex flex-col justify-between select-none animate-in slide-in-from-right duration-200 shrink-0">
+          <div className="w-80 border-l border-zinc-900 p-5 bg-zinc-950/60 flex flex-col justify-between select-none animate-in slide-in-from-right duration-200 shrink-0">
             <div className="space-y-5 flex-1 overflow-y-auto pr-1">
               <div className="flex items-center gap-2">
                 <div className="h-7 w-7 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
@@ -1792,7 +1792,7 @@ export default function WorshipEvents({
               </div>
 
               {/* Usage Stats Overview */}
-              <div className="p-3 bg-[#09090b] rounded-2xl border border-white/5 space-y-2.5">
+              <div className="p-3 bg-zinc-950/40 rounded-2xl border border-zinc-900/60 space-y-2.5">
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-400">Songs in Rotation</span>
                   <span className="font-mono text-white font-bold">{rotationAnalytics.activeSongsCount} / {songs.length}</span>

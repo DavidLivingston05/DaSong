@@ -594,17 +594,17 @@ export default function SongDetail({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-3xl border border-amber-950/10 p-12 text-center animate-pulse dark:bg-stone-900 dark:border-white/5">
-        <Music className="h-10 w-10 text-amber-900/10 mx-auto animate-spin" />
-        <h4 className="font-serif font-bold text-amber-950 mt-4 dark:text-stone-300">Loading lyrics sheet...</h4>
+      <div className="bg-[#12131A] rounded-md border border-[#1E202B] p-12 text-center animate-pulse">
+        <Music className="h-10 w-10 text-amber-500/25 mx-auto animate-spin" />
+        <h4 className="font-sans font-bold text-zinc-300 mt-4">Loading lyrics sheet...</h4>
       </div>
     );
   }
 
   if (!song) {
     return (
-      <div className="bg-white rounded-3xl border border-amber-950/10 p-12 text-center dark:bg-stone-900 dark:border-white/5">
-        <p className="text-amber-950 select-none dark:text-stone-300">Selected song could not be fetched.</p>
+      <div className="bg-[#12131A] rounded-md border border-[#1E202B] p-12 text-center">
+        <p className="text-zinc-400 select-none">Selected song could not be fetched.</p>
       </div>
     );
   }
@@ -641,23 +641,23 @@ export default function SongDetail({
   const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
 
   return (
-    <div id="lyric-presentation-panel" className="bg-[#070708] rounded-3xl border border-white/10 overflow-hidden shadow-2xl flex flex-col h-full md:min-h-[550px]">
+    <div id="lyric-presentation-panel" className="bg-[#12131A] rounded-md border border-[#1E202B] overflow-hidden flex flex-col h-full md:min-h-[550px]">
       {/* Save success toast */}
       {saveToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-5 py-2.5 bg-emerald-500 text-black font-black text-xs rounded-full shadow-2xl animate-in fade-in slide-in-from-top-2 flex items-center gap-2 pointer-events-none">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-5 py-2 bg-emerald-500 text-black font-black text-xs rounded shadow-2xl animate-in fade-in slide-in-from-top-2 flex items-center gap-2 pointer-events-none">
           <Check className="h-3.5 w-3.5 stroke-[3]" /> Changes saved successfully
         </div>
       )}
       
       {/* Copy success toast */}
       {copyToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-5 py-2.5 bg-amber-500 text-black font-black text-xs rounded-full shadow-2xl animate-in fade-in slide-in-from-top-2 flex items-center gap-2 pointer-events-none">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-5 py-2 bg-amber-500 text-black font-black text-xs rounded shadow-2xl animate-in fade-in slide-in-from-top-2 flex items-center gap-2 pointer-events-none">
           <Check className="h-3.5 w-3.5 stroke-[3]" /> {copyToast}
         </div>
       )}
       
       {/* Detail Header Strip - Masterfully designed for both Desktop (Windows) and Mobile (iOS/Android) */}
-      <div className="p-4 border-b border-zinc-800/80 bg-[#050506] flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+      <div className="p-4 border-b border-[#1E202B] bg-[#12131A] flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         
         {/* Left Side: Back Trigger */}
         <button
@@ -667,7 +667,7 @@ export default function SongDetail({
             }
             onClose();
           }}
-          className="h-12 px-4 bg-zinc-900 border border-zinc-800 hover:bg-zinc-850 text-amber-500 hover:text-amber-400 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
+          className="h-10 px-4 premium-btn-secondary text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer rounded active-touch shrink-0"
           title={backLabel || "Back to Search"}
         >
           ← <span className="hidden xs:inline">{backLabel || "Back to Search"}</span>
@@ -678,10 +678,10 @@ export default function SongDetail({
           {/* Follow Live Service (For all users) */}
           <button
             onClick={() => handleToggleFollow(!isFollowing)}
-            className={`h-12 w-12 sm:w-auto sm:px-4 rounded-2xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold ${
+            className={`h-10 px-2.5 sm:px-4 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold ${
               isFollowing
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] animate-pulse'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse'
+                : 'premium-btn-secondary'
             }`}
             title={isFollowing ? "Following active live service broadcast" : "Follow active live service broadcast"}
           >
@@ -693,10 +693,10 @@ export default function SongDetail({
           {currentRole === 'admin' && (
             <button
               onClick={() => handleToggleBroadcast(!isBroadcasting)}
-              className={`h-12 w-12 sm:w-auto sm:px-4 rounded-2xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold relative ${
+              className={`h-10 px-2.5 sm:px-4 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold relative ${
                 isBroadcasting
-                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                  : 'premium-btn-secondary'
               }`}
               title={isBroadcasting ? "Broadcasting live screen state" : "Broadcast live screen state"}
             >
@@ -711,41 +711,41 @@ export default function SongDetail({
           {/* Favorite Indicator Action Button */}
           <button
             onClick={() => onToggleFavorite(song.id, !song.favorite)}
-            className={`h-12 w-12 rounded-2xl border flex items-center justify-center cursor-pointer transition-all shrink-0 ${
+            className={`h-10 w-10 rounded flex items-center justify-center cursor-pointer transition-all shrink-0 ${
               song.favorite
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
+                ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                : 'premium-btn-secondary'
             }`}
             title="Toggle Favorite"
           >
-            <Heart className={`h-4 w-4 ${song.favorite ? 'fill-amber-400 text-amber-400' : ''}`} />
+            <Heart className={`h-4 w-4 ${song.favorite ? 'fill-amber-500 text-amber-500' : ''}`} />
           </button>
 
           {/* Share Dropdown Button */}
           <div className="relative shrink-0">
             <button
               onClick={() => setShowShareDropdown(!showShareDropdown)}
-              className={`h-12 w-12 rounded-2xl border flex items-center justify-center cursor-pointer transition-all shrink-0 ${
+              className={`h-10 w-10 rounded flex items-center justify-center cursor-pointer transition-all shrink-0 ${
                 showShareDropdown
-                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                  : 'premium-btn-secondary'
               }`}
               title="Share / Copy Options"
             >
               <Share2 className="h-4 w-4" />
             </button>
             {showShareDropdown && (
-              <div className="absolute right-0 bottom-14 md:bottom-auto md:top-14 w-48 bg-zinc-950 border border-zinc-850 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-zinc-900">Share / Copy Options</p>
+              <div className="absolute right-0 bottom-12 md:bottom-auto md:top-12 w-48 bg-[#12131A] border border-[#1E202B] rounded z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-[#1E202B]">Share / Copy Options</p>
                 <button
                   onClick={handleCopyLyrics}
-                  className="w-full text-left p-2 rounded-xl text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
+                  className="w-full text-left p-2 rounded text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
                 >
                   <FileText className="h-3.5 w-3.5 text-zinc-500" /> Copy Lyrics
                 </button>
                 <button
                   onClick={handleCopyWebLink}
-                  className="w-full text-left p-2 rounded-xl text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
+                  className="w-full text-left p-2 rounded text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
                 >
                   <Link className="h-3.5 w-3.5 text-zinc-500" /> Copy Song Link
                 </button>
@@ -757,7 +757,7 @@ export default function SongDetail({
           {(currentRole === 'admin' || currentRole === 'guest') && (
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="h-12 w-12 sm:w-auto sm:px-4 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-850 hover:text-white rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              className="h-10 px-4 premium-btn-secondary rounded text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
               title="Edit Lyrics"
             >
               <Edit3 className="h-4 w-4 shrink-0" /> 
@@ -771,15 +771,15 @@ export default function SongDetail({
               <button
                 type="button"
                 onClick={() => setShowSetlistDropdown(!showSetlistDropdown)}
-                className="h-12 w-12 sm:w-auto sm:px-4 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-850 hover:text-white rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                className="h-10 px-4 premium-btn-secondary rounded text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                 title="Add to Setlist"
               >
                 <Plus className="h-4 w-4 shrink-0" /> 
                 <span className="hidden sm:inline">Add to Setlist</span>
               </button>
               {showSetlistDropdown && (
-                <div className="absolute right-0 bottom-14 md:bottom-auto md:top-14 w-60 bg-zinc-950 border border-zinc-850 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-zinc-900">Select Target Setlist</p>
+                <div className="absolute right-0 bottom-12 md:bottom-auto md:top-12 w-60 bg-[#12131A] border border-[#1E202B] rounded z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-[#1E202B]">Select Target Setlist</p>
                   <div className="max-h-[160px] overflow-y-auto pr-1">
                     {sortedEvents.length === 0 ? (
                       <p className="text-[10px] text-zinc-500 italic p-3 text-center">No setlists created yet.</p>
@@ -791,7 +791,7 @@ export default function SongDetail({
                             type="button"
                             key={ev.id}
                             onClick={() => handleToggleSongInSetlist(ev)}
-                            className={`w-full text-left p-2.5 rounded-xl text-xs flex items-center justify-between gap-2 hover:bg-white/5 transition-all cursor-pointer ${
+                            className={`w-full text-left p-2.5 rounded text-xs flex items-center justify-between gap-2 hover:bg-white/5 transition-all cursor-pointer ${
                               isAdded ? 'text-emerald-400 font-bold' : 'text-zinc-300'
                             }`}
                           >
@@ -815,7 +815,7 @@ export default function SongDetail({
           <button
             id="stage-presentation-trigger"
             onClick={() => onEnterStageMode()}
-            className="h-12 w-12 sm:w-auto sm:px-5 bg-amber-500 hover:bg-amber-400 text-black rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer active:scale-95 shrink-0"
+            className="h-10 px-5 premium-btn-primary rounded text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
             title="Present Fullscreen"
           >
             <ArrowUpRight className="h-4 w-4 stroke-[3] shrink-0" />
@@ -826,57 +826,57 @@ export default function SongDetail({
 
       {/* Editing panel state */}
       {isEditing ? (
-        <div className="p-5 flex-1 overflow-y-auto space-y-4 bg-[#050506]">
-          <h4 className="font-bold text-sm text-white uppercase tracking-wider">Manual Lyrics Editor</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div className="p-6 flex-1 overflow-y-auto space-y-5 bg-[#12131A]">
+          <h4 className="font-bold text-sm text-white uppercase tracking-wider font-mono">Manual Lyrics Editor</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-mono text-slate-400">Song Title</label>
+              <label className="text-xs font-mono text-zinc-400">Song Title</label>
               <input
                 id="edit-title"
                 type="text"
                 value={editForm.title}
                 onChange={(e) => setEditForm(p => ({ ...p, title: e.target.value }))}
-                className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans"
+                className="mt-1 w-full text-xs p-2.5 rounded font-sans premium-input focus:outline-none"
               />
             </div>
             <div>
-              <label className="text-xs font-mono text-slate-400">Author</label>
+              <label className="text-xs font-mono text-zinc-400">Author</label>
               <input
                 id="edit-author"
                 type="text"
                 value={editForm.author}
                 onChange={(e) => setEditForm(p => ({ ...p, author: e.target.value }))}
-                className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans"
+                className="mt-1 w-full text-xs p-2.5 rounded font-sans premium-input focus:outline-none"
               />
             </div>
             <div>
-              <label className="text-xs font-mono text-slate-400">Original Key</label>
+              <label className="text-xs font-mono text-zinc-400">Original Key</label>
               <input
                 id="edit-key"
                 type="text"
                 value={editForm.key}
                 onChange={(e) => setEditForm(p => ({ ...p, key: e.target.value }))}
-                className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
+                className="mt-1 w-full text-xs p-2.5 rounded font-mono premium-input focus:outline-none"
                 placeholder="e.g. G"
               />
             </div>
             <div>
-              <label className="text-xs font-mono text-slate-400">Tempo BPM</label>
+              <label className="text-xs font-mono text-zinc-400">Tempo BPM</label>
               <input
                 id="edit-bpm"
                 type="number"
                 value={editForm.bpm}
                 onChange={(e) => setEditForm(p => ({ ...p, bpm: parseInt(e.target.value) || 75 }))}
-                className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
+                className="mt-1 w-full text-xs p-2.5 rounded font-mono premium-input focus:outline-none"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs font-mono text-slate-400">Song Category</label>
+              <label className="text-xs font-mono text-zinc-400">Song Category</label>
               <select
                 id="edit-category"
                 value={editForm.category}
                 onChange={(e) => setEditForm(p => ({ ...p, category: e.target.value }))}
-                className="mt-1 w-full text-xs p-2.5 rounded-xl border border-white/10 bg-[#09090B] text-white outline-none focus:border-amber-500 cursor-pointer font-sans"
+                className="mt-1 w-full text-xs p-2.5 rounded cursor-pointer font-sans premium-input focus:outline-none"
               >
                 <option value="Worship">Contemporary Worship</option>
                 <option value="Classic">Classic Lyric</option>
@@ -887,7 +887,7 @@ export default function SongDetail({
             </div>
           </div>
           <div>
-            <label className="text-xs font-mono text-slate-400 block mb-1">
+            <label className="text-xs font-mono text-zinc-400 block mb-1">
               <span>Song Lyrics / Content</span>
             </label>
             <textarea
@@ -895,21 +895,21 @@ export default function SongDetail({
               value={editForm.lyrics}
               onChange={(e) => setEditForm(p => ({ ...p, lyrics: e.target.value }))}
               rows={12}
-              className="mt-1 w-full text-xs p-3.5 rounded-xl border border-white/10 bg-[#09090B] text-white font-mono outline-none focus:border-amber-500"
+              className="mt-1 w-full text-xs p-3 rounded font-mono outline-none premium-input focus:outline-none"
             />
           </div>
-          <div className="flex gap-2 justify-end">
+          <div className="flex gap-2.5 justify-end">
             <button
               onClick={() => setIsEditing(false)}
-              className="px-4 py-2 text-xs font-semibold bg-white/5 text-slate-300 hover:bg-white/10 rounded-xl cursor-pointer"
+              className="premium-btn-secondary px-5 py-2.5 rounded text-xs font-bold cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handleSaveEdit}
-              className="px-5 py-2 text-xs text-black font-bold bg-amber-500 hover:bg-amber-400 rounded-full flex items-center gap-1 shadow-md cursor-pointer"
+              className="premium-btn-primary px-6 py-2.5 rounded text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <Save className="h-3.5 w-3.5 stroke-[2.5]" /> Save Changes
+              <Save className="h-3.5 w-3.5 text-black stroke-[3]" /> Save Changes
             </button>
           </div>
         </div>
@@ -917,17 +917,16 @@ export default function SongDetail({
         <div className="flex-1 flex flex-col md:flex-row min-h-0">
           
           {/* Main Lyrics Area */}
-          <div className="flex-1 flex flex-col min-h-0">
-            {/* Custom Interactive Musician Control Ribbon - Highly Optimized for both Mobile Touch and Desktop Windows */}
-            <div className="hidden md:flex p-4 border-b border-white/10 bg-[#050506] items-center justify-between gap-4 select-none">
+          <div className="flex-1 flex flex-col min-h-0">            {/* Custom Interactive Musician Control Ribbon - Highly Optimized for both Mobile Touch and Desktop Windows */}
+            <div className="hidden md:flex p-4 border-b border-[#1E202B] bg-[#12131A] items-center justify-between gap-4 select-none">
 
               {/* 1. COMFORTABLE FONT SIZE ADJUSTMENTS */}
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest">Size:</span>
-                <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <div className="flex items-center gap-1.5 p-1 rounded bg-[#12131A] border border-[#1E202B]">
                   <button
                     onClick={() => setFontSize(p => Math.max(12, p - 1))}
-                    className="w-10 h-10 flex items-center justify-center bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl border border-zinc-800 active:scale-90 transition-all cursor-pointer"
+                    className="w-10 h-10 flex items-center justify-center bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded border border-[#1E202B] active:scale-90 transition-all cursor-pointer"
                     title="Smaller text font size"
                   >
                     <ZoomOut className="h-4 w-4 stroke-[2.5]" />
@@ -939,7 +938,7 @@ export default function SongDetail({
                   
                   <button
                     onClick={() => setFontSize(p => Math.min(28, p + 1))}
-                    className="w-10 h-10 flex items-center justify-center bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl border border-zinc-800 active:scale-90 transition-all cursor-pointer"
+                    className="w-10 h-10 flex items-center justify-center bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded border border-[#1E202B] active:scale-90 transition-all cursor-pointer"
                     title="Larger text font size"
                   >
                     <ZoomIn className="h-4 w-4 stroke-[2.5]" />
@@ -950,16 +949,16 @@ export default function SongDetail({
               {/* 2. AUTO SCROLL CONTROLLER */}
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest">Scroll:</span>
-                <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <div className="flex items-center gap-1.5 p-1 rounded bg-[#12131A] border border-[#1E202B]">
                   <button
                     onClick={() => {
                       if (autoScrollSpeed === 0) setAutoScrollSpeed(2);
                       setScrolling(!scrolling);
                     }}
-                    className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all active:scale-90 cursor-pointer ${
+                    className={`w-10 h-10 flex items-center justify-center rounded border transition-all active:scale-90 cursor-pointer ${
                       scrolling && autoScrollSpeed > 0
-                        ? 'bg-amber-500 border-amber-500 text-black shadow-[0_0_10px_rgba(245,158,11,0.3)] font-black'
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'
+                        ? 'bg-amber-500 border-amber-500 text-black font-black'
+                        : 'bg-zinc-950 border-[#1E202B] text-zinc-400 hover:text-white'
                     }`}
                     title={scrolling && autoScrollSpeed > 0 ? 'Pause scroll' : 'Start auto-scroll'}
                   >
@@ -970,7 +969,7 @@ export default function SongDetail({
                     <select
                       value={autoScrollSpeed}
                       onChange={(e) => setAutoScrollSpeed(Number(e.target.value))}
-                      className="bg-zinc-950 text-xs font-bold font-mono h-10 px-2 rounded-xl text-amber-500 border border-zinc-800 focus:outline-none cursor-pointer"
+                      className="bg-zinc-950 text-xs font-bold font-mono h-10 px-2 rounded text-amber-500 border border-[#1E202B] focus:outline-none cursor-pointer"
                     >
                       <option value={1}>1x Speed</option>
                       <option value={2}>2x Speed</option>
@@ -999,9 +998,9 @@ export default function SongDetail({
                 <p className="text-xs text-slate-400 mt-1.5 font-medium">
                   Author/Credits: <span className="text-slate-300 font-semibold">{song.author || 'Traditional'}</span>
                 </p>
-                <div className="border-t border-dashed border-zinc-800/80 my-4 pt-4 flex flex-wrap items-center justify-between select-none pointer-events-none gap-2">
+                <div className="border-t border-[#1E202B] my-4 pt-4 flex flex-wrap items-center justify-between select-none pointer-events-none gap-2">
                   <span className="text-[10px] font-mono tracking-wider text-zinc-550 uppercase flex items-center gap-1.5">
-                    Tempo: <span className="text-amber-500 font-bold">{song.bpm || 72} BPM</span>
+                    Tempo: <span className="text-amber-550 font-bold">{song.bpm || 72} BPM</span>
                   </span>
                 </div>
               </div>
@@ -1021,9 +1020,9 @@ export default function SongDetail({
                     return (
                       <div
                         key={idx}
-                        className={`mb-6 p-4 rounded-2xl transition-all duration-300 ${
+                        className={`mb-6 p-4 rounded transition-all duration-300 ${
                           isSectionHighlighted
-                            ? 'bg-amber-500/10 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
+                            ? 'bg-amber-500/10 border border-amber-500/30'
                             : (isChorus
                                 ? 'border-l-4 border-amber-500 bg-amber-500/5 pl-4 text-slate-350'
                                 : 'border border-transparent text-slate-350')
@@ -1038,8 +1037,6 @@ export default function SongDetail({
                           };
                           
                           const highlightClass = 'transition-all duration-200';
-
-
 
                           // Normal lyric block
                           return (
@@ -1069,15 +1066,13 @@ export default function SongDetail({
               {/* Bottom scroll padding spacer */}
               <div className="h-24" />
             </div>
-
             {/* Bottom Worship Setlist Navigation Bar */}
             {worshipSetList.length > 0 && setlistIndex >= 0 ? (
-              <div className="p-4 border-t border-zinc-800/80 bg-zinc-950 flex flex-col md:flex-row items-center justify-between gap-4 select-none relative">
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/10 to-transparent"></div>
+              <div className="p-4 border-t border-[#1E202B] bg-[#12131A] flex flex-col md:flex-row items-center justify-between gap-4 select-none relative">
                 
                 {/* Progress metadata */}
                 <div className="flex items-center gap-2 font-mono text-[10px] md:text-xs text-zinc-400">
-                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_#f59e0b]" />
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                   <span>SETLIST STATUS: <span className="font-black text-amber-500 font-sans">SONG {setlistIndex + 1} OF {worshipSetList.length}</span></span>
                 </div>
                 
@@ -1086,7 +1081,7 @@ export default function SongDetail({
                   {hasPrevSong && (
                     <button
                       onClick={() => onSelectSong(prevSongId!, worshipSetList)}
-                      className="w-full sm:w-auto h-12 px-5 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-850 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shadow-md shrink-0"
+                      className="w-full sm:w-auto h-10 px-5 rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 premium-btn-secondary shrink-0"
                       title={`Previous: ${prevSongTitle}`}
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -1097,14 +1092,14 @@ export default function SongDetail({
                   {hasNextSong ? (
                     <button
                       onClick={() => onSelectSong(nextSongId!, worshipSetList)}
-                      className="w-full sm:w-auto h-12 px-6 rounded-xl bg-amber-600 hover:bg-amber-550 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shadow-[0_2px_10px_rgba(217,119,6,0.1)]"
+                      className="w-full sm:w-auto h-10 px-6 rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 premium-btn-primary"
                       title={`Next up: ${nextSongTitle}`}
                     >
                       <span>NEXT: {nextSongTitle}</span>
                       <ChevronRight className="h-4 w-4" />
                     </button>
                   ) : (
-                    <div className="w-full sm:w-auto h-12 px-5 rounded-xl border border-zinc-800/60 bg-zinc-900/30 text-zinc-500 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                    <div className="w-full sm:w-auto h-10 px-5 rounded bg-zinc-900/40 border border-[#1E202B] text-zinc-500 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
                       <Sparkles className="h-4 w-4 text-amber-550" />
                       <span>LAST SONG IN SETLIST</span>
                     </div>
@@ -1113,7 +1108,7 @@ export default function SongDetail({
                   {currentRole === 'choir' && (
                     <button
                       onClick={handleOpenSuggestModal}
-                      className="w-full sm:w-auto bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-400 text-xs font-mono uppercase tracking-wider font-bold px-4 h-12 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95"
+                      className="w-full sm:w-auto bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 text-xs font-mono uppercase tracking-wider font-bold px-4 h-10 rounded cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
                       <Heart className="h-4 w-4 text-amber-500" />
                       <span>Suggest Song</span>
@@ -1123,7 +1118,7 @@ export default function SongDetail({
               </div>
             ) : (
               /* Simple general catalog bottom bar */
-              <div className="hidden md:flex p-4 border-t border-zinc-800/80 bg-zinc-950 flex-col sm:flex-row items-center justify-between gap-4 select-none relative">
+              <div className="hidden md:flex p-4 border-t border-[#1E202B] bg-[#12131A] flex-col sm:flex-row items-center justify-between gap-4 select-none relative">
                 <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-zinc-500">
                   <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
                   <span>General Catalog Explorer Mode</span>
@@ -1133,9 +1128,9 @@ export default function SongDetail({
                   {currentRole === 'choir' && (
                     <button
                       onClick={handleOpenSuggestModal}
-                      className="w-full sm:w-auto bg-amber-600 hover:bg-amber-550 text-white text-xs font-mono uppercase tracking-wider font-bold px-5 py-3 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+                      className="w-full sm:w-auto px-5 py-2 premium-btn-primary text-xs font-mono uppercase tracking-wider font-bold rounded cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
-                      <Heart className="h-4 w-4 text-white" />
+                      <Heart className="h-4 w-4 text-black" />
                       <span>Suggest Song</span>
                     </button>
                   )}
@@ -1147,9 +1142,9 @@ export default function SongDetail({
 
           {/* Related / Suggested Songs sidebar */}
           {relatedSongs.length > 0 && (
-            <div className="hidden md:flex md:w-64 border-t md:border-t-0 md:border-l border-white/10 p-5 bg-[#050506] flex-col min-h-0 font-sans select-none">
-              <h5 className="font-bold text-xs text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-white/10 pb-2">
-                <Music className="h-3.5 w-3.5 text-amber-500 animate-pulse" /> Related Songs
+            <div className="hidden md:flex md:w-64 border-t md:border-t-0 md:border-l border-[#1E202B] p-5 bg-[#12131A] flex-col min-h-0 font-sans select-none">
+              <h5 className="font-bold text-xs text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-[#1E202B] pb-2">
+                <Music className="h-3.5 w-3.5 text-amber-500" /> Related Songs
               </h5>
               <p className="text-[10px] text-slate-500 mt-1 pb-1">
                 Suggested based on category or name matches:
@@ -1160,7 +1155,7 @@ export default function SongDetail({
                   <button
                     key={meta.id}
                     onClick={() => onSelectSong(meta.id)}
-                    className="w-full text-left p-3 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-amber-500/30 transition-all group flex flex-col gap-1 cursor-pointer"
+                    className="w-full text-left p-3 rounded border border-[#1E202B] bg-[#12131A] hover:bg-zinc-900/40 hover:border-amber-500/30 transition-all group flex flex-col gap-1 cursor-pointer"
                   >
                     <div className="font-semibold text-xs text-white group-hover:text-amber-400 font-sans transition-colors line-clamp-1">
                       {meta.title}
@@ -1179,12 +1174,11 @@ export default function SongDetail({
 
         </div>
       )}
-
       {/* Mobile Floating Sliders Deck Button */}
       {!isEditing && (
         <button
           onClick={() => setShowMobileDrawer(true)}
-          className="fixed bottom-20 right-4 z-40 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black p-3.5 rounded-full shadow-2xl md:hidden active-touch flex items-center justify-center border border-amber-400/20"
+          className="fixed bottom-20 right-4 z-40 bg-amber-505 hover:bg-amber-500 active:scale-95 text-black p-3.5 rounded-full md:hidden active-touch flex items-center justify-center border border-[#1E202B]"
           title="Open Musician controls"
         >
           <Sliders className="h-5 w-5 stroke-[2.5]" />
@@ -1194,18 +1188,18 @@ export default function SongDetail({
       {/* Slide-up Musician Control Drawer */}
       <div className={showMobileDrawer ? 'fixed inset-0 bg-black/85 backdrop-blur-xs z-50 flex items-end justify-center md:hidden' : 'hidden'} onClick={() => setShowMobileDrawer(false)}>
           <div 
-            className="bg-[#09090b] border-t border-zinc-800 rounded-t-3xl w-full max-w-md p-5 pb-safe space-y-6 shadow-2xl animate-slideUp select-none"
+            className="bg-[#12131A] border-t border-[#1E202B] rounded-t-md w-full max-w-md p-5 pb-safe space-y-6 animate-slideUp select-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Handle */}
             <div className="flex flex-col items-center gap-1.5 cursor-pointer pb-2" onClick={() => setShowMobileDrawer(false)}>
               <div className="w-12 h-1 bg-zinc-800 rounded-full"></div>
-              <span className="text-[10px] font-mono font-bold tracking-widest text-zinc-500 uppercase mt-1">Reader Settings</span>
+              <span className="text-[10px] font-mono font-bold tracking-widest text-zinc-550 uppercase mt-1">Reader Settings</span>
             </div>
 
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
               {/* Font scaling */}
-              <div className="space-y-2.5 border-b border-zinc-900 pb-4">
+              <div className="space-y-2.5 border-b border-[#1E202B] pb-4">
                 <div className="flex items-center justify-between">
                   <div className="text-left">
                     <span className="text-xs font-bold text-white block">Font Scale</span>
@@ -1216,13 +1210,13 @@ export default function SongDetail({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setFontSize(p => Math.max(12, p - 2))}
-                    className="flex-1 h-10 bg-zinc-900 border border-zinc-850 text-zinc-200 rounded-xl active-touch font-bold cursor-pointer"
+                    className="flex-1 h-10 premium-btn-secondary text-zinc-200 rounded active-touch font-bold cursor-pointer"
                   >
                     Smaller Text
                   </button>
                   <button
                     onClick={() => setFontSize(p => Math.min(28, p + 2))}
-                    className="flex-1 h-10 bg-zinc-900 border border-zinc-850 text-zinc-200 rounded-xl active-touch font-bold cursor-pointer"
+                    className="flex-1 h-10 premium-btn-secondary text-zinc-200 rounded active-touch font-bold cursor-pointer"
                   >
                     Larger Text
                   </button>
@@ -1230,7 +1224,7 @@ export default function SongDetail({
               </div>
 
               {/* Auto Scroll Controls */}
-              <div className="space-y-2.5 border-b border-zinc-900 pb-4">
+              <div className="space-y-2.5 border-b border-[#1E202B] pb-4">
                 <div className="flex items-center justify-between">
                   <div className="text-left">
                     <span className="text-xs font-bold text-white block">Auto Scroll Sheet</span>
@@ -1246,10 +1240,10 @@ export default function SongDetail({
                       if (autoScrollSpeed === 0) setAutoScrollSpeed(2); // default speed
                       setScrolling(!scrolling);
                     }}
-                    className={`flex-1 h-11 border rounded-xl active-touch text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    className={`flex-1 h-11 border rounded active-touch text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       scrolling && autoScrollSpeed > 0
                         ? 'bg-amber-500 border-amber-500 text-black font-extrabold'
-                        : 'bg-zinc-900 border-zinc-850 text-zinc-300'
+                        : 'bg-zinc-900 border-[#1E202B] text-zinc-300'
                     }`}
                   >
                     {scrolling && autoScrollSpeed > 0 ? (
@@ -1267,7 +1261,7 @@ export default function SongDetail({
                     <select
                       value={autoScrollSpeed}
                       onChange={(e) => setAutoScrollSpeed(Number(e.target.value))}
-                      className="bg-zinc-900 text-xs font-bold h-11 px-3.5 rounded-xl text-[#f59e0b] border border-zinc-850 active-touch"
+                      className="bg-zinc-900 text-xs font-bold h-11 px-3.5 rounded text-amber-500 border border-[#1E202B] active-touch"
                     >
                       <option value={1}>1x Speed</option>
                       <option value={2}>2x Speed</option>
@@ -1280,7 +1274,7 @@ export default function SongDetail({
               </div>
 
               {/* Present Fullscreen Shortcut */}
-              <div className="border-b border-zinc-900 pb-4">
+              <div className="border-b border-[#1E202B] pb-4">
                 <div className="flex items-center justify-between mb-2.5">
                   <div className="text-left">
                     <span className="text-xs font-bold text-white block">Present on Stage</span>
@@ -1292,7 +1286,7 @@ export default function SongDetail({
                     setShowMobileDrawer(false);
                     onEnterStageMode();
                   }}
-                  className="w-full h-12 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl active-touch transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                  className="w-full h-11 premium-btn-primary font-extrabold text-xs rounded active-touch transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   <ArrowUpRight className="h-4 w-4 stroke-[3]" /> Present Fullscreen
                 </button>
@@ -1307,7 +1301,7 @@ export default function SongDetail({
             {/* Confirm button */}
             <button
               onClick={() => setShowMobileDrawer(false)}
-              className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-2xl active-touch transition-all shadow-md cursor-pointer"
+              className="w-full py-3.5 premium-btn-primary font-black text-xs rounded active-touch transition-all cursor-pointer"
             >
               DONE / BACK TO SHEET
             </button>
@@ -1318,10 +1312,10 @@ export default function SongDetail({
       {showSuggestModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={() => setShowSuggestModal(false)}>
           <div 
-            className="bg-[#070708] border border-zinc-800 rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200 select-none text-left"
+            className="bg-[#12131A] border border-[#1E202B] rounded-md w-full max-w-md p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200 select-none text-left"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+            <div className="flex items-center justify-between border-b border-[#1E202B] pb-3">
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Heart className="h-4.5 w-4.5 text-amber-500 fill-amber-500/10" /> Suggest for Service
               </h3>
@@ -1333,7 +1327,7 @@ export default function SongDetail({
               </button>
             </div>
 
-            <div className="bg-amber-500/5 border border-amber-500/15 p-3.5 rounded-2xl">
+            <div className="bg-amber-500/5 border border-amber-500/15 p-3.5 rounded-md">
               <span className="text-[10px] text-amber-500 font-mono tracking-widest uppercase block font-semibold">SUGGESTING SONG</span>
               <span className="text-sm font-bold text-white block mt-0.5">{song?.title}</span>
               {song?.author && <span className="text-[11px] text-zinc-400 block mt-0.5">by {song.author}</span>}
@@ -1346,7 +1340,7 @@ export default function SongDetail({
                   type="text"
                   value={sugName}
                   onChange={(e) => setSugName(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-zinc-800 bg-zinc-950 text-white outline-none focus:border-amber-500"
+                  className="w-full text-xs p-2.5 rounded premium-input focus:outline-none"
                   placeholder="e.g. Choir Member, Guest"
                 />
               </div>
@@ -1356,14 +1350,14 @@ export default function SongDetail({
                 <select
                   value={sugEventId}
                   onChange={(e) => setSugEventId(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-zinc-800 bg-zinc-950 text-white outline-none focus:border-amber-500 cursor-pointer"
+                  className="w-full text-xs p-2.5 rounded cursor-pointer premium-input focus:outline-none"
                 >
                   <option value="">General Catalog (No specific meeting)</option>
                   {getLocalWorshipEvents()
                     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                     .map(ev => (
                       <option key={ev.id} value={ev.id}>
-                        {ev.title} ({new Date(ev.date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})})
+                         {ev.title} ({new Date(ev.date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})})
                       </option>
                     ))
                   }
@@ -1375,7 +1369,7 @@ export default function SongDetail({
                 <textarea
                   value={sugNote}
                   onChange={(e) => setSugNote(e.target.value)}
-                  className="w-full text-xs p-3 h-16 rounded-xl border border-zinc-800 bg-zinc-955 text-white outline-none focus:border-amber-500 resize-none"
+                  className="w-full text-xs p-2.5 h-16 rounded premium-input focus:outline-none resize-none"
                   placeholder="e.g. Suggesting this as the opening praise song"
                 />
               </div>
@@ -1384,13 +1378,13 @@ export default function SongDetail({
             <div className="flex items-center gap-3 pt-2">
               <button
                 onClick={() => setShowSuggestModal(false)}
-                className="flex-1 py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-850 text-zinc-350 hover:text-white text-xs font-bold rounded-xl cursor-pointer transition-colors active:scale-95"
+                className="flex-1 py-2.5 text-xs font-bold premium-btn-secondary cursor-pointer transition-all active:scale-95 rounded"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitSuggestion}
-                className="flex-1 py-3 bg-amber-600 hover:bg-amber-550 text-white text-xs font-bold rounded-xl cursor-pointer transition-colors active:scale-95 shadow-md"
+                className="flex-1 py-2.5 text-xs font-bold premium-btn-primary cursor-pointer transition-all active:scale-95 rounded"
               >
                 Submit Suggestion
               </button>
