@@ -342,8 +342,7 @@ export default function WorshipEvents({
   const [createTime, setCreateTime] = useState<string>('09:00');
   const [createDesc, setCreateDesc] = useState<string>('');
   const [createSongIds, setCreateSongIds] = useState<string[]>([]);
-  const [aiKeyword, setAiKeyword] = useState<string>('');
-  const [isGeneratingTheme, setIsGeneratingTheme] = useState<boolean>(false);
+
 
   // Active viewing/editing event on agenda for desktop
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -787,48 +786,6 @@ export default function WorshipEvents({
     return sorted;
   }, [songs, songSearchQuery, selectedCategory]);
 
-  const handleAiGenerateTheme = async () => {
-    setIsGeneratingTheme(true);
-    try {
-      const res = await fetch('/api/ai/generate-theme', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: createDate, time: createTime, keywords: aiKeyword })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.title) setCreateTitle(data.title);
-        if (data.description) setCreateDesc(data.description);
-      } else {
-        const suggestions = getCreativeSuggestions(createDate, createTime);
-        const match = suggestions.find(s => 
-          s.title.toLowerCase().includes(aiKeyword.toLowerCase()) || 
-          s.description.toLowerCase().includes(aiKeyword.toLowerCase())
-        );
-        const selected = match || suggestions[Math.floor(Math.random() * suggestions.length)];
-        
-        if (selected) {
-          if (aiKeyword.trim()) {
-            setCreateTitle(`${aiKeyword.trim()} & Praise`);
-            setCreateDesc(`A special service centering on ${aiKeyword.trim()}, seeking fellowship and shared reflection.`);
-          } else {
-            setCreateTitle(selected.title);
-            setCreateDesc(selected.description);
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('AI theme generation failed, running local fallback:', err);
-      const suggestions = getCreativeSuggestions(createDate, createTime);
-      const selected = suggestions[0];
-      if (selected) {
-        setCreateTitle(selected.title);
-        setCreateDesc(selected.description);
-      }
-    } finally {
-      setIsGeneratingTheme(false);
-    }
-  };
 
   const handleCreateEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -856,7 +813,6 @@ export default function WorshipEvents({
       setCreateTitle('');
       setCreateDesc('');
       setCreateSongIds([]);
-      setAiKeyword('');
       setShowCreateDialog(false);
     }
   };
@@ -2522,37 +2478,7 @@ export default function WorshipEvents({
                 </div>
               </div>
 
-              {/* AI Creative Assistant */}
-              <div className="p-3 bg-[#0d0d11]/80 rounded-2xl border border-amber-500/10 space-y-2">
-                <div className="flex items-center gap-1.5 text-amber-500 text-[10px] font-mono uppercase font-bold">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>AI Creative Assistant</span>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Sermon Topic (e.g. Hope, Forgiveness)"
-                    value={aiKeyword}
-                    onChange={e => setAiKeyword(e.target.value)}
-                    className="flex-1 bg-[#09090b] border border-white/10 rounded-xl px-3 py-2 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500 text-xs font-semibold"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAiGenerateTheme}
-                    disabled={isGeneratingTheme}
-                    className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-extrabold text-[11px] px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
-                  >
-                    {isGeneratingTheme ? (
-                      <div className="w-3 h-3 border-2 border-black/25 border-t-black rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Sparkles className="h-3.5 w-3.5 stroke-[2.5]" />
-                        <span>Generate</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
