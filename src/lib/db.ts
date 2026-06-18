@@ -574,32 +574,24 @@ export async function syncWithMongoDB(): Promise<void> {
     }
   }
 
-  // Pull missing/outdated songs in parallel batches of 500 to optimize network throughput and prevent timeouts
+  // Pull missing/outdated songs in sequential batches of 500 to optimize network throughput and prevent connection timeouts
   if (missingOrOutdatedIds.length > 0) {
     const chunkSize = 500;
-    const fetchPromises: Promise<void>[] = [];
-    
     for (let i = 0; i < missingOrOutdatedIds.length; i += chunkSize) {
       const chunk = missingOrOutdatedIds.slice(i, i + chunkSize);
-      const fetchPromise = (async () => {
-        try {
-          const fullSongsChunk: Song[] = await apiRequest('/api/songs/fetch-batch', {
-            method: 'POST',
-            body: JSON.stringify({ ids: chunk })
-          });
-          if (fullSongsChunk.length > 0) {
-            await saveSongsBatchIndexedDB(fullSongsChunk);
-          }
-        } catch (err) {
-          console.error('Failed to sync batch chunk:', err);
-          throw err;
+      try {
+        const fullSongsChunk: Song[] = await apiRequest('/api/songs/fetch-batch', {
+          method: 'POST',
+          body: JSON.stringify({ ids: chunk })
+        });
+        if (fullSongsChunk.length > 0) {
+          await saveSongsBatchIndexedDB(fullSongsChunk);
         }
-      })();
-      fetchPromises.push(fetchPromise);
+      } catch (err) {
+        console.error('Failed to sync batch chunk:', err);
+        throw err;
+      }
     }
-    
-    // Concurrently await all batch chunks
-    await Promise.all(fetchPromises);
   }
 
   // Save the new max timestamp to localStorage so future checks can hit the cache!

@@ -24,6 +24,7 @@ app.use('/api', (req, res, next) => {
 });
 
 // Helper to partition queries. Matches exact serverId, or if serverId is 'default', matches default or missing serverId.
+// All workspaces can also access the global/common library (default or missing serverId).
 function getQueryWithServer(req, customQuery = {}) {
   const serverFilter = req.serverId === 'default'
     ? {
@@ -32,7 +33,13 @@ function getQueryWithServer(req, customQuery = {}) {
           { serverId: { $exists: false } }
         ]
       }
-    : { serverId: req.serverId };
+    : {
+        $or: [
+          { serverId: req.serverId },
+          { serverId: 'default' },
+          { serverId: { $exists: false } }
+        ]
+      };
 
   if (Object.keys(customQuery).length > 0) {
     return {
