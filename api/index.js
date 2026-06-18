@@ -286,8 +286,9 @@ app.post('/api/events', asyncHandler(async (req, res) => {
 app.delete('/api/events/:id', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const { id } = req.params;
+  const query = getQueryWithServer(req, { id });
   
-  await db.collection('worship_events').deleteOne({ id, serverId: req.serverId });
+  await db.collection('worship_events').deleteOne(query);
   res.json({ success: true });
 }));
 
@@ -321,8 +322,9 @@ app.post('/api/suggestions', asyncHandler(async (req, res) => {
 app.delete('/api/suggestions/:id', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const { id } = req.params;
+  const query = getQueryWithServer(req, { id });
   
-  await db.collection('suggestions').deleteOne({ id, serverId: req.serverId });
+  await db.collection('suggestions').deleteOne(query);
   res.json({ success: true });
 }));
 
