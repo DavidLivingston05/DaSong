@@ -27,18 +27,19 @@ function SongList({
   onClearLibrary,
   currentRole
 }: SongListProps) {
-  const [visibleCount, setVisibleCount] = useState<number>(20);
+  const [visibleCount, setVisibleCount] = useState<number>(50);
   const [inputValue, setInputValue] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [kbdIndex, setKbdIndex] = useState<number>(-1);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const deleteTimerRef = useRef<number | null>(null);
+  const observerTarget = useRef<HTMLDivElement | null>(null);
 
   // Debounce search input by 150ms to prevent key lag when searching a large catalog
   useEffect(() => {
     const handler = setTimeout(() => {
       setSearchQuery(inputValue);
-      setVisibleCount(20);
+      setVisibleCount(50);
     }, 150);
     return () => clearTimeout(handler);
   }, [inputValue]);
@@ -61,6 +62,26 @@ function SongList({
   const paginatedSongs = useMemo(() => {
     return sortedSongs.slice(0, visibleCount);
   }, [sortedSongs, visibleCount]);
+
+  // Infinite Scroll Intersection Observer to automatically load more songs when scrolling near the bottom
+  useEffect(() => {
+    const currentTarget = observerTarget.current;
+    if (!currentTarget || visibleCount >= sortedSongs.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => Math.min(prev + 50, sortedSongs.length));
+        }
+      },
+      { threshold: 0.1, rootMargin: '150px' }
+    );
+
+    observer.observe(currentTarget);
+    return () => {
+      observer.unobserve(currentTarget);
+    };
+  }, [sortedSongs.length, visibleCount]);
 
   // Reset keyboard selection when songs change
   React.useEffect(() => {
@@ -394,14 +415,14 @@ function SongList({
         </div>
 
         {/* Dynamic Infinite Scroll Load-More Trigger Strip */}
-        <div id="lyrics-paginator" className="p-4 border-t border-zinc-900/60 bg-zinc-950/60 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono select-none">
+        <div ref={observerTarget} id="lyrics-paginator" className="p-4 border-t border-zinc-900/60 bg-zinc-950/60 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono select-none">
           <div className="text-[11px] text-zinc-500 uppercase tracking-wider">
             Showing <strong className="text-zinc-350">{paginatedSongs.length}</strong> of <strong className="text-zinc-350">{sortedSongs.length}</strong> songs
           </div>
 
           {visibleCount < sortedSongs.length && (
             <button
-              onClick={() => setVisibleCount(prev => prev + 20)}
+              onClick={() => setVisibleCount(prev => prev + 50)}
               className="w-full sm:w-auto px-5 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-550/20 text-amber-400 text-[10px] font-bold tracking-wider rounded transition-all cursor-pointer active:scale-95 active-touch uppercase"
             >
               Load More Songs
