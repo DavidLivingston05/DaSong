@@ -358,7 +358,7 @@ export default function WorshipEvents({
   const [mobileFontSize, setMobileFontSize] = useState<number>(18);
   const [mobileScrolling, setMobileScrolling] = useState<boolean>(false);
   const [mobileScrollSpeed, setMobileScrollSpeed] = useState<number>(2);
-  const [mobileViewMode, setMobileViewMode] = useState<'calendar' | 'timeline'>('calendar');
+  const [viewMode, setViewMode] = useState<'calendar' | 'timeline'>('calendar');
 
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -1274,58 +1274,133 @@ export default function WorshipEvents({
               </button>
             )}
 
-            {/* Interactive Monthly Grid */}
-            <div className="p-1 bg-zinc-950/40 rounded-2xl">
-              <div className="flex items-center justify-between p-1">
-                <span className="text-xs font-bold text-white uppercase tracking-wider pl-1">
-                  {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button onClick={handlePrevMonth} className="p-1 hover:bg-zinc-900/60 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors">
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button onClick={handleNextMonth} className="p-1 hover:bg-zinc-900/60 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors">
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+            {/* View Switcher Tabs */}
+            <div className="flex bg-[#0a0a0c] border border-zinc-900/60 p-1 rounded-xl">
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`flex-1 py-1.5 text-[10px] font-bold font-mono rounded-lg transition-all active-touch cursor-pointer ${
+                  viewMode === 'calendar'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-350'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <CalendarIcon className="h-3 w-3" />
+                  <span>Month Grid</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setViewMode('timeline')}
+                className={`flex-1 py-1.5 text-[10px] font-bold font-mono rounded-lg transition-all active-touch cursor-pointer ${
+                  viewMode === 'timeline'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-355'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  <span>Timeline</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Toggle-able Month Calendar Navigation Grid vs Timeline List View */}
+            {viewMode === 'calendar' ? (
+              <div className="p-1 bg-zinc-950/40 rounded-2xl">
+                <div className="flex items-center justify-between p-1">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider pl-1">
+                    {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button onClick={handlePrevMonth} className="p-1 hover:bg-zinc-900/60 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors">
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button onClick={handleNextMonth} className="p-1 hover:bg-zinc-900/60 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors">
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Day Headers */}
+                <div className="grid grid-cols-7 gap-1 text-center mt-2">
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, dIdx) => (
+                    <span key={dIdx} className="text-[10px] font-mono font-extrabold text-slate-500 uppercase">{day}</span>
+                  ))}
+                </div>
+
+                {/* 42 grid cells */}
+                <div className="grid grid-cols-7 gap-1 mt-1">
+                  {calendarDays.map((cell, idx) => {
+                    const isSelected = selectedDateStr === cell.dateStr;
+                    const isToday = new Date().toISOString().split('T')[0] === cell.dateStr;
+                    
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedDateStr(cell.dateStr)}
+                        className={`h-7 rounded-lg text-[10px] sm:text-xs font-mono relative flex items-center justify-center transition-all cursor-pointer ${
+                          !cell.isCurrentMonth ? 'text-zinc-650' : 'text-slate-350 font-medium'
+                        } ${
+                          isSelected 
+                            ? 'bg-amber-500 text-black font-extrabold shadow-md' 
+                            : isToday 
+                              ? 'bg-amber-500/10 border border-amber-500/20 text-amber-455 font-bold'
+                              : 'hover:bg-zinc-900/40 text-slate-400'
+                        }`}
+                      >
+                        <span>{cell.dayNum}</span>
+                        {cell.hasEvent && !isSelected && (
+                          <span className="absolute bottom-1 left-1.5 right-1.5 h-1 rounded-full bg-amber-550" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-
-              {/* Day Headers */}
-              <div className="grid grid-cols-7 gap-1 text-center mt-2">
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, dIdx) => (
-                  <span key={dIdx} className="text-[10px] font-mono font-extrabold text-slate-500 uppercase">{day}</span>
-                ))}
+            ) : (
+              /* Timeline List of Upcoming Events */
+              <div className="space-y-2 max-h-[450px] overflow-y-auto pr-1">
+                {events.length === 0 ? (
+                  <div className="text-center py-8 bg-[#0a0a0c] rounded-xl border border-dashed border-zinc-900/80">
+                    <CalendarIcon className="h-7 w-7 text-zinc-700 mx-auto mb-2 animate-pulse" />
+                    <p className="text-zinc-500 text-[10px] font-mono">No upcoming setlists</p>
+                  </div>
+                ) : (
+                  [...events]
+                    .sort((a, b) => a.date.localeCompare(b.date))
+                    .map((ev) => {
+                      const d = new Date(ev.date + 'T12:00:00');
+                      const isSelected = selectedDateStr === ev.date;
+                      return (
+                        <div
+                          key={ev.id}
+                          onClick={() => setSelectedDateStr(ev.date)}
+                          className={`p-3 rounded-xl border text-left cursor-pointer transition-all active-touch ${
+                            isSelected
+                              ? 'bg-amber-500/10 border-amber-500/35 text-white'
+                              : 'bg-[#0a0a0c] border-zinc-900/80 text-zinc-400 hover:border-zinc-800 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start gap-1.5">
+                            <span className="text-[10px] font-bold text-amber-500 font-mono">
+                              {d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })}
+                            </span>
+                            {ev.time && (
+                              <span className="text-[9px] font-mono text-zinc-550 shrink-0">{ev.time}</span>
+                            )}
+                          </div>
+                          <div className="text-xs font-serif font-bold mt-1.5 truncate leading-tight">
+                            {ev.title}
+                          </div>
+                          <div className="text-[9px] font-mono text-zinc-500 mt-1 truncate">
+                            {ev.songIds?.length || 0} songs • {ev.description || 'No description'}
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
               </div>
-
-              {/* 42 grid cells */}
-              <div className="grid grid-cols-7 gap-1 mt-1">
-                {calendarDays.map((cell, idx) => {
-                  const isSelected = selectedDateStr === cell.dateStr;
-                  const isToday = new Date().toISOString().split('T')[0] === cell.dateStr;
-                  
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedDateStr(cell.dateStr)}
-                      className={`h-7 rounded-lg text-[10px] sm:text-xs font-mono relative flex items-center justify-center transition-all cursor-pointer ${
-                        !cell.isCurrentMonth ? 'text-zinc-650' : 'text-slate-350 font-medium'
-                      } ${
-                        isSelected 
-                          ? 'bg-amber-500 text-black font-extrabold shadow-md' 
-                          : isToday 
-                            ? 'bg-amber-500/10 border border-amber-500/20 text-amber-450 font-bold'
-                            : 'hover:bg-zinc-900/40 text-slate-400'
-                      }`}
-                    >
-                      <span>{cell.dayNum}</span>
-                      {cell.hasEvent && !isSelected && (
-                        <span className="absolute bottom-1 left-1.5 right-1.5 h-1 rounded-full bg-amber-550" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Prompt footer */}
@@ -1877,9 +1952,9 @@ export default function WorshipEvents({
 
               <div className="flex bg-[#0a0a0c] border border-zinc-900 p-1 rounded-xl">
                 <button
-                  onClick={() => setMobileViewMode('calendar')}
+                  onClick={() => setViewMode('calendar')}
                   className={`flex-1 py-2 text-xs font-bold font-mono rounded-lg transition-all active-touch cursor-pointer ${
-                    mobileViewMode === 'calendar'
+                    viewMode === 'calendar'
                       ? 'bg-amber-600 text-white font-bold shadow-sm'
                       : 'text-zinc-500 hover:text-zinc-300'
                   }`}
@@ -1890,9 +1965,9 @@ export default function WorshipEvents({
                   </div>
                 </button>
                 <button
-                  onClick={() => setMobileViewMode('timeline')}
+                  onClick={() => setViewMode('timeline')}
                   className={`flex-1 py-2 text-xs font-bold font-mono rounded-lg transition-all active-touch cursor-pointer ${
-                    mobileViewMode === 'timeline'
+                    viewMode === 'timeline'
                       ? 'bg-amber-600 text-white font-bold shadow-sm'
                       : 'text-zinc-555 hover:text-zinc-350'
                   }`}
@@ -1905,7 +1980,7 @@ export default function WorshipEvents({
               </div>
 
               {/* Toggle-able Month Calendar Navigation Grid vs Timeline List View */}
-              {mobileViewMode === 'calendar' ? (
+              {viewMode === 'calendar' ? (
                 <div className="p-1.5 bg-[#0a0a0c] rounded-xl border border-zinc-900 select-none">
                   <div className="flex items-center justify-between p-1">
                     <span className="text-sm font-black text-white uppercase tracking-wider pl-1 font-mono">
