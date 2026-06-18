@@ -839,14 +839,15 @@ export async function saveWorshipEvent(event: WorshipEvent): Promise<void> {
 
   // Strip MongoDB's _id before sending to prevent immutable field error
   const { _id, ...eventPayload } = eventWithTimestamp as any;
-  apiRequest('/api/events', {
-    method: 'POST',
-    body: JSON.stringify(eventPayload)
-  }).then(() => {
+  try {
+    await apiRequest('/api/events', {
+      method: 'POST',
+      body: JSON.stringify(eventPayload)
+    });
     removeUnsyncedEventIds([event.id]);
-  }).catch(err => {
+  } catch (err) {
     console.warn('Failed to sync worship event to MongoDB, queued for background sync:', err);
-  });
+  }
 }
 
 export async function deleteWorshipEvent(id: string): Promise<void> {
@@ -860,13 +861,14 @@ export async function deleteWorshipEvent(id: string): Promise<void> {
   removeUnsyncedEventIds([id]);
   addUnsyncedDeletedEventIds([id]);
 
-  apiRequest(`/api/events/${id}`, {
-    method: 'DELETE'
-  }).then(() => {
+  try {
+    await apiRequest(`/api/events/${id}`, {
+      method: 'DELETE'
+    });
     removeUnsyncedDeletedEventIds([id]);
-  }).catch(err => {
+  } catch (err) {
     console.warn('Failed to sync worship event deletion to MongoDB, queued for background sync:', err);
-  });
+  }
 }
 
 // -------------------------------------------------------------------------
