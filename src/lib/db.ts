@@ -363,12 +363,22 @@ async function syncEventsBiDirectional(cloudEvents: WorshipEvent[]): Promise<voi
   const unsyncedSaves = new Set(getUnsyncedEventIds());
 
   localEvents.forEach(localEv => {
-    if (!cloudEventsIds.has(localEv.id) && !unsyncedSaves.has(localEv.id) && !deletedIds.has(localEv.id)) {
+    // Only upload offline-created/modified events that aren't in the cloud yet
+    if (!cloudEventsIds.has(localEv.id) && unsyncedSaves.has(localEv.id) && !deletedIds.has(localEv.id)) {
       eventsToSyncToCloud.push(localEv);
     }
   });
 
-  saveLocalWorshipEvents(mergedEvents);
+  // Delete local events that were deleted from the cloud database
+  // (i.e., not in cloud, not pending offline save, and not pending deletion)
+  const finalMergedEvents = mergedEvents.filter(localEv => {
+    if (!cloudEventsIds.has(localEv.id) && !unsyncedSaves.has(localEv.id) && !deletedIds.has(localEv.id)) {
+      return false; // delete locally
+    }
+    return true;
+  });
+
+  saveLocalWorshipEvents(finalMergedEvents);
   
   if (eventsToSyncToCloud.length > 0) {
     for (const ev of eventsToSyncToCloud) {
