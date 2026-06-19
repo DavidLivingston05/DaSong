@@ -665,8 +665,7 @@ export default function App() {
       localStorage.removeItem(`lyrasync_user_role_default`);
       localStorage.removeItem(`lyrasync_user_name_default`);
     }
-    setSession(null);
-    setPortalView('menu');
+    handleSwitchServer('default');
   };
 
 
