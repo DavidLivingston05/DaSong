@@ -802,7 +802,7 @@ export default function SongDetail({
               <Share2 className="h-4 w-4" />
             </button>
             {showShareDropdown && (
-              <div className="absolute right-0 bottom-12 md:bottom-auto md:top-12 w-48 bg-[#12131A] border border-[#1E202B] rounded z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 top-12 w-48 bg-[#12131A] border border-[#1E202B] rounded z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
                 <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-[#1E202B]">Share / Copy Options</p>
                 {typeof navigator.share !== 'undefined' && (
                   <button
@@ -853,7 +853,7 @@ export default function SongDetail({
                 <span className="hidden sm:inline">Add to Setlist</span>
               </button>
               {showSetlistDropdown && (
-                <div className="absolute right-0 bottom-12 md:bottom-auto md:top-12 w-60 bg-[#12131A] border border-[#1E202B] rounded z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 top-12 w-60 bg-[#12131A] border border-[#1E202B] rounded z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
                   <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-[#1E202B]">Select Target Setlist</p>
                   <div className="max-h-[160px] overflow-y-auto pr-1">
                     {sortedEvents.length === 0 ? (
@@ -1365,6 +1365,35 @@ export default function SongDetail({
                 >
                   <ArrowUpRight className="h-4 w-4 stroke-[3]" /> Present Fullscreen
                 </button>
+              </div>
+
+              {/* Share & Copy (For all roles on mobile) */}
+              <div className="space-y-2.5 border-b border-[#1E202B] pb-4">
+                <span className="text-xs font-bold text-white block">Share & Copy Options</span>
+                <div className="flex flex-col gap-2">
+                  {typeof navigator.share !== 'undefined' && (
+                    <button
+                      onClick={handleNativeShare}
+                      className="w-full h-11 premium-btn-primary font-bold text-xs rounded active-touch flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Share2 className="h-4 w-4 text-black" /> Share Song...
+                    </button>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCopyLyrics}
+                      className="flex-1 h-11 premium-btn-secondary text-zinc-200 rounded active-touch text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 border border-[#1E202B]"
+                    >
+                      <FileText className="h-3.5 w-3.5 text-zinc-550" /> Copy Lyrics
+                    </button>
+                    <button
+                      onClick={handleCopyWebLink}
+                      className="flex-1 h-11 premium-btn-secondary text-zinc-200 rounded active-touch text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 border border-[#1E202B]"
+                    >
+                      <Link className="h-3.5 w-3.5 text-zinc-555" /> Copy Link
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Integrated Visual Metronome Module */}
