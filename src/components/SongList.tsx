@@ -30,6 +30,7 @@ function SongList({
   const [visibleCount, setVisibleCount] = useState<number>(50);
   const [inputValue, setInputValue] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
   const [kbdIndex, setKbdIndex] = useState<number>(-1);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const deleteTimerRef = useRef<number | null>(null);
@@ -47,16 +48,19 @@ function SongList({
   // Sort songs alphabetically by title
   const sortedSongs = useMemo(() => {
     let filtered = songs;
+    if (showFavoritesOnly) {
+      filtered = filtered.filter(s => !!s.favorite);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      filtered = songs.filter(s => 
+      filtered = filtered.filter(s => 
         (s.title || '').toLowerCase().includes(q) || 
         (s.author && s.author.toLowerCase().includes(q)) ||
         (s.lyricsSnippet && s.lyricsSnippet.toLowerCase().includes(q))
       );
     }
     return [...filtered].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-  }, [songs, searchQuery]);
+  }, [songs, searchQuery, showFavoritesOnly]);
 
   // Slice list up to visible count for performance
   const paginatedSongs = useMemo(() => {
@@ -191,17 +195,31 @@ function SongList({
       </div>
 
       {/* Search Input Toolbar */}
-      <div className="relative group">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-zinc-500 transition-colors group-focus-within:text-amber-500" />
+      <div className="flex gap-2 w-full">
+        <div className="relative group flex-1">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-zinc-500 transition-colors group-focus-within:text-amber-500" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search songs by title, author, or lyrics snippets..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            className="block w-full pl-11 pr-4 py-3 bg-zinc-950/40 text-zinc-250 placeholder-zinc-550 focus:outline-none text-sm transition-all premium-input rounded"
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Search songs by title, author, or lyrics snippets..."
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          className="block w-full pl-11 pr-4 py-3 bg-zinc-950/40 text-zinc-250 placeholder-zinc-550 focus:outline-none text-sm transition-all premium-input rounded"
-        />
+        <button
+          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          className={`px-4 py-3 rounded text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 border ${
+            showFavoritesOnly 
+              ? 'bg-amber-500/10 text-amber-500 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]' 
+              : 'premium-btn-secondary border-[#1E202B] text-zinc-400 hover:text-white'
+          }`}
+          title={showFavoritesOnly ? "Showing Favorites Only" : "Show Favorites Only"}
+        >
+          <Star className={`h-4 w-4 ${showFavoritesOnly ? 'fill-amber-500 text-amber-500' : ''}`} />
+          <span className="hidden xs:inline">Favorites</span>
+        </button>
       </div>
 
       {/* Song Grid / Lists layout */}

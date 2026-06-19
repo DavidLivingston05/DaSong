@@ -441,12 +441,15 @@ export default function App() {
       const savedFavs = localStorage.getItem(`dasong_favorites_${serverId}`);
       const favIds = savedFavs ? new Set<string>(JSON.parse(savedFavs)) : new Set<string>();
 
+      const mappedList = list.map(s => ({
+        ...s,
+        favorite: favIds.has(s.id)
+      }));
+
       // Sort primarily by favorites, then creation date or title
-      const sorted = [...list].sort((a, b) => {
-        const aFav = favIds.has(a.id);
-        const bFav = favIds.has(b.id);
-        if (aFav && !bFav) return -1;
-        if (!aFav && bFav) return 1;
+      const sorted = [...mappedList].sort((a, b) => {
+        if (a.favorite && !b.favorite) return -1;
+        if (!a.favorite && b.favorite) return 1;
         return (a.title || '').localeCompare(b.title || '');
       });
       setSongs(sorted);
@@ -1015,7 +1018,7 @@ export default function App() {
     let favs = 0;
     const catsSet = new Set<string>();
     songs.forEach(s => {
-      if (favoriteSongIds.has(s.id)) favs++;
+      if (s.favorite) favs++;
       if (s.category) catsSet.add(s.category);
     });
 
@@ -1024,7 +1027,7 @@ export default function App() {
       favorites: favs,
       categories: catsSet.size
     };
-  }, [songs, favoriteSongIds]);
+  }, [songs]);
 
   const renderGuestWelcome = () => {
     return (
