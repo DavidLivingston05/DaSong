@@ -56,6 +56,12 @@ export default function App() {
 
   const [activeServerId, setActiveServerId] = useState<string>(() => getActiveServerId());
 
+  const [favoriteSongIds, setFavoriteSongIds] = useState<Set<string>>(() => {
+    const serverId = getActiveServerId();
+    const saved = localStorage.getItem(`dasong_favorites_${serverId}`);
+    return saved ? new Set(JSON.parse(saved)) : new Set<string>();
+  });
+
   const [session, setSession] = useState<UserSession | null>(() => {
     const serverId = getActiveServerId();
     const savedRole = localStorage.getItem(`lyrasync_user_role_${serverId}`);
@@ -431,10 +437,16 @@ export default function App() {
   const syncSongsList = useCallback(async () => {
     try {
       const list = await getAllSongsMetadata();
+      const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
+      const savedFavs = localStorage.getItem(`dasong_favorites_${serverId}`);
+      const favIds = savedFavs ? new Set<string>(JSON.parse(savedFavs)) : new Set<string>();
+
       // Sort primarily by favorites, then creation date or title
       const sorted = [...list].sort((a, b) => {
-        if (a.favorite && !b.favorite) return -1;
-        if (!a.favorite && b.favorite) return 1;
+        const aFav = favIds.has(a.id);
+        const bFav = favIds.has(b.id);
+        if (aFav && !bFav) return -1;
+        if (!aFav && bFav) return 1;
         return (a.title || '').localeCompare(b.title || '');
       });
       setSongs(sorted);
@@ -479,6 +491,9 @@ export default function App() {
       setSession(null); // Force role selection for the server
     }
 
+    const savedFavs = localStorage.getItem(`dasong_favorites_${newServerId}`);
+    setFavoriteSongIds(savedFavs ? new Set(JSON.parse(savedFavs)) : new Set<string>());
+
     // Clear/reload states
     setSongs([]);
     setEvents([]);
@@ -495,6 +510,32 @@ export default function App() {
       console.error('Error switching server DB:', err);
     }
   }, [syncSongsList, loadSuggestions, loadEvents, triggerMongoSync]);
+
+  // Handle shared link query parameters on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const querySong = params.get('song');
+    const queryServer = params.get('server');
+
+    const initializeFromUrl = async () => {
+      let changed = false;
+      if (queryServer && queryServer !== getActiveServerId()) {
+        await handleSwitchServer(queryServer);
+        changed = true;
+      }
+      if (querySong) {
+        setSelectedSongId(querySong);
+        changed = true;
+      }
+      if (changed || querySong || queryServer) {
+        const cleanUrl = window.location.pathname;
+        history.replaceState(history.state, '', cleanUrl);
+      }
+    };
+
+    initializeFromUrl();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleJoinServerSubmit = async () => {
     if (!joiningServer) return;
@@ -855,18 +896,18 @@ export default function App() {
 
   // Handle single chord toggle favorite
   const handleToggleFavorite = useCallback(async (id: string, currentFav: boolean) => {
-    try {
-      const fullSong = await getSongById(id);
-      if (fullSong) {
-        fullSong.favorite = !currentFav;
-        await saveSong(fullSong);
+    setFavoriteSongIds(prev => {
+      const next = new Set(prev);
+      if (currentFav) {
+        next.delete(id);
+      } else {
+        next.add(id);
       }
-    } catch (err) {
-      console.error('Failed toggling favorited state:', err);
-    } finally {
-      await syncSongsList();
-    }
-  }, [syncSongsList]);
+      localStorage.setItem(`dasong_favorites_${activeServerId}`, JSON.stringify(Array.from(next)));
+      return next;
+    });
+    await syncSongsList();
+  }, [activeServerId, syncSongsList]);
 
   // Delete song
   const handleDeleteSong = useCallback(async (id: string) => {
@@ -974,7 +1015,7 @@ export default function App() {
     let favs = 0;
     const catsSet = new Set<string>();
     songs.forEach(s => {
-      if (s.favorite) favs++;
+      if (favoriteSongIds.has(s.id)) favs++;
       if (s.category) catsSet.add(s.category);
     });
 
@@ -983,7 +1024,7 @@ export default function App() {
       favorites: favs,
       categories: catsSet.size
     };
-  }, [songs]);
+  }, [songs, favoriteSongIds]);
 
   const renderGuestWelcome = () => {
     return (
@@ -2298,6 +2339,7 @@ export default function App() {
                   backLabel={songSourceTab === 'calendar' ? 'Back to Setlist' : 'Back to Search'}
                   setlistSongIds={activeSetlistIds}
                   songsMetadata={songs}
+                  isFavorite={selectedSongId ? favoriteSongIds.has(selectedSongId) : false}
                 />
 
               </div>

@@ -19,6 +19,7 @@ interface SongDetailProps {
   setlistSongIds?: string[];
   tempBroadcastSong?: Song | null;
   songsMetadata?: SongMetadata[];
+  isFavorite?: boolean;
 }
 
 export default function SongDetail({
@@ -32,7 +33,8 @@ export default function SongDetail({
   backLabel,
   setlistSongIds = [],
   tempBroadcastSong = null,
-  songsMetadata
+  songsMetadata,
+  isFavorite = false
 }: SongDetailProps) {
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -285,6 +287,38 @@ export default function SongDetail({
     }
   }, [copyToast]);
 
+  const copyTextToClipboard = async (text: string) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        console.warn("Clipboard API write failed, falling back", err);
+      }
+    }
+
+    // Fallback to legacy execCommand
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (!successful) throw new Error("copy command unsuccessful");
+      return true;
+    } catch (err) {
+      document.body.removeChild(textArea);
+      console.error("Fallback copy failed", err);
+      return false;
+    }
+  };
+
   const handleCopyLyrics = async () => {
     try {
       let processed = stripChords(song.lyrics);
@@ -306,8 +340,12 @@ export default function SongDetail({
       processed = cleanLyricsLines.join('\n').trim();
 
       const header = `${song.title}\nBy: ${song.author || 'Traditional'}\n\n`;
-      await navigator.clipboard.writeText(header + processed);
-      setCopyToast('Lyrics copied to clipboard!');
+      const copySuccess = await copyTextToClipboard(header + processed);
+      if (copySuccess) {
+        setCopyToast('Lyrics copied to clipboard!');
+      } else {
+        alert('Failed to copy lyrics');
+      }
       setShowShareDropdown(false);
     } catch (err) {
       console.error(err);
@@ -315,23 +353,52 @@ export default function SongDetail({
     }
   };
 
+  const getSongLinkUrl = () => {
+    const currentUrl = window.location.href;
+    const url = new URL(currentUrl);
+    url.searchParams.set('song', song.id);
+    
+    const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
+    if (serverId !== 'default') {
+      url.searchParams.set('server', serverId);
+    }
+    return url.toString();
+  };
+
   const handleCopyWebLink = async () => {
     try {
-      const currentUrl = window.location.href;
-      const url = new URL(currentUrl);
-      url.searchParams.set('song', song.id);
-      
-      const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
-      if (serverId !== 'default') {
-        url.searchParams.set('server', serverId);
+      const shareUrl = getSongLinkUrl();
+      const copySuccess = await copyTextToClipboard(shareUrl);
+      if (copySuccess) {
+        setCopyToast('Link copied to clipboard!');
+      } else {
+        alert('Failed to copy link');
       }
-      
-      await navigator.clipboard.writeText(url.toString());
-      setCopyToast('Link copied to clipboard!');
       setShowShareDropdown(false);
     } catch (err) {
       console.error(err);
       alert('Failed to copy link');
+    }
+  };
+
+  const handleNativeShare = async () => {
+    try {
+      const shareUrl = getSongLinkUrl();
+      if (navigator.share) {
+        await navigator.share({
+          title: song.title,
+          text: `Check out "${song.title}" on DaSong!`,
+          url: shareUrl
+        });
+        setShowShareDropdown(false);
+      } else {
+        await handleCopyWebLink();
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error(err);
+        alert('Failed to share');
+      }
     }
   };
 
@@ -710,15 +777,15 @@ export default function SongDetail({
 
           {/* Favorite Indicator Action Button */}
           <button
-            onClick={() => onToggleFavorite(song.id, !song.favorite)}
+            onClick={() => onToggleFavorite(song.id, isFavorite)}
             className={`h-10 w-10 rounded flex items-center justify-center cursor-pointer transition-all shrink-0 ${
-              song.favorite
+              isFavorite
                 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                 : 'premium-btn-secondary'
             }`}
             title="Toggle Favorite"
           >
-            <Heart className={`h-4 w-4 ${song.favorite ? 'fill-amber-500 text-amber-500' : ''}`} />
+            <Heart className={`h-4 w-4 ${isFavorite ? 'fill-amber-500 text-amber-500' : ''}`} />
           </button>
 
           {/* Share Dropdown Button */}
@@ -737,6 +804,14 @@ export default function SongDetail({
             {showShareDropdown && (
               <div className="absolute right-0 bottom-12 md:bottom-auto md:top-12 w-48 bg-[#12131A] border border-[#1E202B] rounded z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
                 <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-[#1E202B]">Share / Copy Options</p>
+                {typeof navigator.share !== 'undefined' && (
+                  <button
+                    onClick={handleNativeShare}
+                    className="w-full text-left p-2 rounded text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    <Share2 className="h-3.5 w-3.5 text-zinc-500" /> Share Song...
+                  </button>
+                )}
                 <button
                   onClick={handleCopyLyrics}
                   className="w-full text-left p-2 rounded text-xs text-zinc-300 hover:bg-white/5 transition-all cursor-pointer flex items-center gap-2"
