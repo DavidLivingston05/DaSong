@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   Music, Sparkles, Layers, Sliders, Play, Settings, Plus, Star, Heart, 
   Trash2, X, AlertCircle, RefreshCw, Check, BookOpen, Database, Award, 
@@ -34,6 +34,13 @@ import WorshipEvents from './components/WorshipEvents';
 import { motion, AnimatePresence } from 'motion/react';
 import { parseTwoLineChords } from './utils/lyricsParser';
 
+interface AppHistoryState {
+  id: string;
+  tab: 'dashboard' | 'search' | 'calendar';
+  songId: string | null;
+  stageMode: boolean;
+  modal: 'add' | 'upload' | 'events' | 'join' | 'create' | null;
+}
 
 export default function App() {
   const [songs, setSongs] = useState<SongMetadata[]>([]);
@@ -221,7 +228,6 @@ export default function App() {
   // steps back through in-app screens instead of closing the PWA.
   const navigateTo = useCallback((tab: 'dashboard' | 'search' | 'calendar') => {
     setActiveTab(tab);
-    history.pushState({ tab, songId: null }, '', window.location.pathname);
   }, []);
   // ───────────────────────────────────────────────────────────────────────────
   const [activeSetlistIds, setActiveSetlistIds] = useState<string[]>([]);
@@ -235,37 +241,6 @@ export default function App() {
       setTargetEventIdForAdd(null);
     }
   }, [showAddModal, showUploadModal]);
-
-  // Seed the initial history entry so there is always something to pop back to,
-  // and handle Android back button presses via popstate.
-  useEffect(() => {
-    // Replace the very first entry so we control it
-    history.replaceState({ tab: 'dashboard', songId: null }, '', window.location.pathname);
-
-    const handlePopState = (e: PopStateEvent) => {
-      const state = e.state as { tab?: string; songId?: string | null } | null;
-
-      // If a song is open, close it first (back = close song detail)
-      setSelectedSongId(prev => {
-        if (prev) {
-          setActiveSetlistIds([]);
-          // Re-push so next back press handles tab level
-          history.pushState({ tab: activeTab, songId: null }, '', window.location.pathname);
-          return null;
-        }
-        return prev;
-      });
-
-      // If no song was open and state carries a tab, restore it
-      if (state?.tab && !state.songId) {
-        setActiveTab(state.tab as 'dashboard' | 'search' | 'calendar');
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   
@@ -281,6 +256,174 @@ export default function App() {
     category: 'Worship',
     lyrics: ''
   });
+
+  const historyStackRef = useRef<AppHistoryState[]>([]);
+  const currentStackIndexRef = useRef<number>(-1);
+  const isPoppingStateRef = useRef<boolean>(false);
+
+  // Seed the initial history entry so there is always something to pop back to,
+  // and handle Android back button presses via popstate.
+  useEffect(() => {
+    const initialState: AppHistoryState = {
+      id: Math.random().toString(36).substring(2),
+      tab: activeTab,
+      songId: selectedSongId,
+      stageMode: stageModeSong !== null,
+      modal: showAddModal ? 'add' :
+             showUploadModal ? 'upload' :
+             showEventsModal ? 'events' :
+             showJoinModal ? 'join' :
+             showCreateModal ? 'create' : null
+    };
+
+    history.replaceState(initialState, '', window.location.pathname);
+    historyStackRef.current = [initialState];
+    currentStackIndexRef.current = 0;
+
+    const handlePopState = (e: PopStateEvent) => {
+      const state = e.state as AppHistoryState | null;
+      if (!state || !state.id) return;
+
+      const foundIdx = historyStackRef.current.findIndex(s => s.id === state.id);
+      if (foundIdx !== -1) {
+        currentStackIndexRef.current = foundIdx;
+        isPoppingStateRef.current = true;
+
+        setActiveTab(state.tab);
+        setSelectedSongId(state.songId);
+        if (!state.songId) {
+          setActiveSetlistIds([]);
+        }
+
+        if (state.stageMode && state.songId) {
+          getSongById(state.songId).then(fullSong => {
+            if (fullSong) {
+              setStageModeSong(fullSong);
+            }
+          }).catch(err => {
+            console.error("Failed to restore stage mode song:", err);
+            setStageModeSong(null);
+          });
+        } else {
+          setStageModeSong(null);
+        }
+
+        setShowAddModal(state.modal === 'add');
+        setShowUploadModal(state.modal === 'upload');
+        setShowEventsModal(state.modal === 'events');
+        setShowJoinModal(state.modal === 'join');
+        setShowCreateModal(state.modal === 'create');
+      } else {
+        // Fallback baseline reset
+        historyStackRef.current = [state];
+        currentStackIndexRef.current = 0;
+        isPoppingStateRef.current = true;
+
+        setActiveTab(state.tab);
+        setSelectedSongId(state.songId);
+        if (!state.songId) {
+          setActiveSetlistIds([]);
+        }
+
+        if (state.stageMode && state.songId) {
+          getSongById(state.songId).then(fullSong => {
+            if (fullSong) {
+              setStageModeSong(fullSong);
+            }
+          }).catch(() => setStageModeSong(null));
+        } else {
+          setStageModeSong(null);
+        }
+
+        setShowAddModal(state.modal === 'add');
+        setShowUploadModal(state.modal === 'upload');
+        setShowEventsModal(state.modal === 'events');
+        setShowJoinModal(state.modal === 'join');
+        setShowCreateModal(state.modal === 'create');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Synchronize state changes to browser history
+  useEffect(() => {
+    if (isPoppingStateRef.current) {
+      isPoppingStateRef.current = false;
+      return;
+    }
+
+    if (currentStackIndexRef.current === -1) {
+      return;
+    }
+
+    const currentModal: 'add' | 'upload' | 'events' | 'join' | 'create' | null =
+      showAddModal ? 'add' :
+      showUploadModal ? 'upload' :
+      showEventsModal ? 'events' :
+      showJoinModal ? 'join' :
+      showCreateModal ? 'create' : null;
+
+    const currentValues = {
+      tab: activeTab,
+      songId: selectedSongId,
+      stageMode: stageModeSong !== null,
+      modal: currentModal
+    };
+
+    const currentStackState = historyStackRef.current[currentStackIndexRef.current];
+
+    const isDifferent =
+      !currentStackState ||
+      currentStackState.tab !== currentValues.tab ||
+      currentStackState.songId !== currentValues.songId ||
+      currentStackState.stageMode !== currentValues.stageMode ||
+      currentStackState.modal !== currentValues.modal;
+
+    if (isDifferent) {
+      const prevStackState =
+        currentStackIndexRef.current > 0
+          ? historyStackRef.current[currentStackIndexRef.current - 1]
+          : null;
+
+      const matchesPrev =
+        prevStackState &&
+        prevStackState.tab === currentValues.tab &&
+        prevStackState.songId === currentValues.songId &&
+        prevStackState.stageMode === currentValues.stageMode &&
+        prevStackState.modal === currentValues.modal;
+
+      if (matchesPrev) {
+        history.back();
+      } else {
+        const newState: AppHistoryState = {
+          id: Math.random().toString(36).substring(2),
+          tab: activeTab,
+          songId: selectedSongId,
+          stageMode: stageModeSong !== null,
+          modal: currentModal
+        };
+
+        const newStack = historyStackRef.current.slice(0, currentStackIndexRef.current + 1);
+        newStack.push(newState);
+        historyStackRef.current = newStack;
+        currentStackIndexRef.current = newStack.length - 1;
+
+        history.pushState(newState, '', window.location.pathname);
+      }
+    }
+  }, [
+    activeTab,
+    selectedSongId,
+    stageModeSong,
+    showAddModal,
+    showUploadModal,
+    showEventsModal,
+    showJoinModal,
+    showCreateModal
+  ]);
 
 
 
@@ -667,15 +810,13 @@ export default function App() {
     }
 
     if (id && id !== 'dalyric-broadcast-temp') {
-      // Push history so Android back button closes the song detail instead of exiting
-      history.pushState({ songId: id }, '', window.location.pathname);
       setRecentSongIds(prev => {
         const next = [id, ...prev.filter(x => x !== id)].slice(0, 5);
         localStorage.setItem(`dasong_recent_songs_${activeServerId}`, JSON.stringify(next));
         return next;
       });
     }
-  }, []);
+  }, [activeServerId]);
 
   const handleToggleFollow = useCallback((val: boolean) => {
     setIsFollowing(val);
