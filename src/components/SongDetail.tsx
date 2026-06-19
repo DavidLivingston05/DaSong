@@ -225,7 +225,12 @@ export default function SongDetail({
 
   // Suggestion modal states
   const [showSuggestModal, setShowSuggestModal] = useState<boolean>(false);
-  const [sugName, setSugName] = useState<string>(() => localStorage.getItem('lyrasync_user_name') || 'Choir Member');
+  const [sugName, setSugName] = useState<string>(() => {
+    const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
+    return localStorage.getItem(`lyrasync_user_name_${serverId}`) || 
+           localStorage.getItem('lyrasync_user_name') || 
+           'Choir Member';
+  });
   const [sugEventId, setSugEventId] = useState<string>('');
   const [sugNote, setSugNote] = useState<string>('');
 
@@ -246,6 +251,8 @@ export default function SongDetail({
     }
 
     const nameToSave = sugName.trim() || 'Choir Member';
+    const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
+    localStorage.setItem(`lyrasync_user_name_${serverId}`, nameToSave);
     localStorage.setItem('lyrasync_user_name', nameToSave);
 
     const localEvents = getLocalWorshipEvents();
@@ -1138,6 +1145,19 @@ export default function SongDetail({
                 <p className="text-slate-500 py-10 text-center italic">Lyrics Empty</p>
               )}
               
+              {/* Suggest Song button at the end of the song sheet */}
+              {(currentRole === 'choir' || currentRole === 'guest') && (
+                <div className="mt-8 mb-4 px-4 flex justify-center">
+                  <button
+                    onClick={handleOpenSuggestModal}
+                    className="w-full max-w-sm py-3.5 px-5 bg-gradient-to-r from-amber-500/10 to-amber-600/10 hover:from-amber-500/20 hover:to-amber-600/20 border border-amber-500/25 hover:border-amber-500/45 text-amber-450 text-xs font-mono uppercase tracking-widest font-black rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_4px_12px_rgba(245,158,11,0.05)] hover:shadow-[0_4px_16px_rgba(245,158,11,0.15)]"
+                  >
+                    <Heart className="h-4 w-4 text-amber-500 fill-amber-500/10" />
+                    Suggest this Song to Leader
+                  </button>
+                </div>
+              )}
+
               {/* Bottom scroll padding spacer */}
               <div className="h-24" />
             </div>
@@ -1193,13 +1213,13 @@ export default function SongDetail({
               </div>
             ) : (
               /* Simple general catalog bottom bar */
-              <div className="hidden md:flex p-4 border-t border-[#1E202B] bg-[#12131A] flex-col sm:flex-row items-center justify-between gap-4 select-none relative">
+              <div className="p-4 border-t border-[#1E202B] bg-[#12131A] flex flex-col sm:flex-row items-center justify-between gap-4 select-none relative">
                 <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-zinc-500">
                   <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
                   <span>General Catalog Explorer Mode</span>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 w-full sm:w-auto sm:justify-end">
                   {currentRole === 'choir' && (
                     <button
                       onClick={handleOpenSuggestModal}
