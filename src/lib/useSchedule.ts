@@ -21,25 +21,29 @@ export interface ScheduleSongInput {
   notes?: string;
 }
 
-export const useSchedule = () => {
+export const useSchedule = (activeServerId: string = 'default') => {
   const [scheduledSongs, setScheduledSongs] = useState<ScheduledSong[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const STORAGE_KEY = 'dasong_scheduled_songs';
+  const STORAGE_KEY = `dasong_scheduled_songs_${activeServerId || 'default'}`;
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount or when activeServerId changes
   useEffect(() => {
+    setIsLoading(true);
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         setScheduledSongs(JSON.parse(saved));
+      } else {
+        setScheduledSongs([]);
       }
     } catch (error) {
       console.error('Failed to load scheduled songs:', error);
+      setScheduledSongs([]);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [STORAGE_KEY, activeServerId]);
 
   // Save to localStorage whenever songs change
   useEffect(() => {
@@ -50,7 +54,7 @@ export const useSchedule = () => {
         console.error('Failed to save scheduled songs:', error);
       }
     }
-  }, [scheduledSongs, isLoading]);
+  }, [scheduledSongs, isLoading, STORAGE_KEY]);
 
   // Add or update a scheduled song
   const scheduleSong = useCallback((songData: ScheduleSongInput) => {

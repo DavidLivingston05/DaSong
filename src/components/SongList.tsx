@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useDeferredValue } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Music, Star, Trash2, Layers, ChevronRight, Search, Plus, Database, BookOpen, Sparkles, Key, Tag } from 'lucide-react';
 import { SongMetadata } from '../lib/db';
 import { UserRole } from '../types';
@@ -53,13 +53,14 @@ function SongList({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const deferredInputValue = React.useDeferredValue ? React.useDeferredValue(inputValue) : inputValue;
-
-  // Sync searchQuery with deferredInputValue without blocking main UI thread
+  // Debounce search query update cleanly
   useEffect(() => {
-    setSearchQuery(deferredInputValue);
-    setVisibleCount(50);
-  }, [deferredInputValue]);
+    const timer = setTimeout(() => {
+      setSearchQuery(inputValue);
+      setVisibleCount(50);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
 
   // Currently selected song object
   const selectedSong = useMemo(() => {

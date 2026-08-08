@@ -3,7 +3,7 @@ import {
   Music, Sparkles, Layers, Sliders, Play, Settings, Plus, Star, Heart, 
   Trash2, X, AlertCircle, RefreshCw, Check, BookOpen, Database, Award, 
   ChevronRight, Compass, HelpCircle, Calendar, Download, Smartphone,
-  Home, Search, LogOut
+  Home, Search, LogOut, Upload, ShieldCheck, Server
 } from 'lucide-react';
 import { Song, UserRole } from './types';
 import { 
@@ -176,7 +176,7 @@ export default function App() {
     rescheduleSong,
     getSongsSortedByDate,
     isScheduledOnDate,
-  } = useSchedule();
+  } = useSchedule(activeServerId);
 
   // Quick Search Dashboard State
   const [quickSearchInput, setQuickSearchInput] = useState<string>('');
@@ -1821,334 +1821,422 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18 }}
-              className={activeServerId === 'default' ? "w-full" : (session?.role === 'admin' ? "grid grid-cols-1 lg:grid-cols-[7.5fr_2.5fr] gap-8 items-start w-full py-4 md:py-8 px-0 md:px-4 max-w-none mx-auto" : "flex flex-col items-center py-4 md:py-8 px-0 md:px-4 w-full max-w-6xl mx-auto")}
+              className="w-full max-w-6xl mx-auto py-4 md:py-6 px-3 md:px-6 flex flex-col gap-6"
             >
               {activeServerId === 'default' ? renderGuestWelcome() : (
                 <>
-                  {/* Left Column Wrapper */}
-                  <div className="flex flex-col gap-5 md:gap-6 w-full">
-                    {songs.length === 0 && mongoStatus === 'connecting' && (
-                      <div className="w-full text-left bg-gradient-to-r from-zinc-900 via-zinc-950 to-amber-950/20 p-5 md:p-6 rounded-3xl border border-amber-500/25 shadow-xl relative overflow-hidden group animate-in slide-in-from-top duration-300">
-                        <div className="absolute top-1/2 -right-4 -translate-y-1/2 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-all duration-500"></div>
-                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-                          <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl shrink-0">
-                            <RefreshCw className="h-6 w-6 text-amber-500 animate-spin" />
+                  {/* === WORKSPACE & ADMIN HEADER BANNER === */}
+                  <div className="w-full bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-955/20 p-5 md:p-7 rounded-3xl border border-zinc-800 shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <div className="relative z-10 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-mono tracking-widest text-amber-500 font-bold uppercase bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                          Server: {activeServerId.toUpperCase()}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-md border uppercase bg-zinc-900 text-zinc-300 border-zinc-700">
+                          Role: {session?.role || 'Guest'}
+                        </span>
+                        <span className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-md border uppercase ${
+                          mongoStatus === 'connected' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          mongoStatus === 'connecting' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                          'bg-zinc-800 text-zinc-400 border-zinc-700'
+                        }`}>
+                          {mongoStatus === 'connected' ? 'Cloud Synced' : mongoStatus === 'connecting' ? 'Syncing...' : 'Local Cache'}
+                        </span>
+                      </div>
+
+                      <h1 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+                        Welcome back, <span className="text-amber-500">{session?.name || 'Administrator'}</span>
+                      </h1>
+                      <p className="text-xs text-zinc-400 max-w-xl leading-relaxed">
+                        Manage worship songs, view practice schedules, and control live broadcasts for server <strong className="text-zinc-200">{activeServerId}</strong>.
+                      </p>
+                    </div>
+
+                    {/* Quick Admin Actions in Header */}
+                    <div className="relative z-10 flex flex-wrap items-center gap-2.5 shrink-0">
+                      {session?.role === 'admin' && (
+                        <>
+                          <button
+                            onClick={() => setShowAddModal(true)}
+                            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer active-touch"
+                          >
+                            <Plus className="w-4 h-4 stroke-[3]" />
+                            <span>Add Song</span>
+                          </button>
+                          <button
+                            onClick={() => setShowUploadModal(true)}
+                            className="px-4 py-2.5 bg-zinc-850 hover:bg-zinc-800 text-white font-bold text-xs border border-zinc-700 rounded-xl transition-all flex items-center gap-2 cursor-pointer active-touch"
+                          >
+                            <Upload className="w-4 h-4 text-amber-500" />
+                            <span>Import</span>
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={handleLogout}
+                        className="px-3.5 py-2.5 bg-zinc-900 hover:bg-rose-950/30 text-rose-400 border border-zinc-800 hover:border-rose-900/50 rounded-xl transition-all text-xs font-mono font-bold cursor-pointer active-touch flex items-center gap-1.5"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Exit</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Syncing library notice if connecting */}
+                  {songs.length === 0 && mongoStatus === 'connecting' && (
+                    <div className="w-full text-left bg-gradient-to-r from-zinc-900 via-zinc-950 to-amber-950/20 p-5 rounded-2xl border border-amber-500/25 shadow-xl relative overflow-hidden">
+                      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                        <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl shrink-0">
+                          <RefreshCw className="h-6 w-6 text-amber-500 animate-spin" />
+                        </div>
+                        <div className="flex-1 text-center sm:text-left">
+                          <h3 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+                            Syncing Workspace Song Library...
+                            <span className="bg-amber-500/10 text-amber-450 text-[9px] font-mono font-black px-1.5 py-0.5 rounded border border-amber-500/20 uppercase tracking-wider">Syncing</span>
+                          </h3>
+                          <p className="text-[11.5px] text-zinc-400 mt-1 select-none font-medium leading-relaxed max-w-xl">
+                            Downloading church songbooks and lyrics from cloud server. First visit sync takes a few moments. No need to refresh!
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* === QUICK METRICS CARDS (4 COLUMNS) === */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full">
+                    <div className="bg-[#12131A] border border-[#1E202B] p-4 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
+                      <span className="text-[10px] font-mono tracking-wider uppercase text-zinc-500 font-semibold">Total Songs</span>
+                      <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
+                        {stats.total}
+                      </span>
+                      <span className="text-[10px] text-zinc-500 font-sans">In Library</span>
+                    </div>
+
+                    <div className="bg-[#12131A] border border-[#1E202B] p-4 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
+                      <span className="text-[10px] font-mono tracking-wider uppercase text-zinc-500 font-semibold">Favorites</span>
+                      <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
+                        {stats.favorites}
+                      </span>
+                      <span className="text-[10px] text-zinc-500 font-sans">Starred Songs</span>
+                    </div>
+
+                    <div className="bg-[#12131A] border border-[#1E202B] p-4 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
+                      <span className="text-[10px] font-mono tracking-wider uppercase text-zinc-500 font-semibold">Categories</span>
+                      <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
+                        {stats.categories}
+                      </span>
+                      <span className="text-[10px] text-zinc-500 font-sans">Unique Genres</span>
+                    </div>
+
+                    <button
+                      onClick={() => navigateTo('schedule')}
+                      className="bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/40 p-4 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between transition-all cursor-pointer group text-left"
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-[10px] font-mono tracking-wider uppercase text-amber-400 font-semibold flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-amber-500" />
+                          Schedule
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-amber-400 transition-colors" />
+                      </div>
+                      <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
+                        {scheduledSongs.length}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-sans group-hover:text-zinc-200 transition-colors">
+                        Scheduled for {activeServerId} &rarr;
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* === ADMIN QUICK ACTIONS GRID (4 CARDS) === */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full">
+                    <button 
+                      onClick={() => navigateTo('search')}
+                      className="p-4 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded-2xl text-left transition-all cursor-pointer group flex flex-col justify-between gap-3 active-touch"
+                    >
+                      <div className="p-2.5 bg-[#1A1C26] border border-[#272A37] rounded-xl group-hover:border-amber-500/20 transition-all w-fit text-amber-500">
+                        <BookOpen className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-white tracking-wide group-hover:text-amber-400 transition-colors">Song Library</div>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">Search and view all songs.</p>
+                      </div>
+                    </button>
+
+                    <button 
+                      onClick={() => navigateTo('schedule')}
+                      className="p-4 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded-2xl text-left transition-all cursor-pointer group flex flex-col justify-between gap-3 active-touch"
+                    >
+                      <div className="p-2.5 bg-[#1A1C26] border border-[#272A37] rounded-xl group-hover:border-amber-500/20 transition-all w-fit text-amber-500">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-white tracking-wide group-hover:text-amber-400 transition-colors">Practice Schedule</div>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">View set dates & practice songs.</p>
+                      </div>
+                    </button>
+
+                    {session?.role === 'admin' ? (
+                      <>
+                        <button 
+                          onClick={() => setShowAddModal(true)}
+                          className="p-4 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded-2xl text-left transition-all cursor-pointer group flex flex-col justify-between gap-3 active-touch"
+                        >
+                          <div className="p-2.5 bg-[#1A1C26] border border-[#272A37] rounded-xl group-hover:border-amber-500/20 transition-all w-fit text-amber-500">
+                            <Plus className="w-5 h-5 stroke-[2.5]" />
                           </div>
-                          <div className="flex-1 text-center sm:text-left">
-                            <h3 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start gap-2">
-                              Syncing Workspace Song Library...
-                              <span className="bg-amber-500/10 text-amber-450 text-[9px] font-mono font-black px-1.5 py-0.5 rounded border border-amber-500/20 uppercase tracking-wider">Syncing</span>
-                            </h3>
-                            <p className="text-[11.5px] text-zinc-400 mt-1 select-none font-medium leading-relaxed max-w-xl">
-                              Downloading church songbooks and lyrics from the cloud server. This is only necessary during your first visit and will complete in a few moments. No need to refresh!
-                            </p>
+                          <div>
+                            <div className="text-sm font-semibold text-white tracking-wide group-hover:text-amber-400 transition-colors">Add New Song</div>
+                            <p className="text-[11px] text-zinc-500 mt-0.5">Create custom song or lyrics.</p>
                           </div>
+                        </button>
+
+                        <button 
+                          onClick={() => setShowUploadModal(true)}
+                          className="p-4 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded-2xl text-left transition-all cursor-pointer group flex flex-col justify-between gap-3 active-touch"
+                        >
+                          <div className="p-2.5 bg-[#1A1C26] border border-[#272A37] rounded-xl group-hover:border-amber-500/20 transition-all w-fit text-amber-500">
+                            <Upload className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-white tracking-wide group-hover:text-amber-400 transition-colors">Bulk Import</div>
+                            <p className="text-[11px] text-zinc-500 mt-0.5">Import TXT or JSON songbooks.</p>
+                          </div>
+                        </button>
+                      </>
+                    ) : (
+                      <div className="col-span-2 p-4 bg-[#12131A] border border-[#1E202B] rounded-2xl flex items-center gap-3 text-zinc-400 text-xs">
+                        <ShieldCheck className="w-5 h-5 text-amber-500 shrink-0" />
+                        <span>Logged in as <strong>{session?.role}</strong>. Administrator controls are unlocked for admin accounts.</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* === LIVE BROADCAST SYNC & PWA BANNER (2 EQUAL COLUMNS ON DESKTOP) === */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                    {/* Live Broadcast Follow Panel */}
+                    <div className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between gap-4 ${
+                      isFollowing 
+                        ? 'bg-amber-500/5 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.05)]' 
+                        : 'bg-[#12131A] border-[#1E202B] hover:border-zinc-700'
+                    }`}>
+                      <div className="flex items-start gap-3.5">
+                        <div className="pt-0.5 shrink-0">
+                          <span className="relative flex h-3 w-3">
+                            {isFollowing && (
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            )}
+                            <span className={`relative inline-flex rounded-full h-3 w-3 ${isFollowing ? 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' : 'bg-zinc-650'}`}></span>
+                          </span>
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Live Broadcast Sync</h3>
+                          <p className="text-[11px] text-zinc-400 mt-1 select-none font-medium leading-relaxed">
+                            {isFollowing 
+                              ? 'Connected to live broadcast. Your screen will automatically navigate when songs are projected.' 
+                              : 'Enable auto-sync to follow projected lyrics during live worship sessions.'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleToggleFollow(!isFollowing)}
+                        className={`w-full py-2.5 rounded-xl text-xs font-bold font-mono tracking-wider uppercase transition-all cursor-pointer active-touch text-center ${
+                          isFollowing 
+                            ? 'bg-amber-500 text-black shadow-md hover:bg-amber-400 shadow-amber-500/25' 
+                            : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700'
+                        }`}
+                      >
+                        {isFollowing ? 'Connected & Syncing' : 'Enable Follow Mode'}
+                      </button>
+                    </div>
+
+                    {/* PWA App Banner */}
+                    {showInstallBanner && !isInstalled && !dismissedInstall ? (
+                      <div className="p-5 bg-gradient-to-br from-zinc-900 to-amber-955/20 rounded-2xl border border-amber-500/20 shadow-lg relative overflow-hidden flex flex-col justify-between gap-3">
+                        <button 
+                          onClick={handleDismissInstall}
+                          className="absolute top-3 right-3 p-1 rounded-full text-zinc-500 hover:text-zinc-300 transition-colors"
+                          title="Dismiss"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-amber-500/20 flex items-center justify-center shrink-0 text-amber-500">
+                            <Smartphone className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-xs font-bold text-white">Install DaSong App</h3>
+                            <p className="text-[11px] text-zinc-400 mt-0.5">Pin to Home Screen for native desktop & mobile worship sets.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <button 
+                            onClick={handleDismissInstall}
+                            className="text-[11px] font-bold text-zinc-400 hover:text-zinc-200 px-3 py-2 rounded-xl transition-all cursor-pointer"
+                          >
+                            Maybe Later
+                          </button>
+                          <button 
+                            onClick={handleInstallApp}
+                            className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-md active-touch flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Download className="h-3.5 w-3.5 stroke-[3]" /> Install App
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-5 bg-[#12131A] border border-[#1E202B] rounded-2xl flex flex-col justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-[#1A1C26] border border-[#272A37] flex items-center justify-center shrink-0 text-amber-500">
+                            <Server className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-xs font-bold text-white uppercase font-mono">Server Instance: {activeServerId}</h3>
+                            <p className="text-[11px] text-zinc-400 mt-0.5">Independent song schedules & offline PWA cache active.</p>
+                          </div>
+                        </div>
+                        <div className="text-[10px] font-mono text-zinc-500 bg-[#1A1C26] px-3 py-1.5 rounded-lg border border-[#272A37] text-center">
+                          {songs.length} Songs Loaded for {activeServerId}
                         </div>
                       </div>
                     )}
-
-            {/* === MOBILE COMPACT GREETING BAR (hidden on desktop) === */}
-            <div className="md:hidden w-full flex items-center justify-between mb-4 px-1">
-              <div>
-                <p className="text-[11px] font-mono text-zinc-500 uppercase tracking-widest">Active Session</p>
-                <h2 className="text-lg font-bold text-white tracking-tight leading-tight">
-                  Welcome, <span className="text-amber-500">{session?.name?.split(' ')[0] || 'User'}</span>
-                  <span className="ml-1.5 text-xs text-zinc-400 font-normal">({session?.role})</span>
-                </h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-[11px] font-mono font-bold px-2 py-1 rounded-lg border uppercase ${
-                  mongoStatus === 'connected' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                  mongoStatus === 'connecting' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                  'bg-zinc-800 text-zinc-500 border-zinc-700'
-                }`}>
-                  {mongoStatus === 'connected' ? 'Live' : mongoStatus === 'connecting' ? 'Sync' : 'Local'}
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1 px-2.5 py-1 bg-zinc-900 hover:bg-rose-955/20 text-rose-400 border border-zinc-800 hover:border-rose-955/40 rounded-lg transition-all text-[11px] font-mono font-bold cursor-pointer active-touch"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Exit</span>
-                </button>
-              </div>
-            </div>
-
-
-            {/* === DESKTOP GREETING CARD (hidden on mobile) === */}
-            <div className="hidden md:block w-full text-left mb-6 bg-zinc-950/40 p-6 rounded-3xl border border-zinc-850 shadow-md relative overflow-hidden">
-              <span className="text-[9px] font-mono tracking-widest text-amber-500 font-bold uppercase bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Active Session</span>
-              <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight mt-2.5">
-                Welcome back, <span className="text-amber-500">{session?.name || 'User'}</span>
-              </h2>
-              <p className="text-xs text-zinc-400 mt-1 select-none font-mono">
-                Logged in as: <span className="text-amber-400 font-bold uppercase">{session?.role}</span>
-              </p>
-            </div>
-
-            {/* Live Service Follow Panel (Guest/Choir/Admin dashboard) */}
-            {activeServerId !== 'default' && (
-              <div className={`w-full p-5 rounded-3xl border transition-all duration-300 ${
-                isFollowing 
-                  ? 'bg-amber-500/5 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.05)]' 
-                  : 'bg-zinc-955/20 border-zinc-850 hover:border-zinc-800'
-              } mb-6 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
-                <div className="flex items-start gap-3.5 relative z-10">
-                  <div className="pt-0.5 shrink-0">
-                    <span className="relative flex h-3 w-3">
-                      {isFollowing && (
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                      )}
-                      <span className={`relative inline-flex rounded-full h-3 w-3 ${isFollowing ? 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' : 'bg-zinc-650'}`}></span>
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Live Broadcast Follower Mode</h3>
-                    <p className="text-[11px] text-zinc-400 mt-1 select-none font-medium leading-relaxed max-w-xl">
-                      {isFollowing 
-                        ? 'Actively listening for live broadcast... Your screen will automatically navigate to the active song.' 
-                        : 'Enable to automatically open the song being projected/led by the worship leader.'}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleToggleFollow(!isFollowing)}
-                  className={`relative z-10 px-5 py-2.5 rounded-full text-xs font-bold font-mono tracking-wider uppercase transition-all cursor-pointer active-touch shrink-0 ${
-                    isFollowing 
-                      ? 'bg-amber-500 text-black shadow-md hover:bg-amber-400 shadow-amber-500/25' 
-                      : 'bg-zinc-900 border border-zinc-800 text-zinc-350 hover:text-white hover:border-zinc-700'
-                  }`}
-                >
-                  {isFollowing ? 'Syncing' : 'Follow'}
-                </button>
-              </div>
-            )}
-
-            {/* Elegant PWA Browser Install Banner */}
-            {showInstallBanner && !isInstalled && !dismissedInstall && (
-              <div className="w-full text-left mb-6 bg-gradient-to-r from-zinc-900 via-zinc-950 to-amber-955/25 p-5 md:p-6 rounded-3xl border border-amber-500/20 shadow-lg relative overflow-hidden group animate-in slide-in-from-top duration-300">
-                {/* Background ambient gold aura */}
-                <div className="absolute top-1/2 -right-4 -translate-y-1/2 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-all duration-500"></div>
-                
-                {/* Close Button top-right */}
-                <button 
-                  onClick={handleDismissInstall}
-                  className="absolute top-3.5 right-3.5 p-1.5 rounded-full text-zinc-505 hover:text-zinc-350 hover:bg-white/5 transition-colors cursor-pointer active-touch"
-                  title="Dismiss Banner"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 relative z-10">
-                  {/* Left Column: Visual Icon with Glowing Ring */}
-                  <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-amber-500/20 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.1)] relative">
-                    <Smartphone className="h-6 w-6 text-amber-500" />
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center border-2 border-zinc-950">
-                      <Download className="h-2.5 w-2.5 text-black stroke-[3]" />
-                    </div>
                   </div>
 
-                  {/* Middle Column: Explanatory Copy */}
-                  <div className="flex-1 min-w-0 pr-4">
-                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                      Install DaSong Songbook App
-                      <span className="bg-amber-500/10 text-amber-400 text-[8px] font-mono font-bold px-1.5 py-0.2 rounded border border-amber-500/20 uppercase tracking-wide">PWA Active</span>
-                    </h3>
-                    <p className="text-[11.5px] text-zinc-400 mt-1 select-none font-medium leading-relaxed">
-                      Pin to your Home Screen or Desktop for a premium offline experience, native fullscreen display, and notch-safe bounds for live worship sets.
-                    </p>
-                  </div>
-
-                  {/* Right Column: Interactive Buttons */}
-                  <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-zinc-800/80">
-                    <button 
-                      onClick={handleDismissInstall}
-                      className="flex-1 sm:flex-none text-center text-[11px] font-bold text-zinc-400 hover:text-zinc-200 px-3 py-2 rounded-xl transition-all cursor-pointer active-touch"
-                    >
-                      Maybe Later
-                    </button>
-                    <button 
-                      onClick={handleInstallApp}
-                      className="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-400 text-black font-bold px-4 py-2 rounded-full text-[11px] transition-all shadow-md active-touch flex items-center justify-center gap-1.5 cursor-pointer shadow-amber-500/15"
-                    >
-                      <Download className="h-3.5 w-3.5 stroke-[3]" /> Install Now
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="w-full mb-6 relative">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Search className="h-4.5 w-4.5 text-zinc-550" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Quick song access... (Type title, author, or lyrics)"
-                  value={quickSearchInput}
-                  onChange={(e) => setQuickSearchInput(e.target.value)}
-                  className="block w-full pl-11 pr-10 py-3 border border-[#1E202B] bg-[#12131A] text-white placeholder-zinc-550 focus:outline-none focus:border-amber-500/35 text-xs font-sans transition-all rounded"
-                />
-                {quickSearchInput && (
-                  <button
-                    onClick={() => setQuickSearchInput('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-500 hover:text-zinc-355 cursor-pointer"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* Autocomplete Popup List */}
-              {quickSearchInput.trim() && (
-                <div className="absolute left-0 right-0 mt-1.5 bg-[#12131A] border border-[#1E202B] rounded shadow-lg z-30 overflow-hidden max-h-[350px] overflow-y-auto divide-y divide-[#1E202B] animate-in fade-in slide-in-from-top-1 duration-150">
-                  {quickSearchMatches.length === 0 ? (
-                    <div className="p-4 text-center text-zinc-550 text-xs font-sans italic">
-                      No matching songs found
-                    </div>
-                  ) : (
-                    quickSearchMatches.map((song) => (
-                      <button
-                        key={song.id}
-                        onClick={() => {
-                          setQuickSearchInput('');
-                          setSongSourceTab('search');
-                          setActiveTab('search');
-                          handleSelectSong(song.id);
-                        }}
-                        className="w-full p-3 hover:bg-[#1A1C26] transition-colors flex items-center justify-between text-left cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-3 truncate">
-                          <div className="h-8 w-8 rounded bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
-                            <Music className="h-4 w-4" />
-                          </div>
-                          <div className="truncate">
-                            <div className="text-xs font-semibold text-zinc-200 group-hover:text-amber-450 transition-colors truncate">
-                              {song.title}
-                            </div>
-                            <div className="text-[10px] text-zinc-550 font-mono mt-0.5">
-                              {song.author || 'Traditional'}
-                            </div>
-                          </div>
-                        </div>
-                        {song.category && (
-                          <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/25 text-amber-555 px-2 py-0.5 rounded shrink-0">
-                            {song.category}
-                          </span>
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Quick Metrics Cards — 2 cols on mobile, 3 on sm+ */}
-            <div className="grid grid-cols-3 gap-3 w-full mb-6 select-none">
-              <div className="bg-[#12131A] border border-[#1E202B] p-3.5 md:p-4 rounded text-center relative overflow-hidden">
-                <span className="text-[9px] font-mono tracking-wider uppercase block text-zinc-550">Songs</span>
-                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-bold mt-1">
-                  {stats.total}
-                </span>
-                <span className="text-[9px] text-zinc-500 mt-0.5 block font-sans">Total</span>
-              </div>
-              <div className="bg-[#12131A] border border-[#1E202B] p-3.5 md:p-4 rounded text-center relative overflow-hidden">
-                <span className="text-[9px] font-mono tracking-wider uppercase block text-zinc-550">Stars</span>
-                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-bold mt-1">
-                  {stats.favorites}
-                </span>
-                <span className="text-[9px] text-zinc-500 mt-0.5 block font-sans">Favorites</span>
-              </div>
-              <div className="bg-[#12131A] border border-[#1E202B] p-3.5 md:p-4 rounded text-center relative overflow-hidden">
-                <span className="text-[9px] font-mono tracking-wider uppercase block text-zinc-550">Categories</span>
-                <span className="font-mono text-xl md:text-2xl text-amber-500 block font-bold mt-1">
-                  {stats.categories}
-                </span>
-                <span className="text-[9px] text-zinc-500 mt-0.5 block font-sans">Unique</span>
-              </div>
-            </div>
-            
-            {/* Quick Actions Navigation Cards */}
-            <div className="grid grid-cols-2 gap-3 md:gap-4 w-full">
-              <button 
-                onClick={() => setActiveTab('search')}
-                className="p-4 md:p-5 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded text-left transition-all cursor-pointer group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
-              >
-                <div className="p-2.5 md:p-3 bg-[#1A1C26] border border-[#272A37] rounded group-hover:border-amber-500/20 transition-all w-fit shrink-0">
-                  <BookOpen className="w-5 h-5 text-amber-555" />
-                </div>
-                <div>
-                  <div className="text-[13px] md:text-sm font-semibold text-white tracking-wide">Song Library</div>
-                  <p className="text-[11px] md:text-xs text-zinc-500 mt-0.5 md:mt-1">Search and browse all songs.</p>
-                </div>
-              </button>
-            </div>
-
-            {/* === RESPONSIVE JUMP BACK IN === */}
-            {recentSongs.length > 0 && (
-              <div className="w-full mt-6">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-semibold block mb-3 pl-0.5 text-left">
-                  Jump Back In
-                </span>
-                
-                {/* Desktop View: list */}
-                <div className="hidden md:block space-y-2 bg-[#12131A] p-5 md:p-6 rounded-md border border-[#1E202B] relative overflow-hidden">
-                  {recentSongs.map(song => (
-                    <button
-                      key={song.id}
-                      onClick={() => {
-                        setActiveTab('search');
-                        setSongSourceTab('search');
-                        handleSelectSong(song.id);
-                      }}
-                      className="w-full p-3 bg-[#1A1C26]/40 hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded flex items-center justify-between gap-3 text-left transition-all cursor-pointer group active-touch"
-                    >
-                      <div className="flex items-center gap-3 truncate">
-                        <div className="h-7 w-7 rounded bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors">
-                          <Music className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="truncate">
-                          <div className="text-xs font-semibold text-white group-hover:text-amber-400 transition-colors truncate">{song.title}</div>
-                          <div className="text-[10px] text-zinc-550 font-mono mt-0.5">{song.author || 'Traditional'}</div>
-                        </div>
+                  {/* === QUICK SONG SEARCH BAR === */}
+                  <div className="w-full relative">
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-zinc-400" />
                       </div>
-                      {song.category && (
-                        <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/25 text-amber-555 px-2 py-0.5 rounded shrink-0">
-                          {song.category}
-                        </span>
+                      <input
+                        type="text"
+                        placeholder="Quick song access... (Type title, author, or lyrics)"
+                        value={quickSearchInput}
+                        onChange={(e) => setQuickSearchInput(e.target.value)}
+                        className="block w-full pl-11 pr-10 py-3.5 border border-[#1E202B] bg-[#12131A] text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/40 text-xs font-sans transition-all rounded-2xl"
+                        aria-label="Quick search songs"
+                      />
+                      {quickSearchInput && (
+                        <button
+                          onClick={() => setQuickSearchInput('')}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                          aria-label="Clear search"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                       )}
-                    </button>
-                  ))}
-                </div>
+                    </div>
 
-                {/* Mobile View: horizontal scroll pills */}
-                <div className="md:hidden flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
-                  {recentSongs.map(song => (
-                    <button
-                      key={song.id}
-                      onClick={() => {
-                        setActiveTab('search');
-                        setSongSourceTab('search');
-                        handleSelectSong(song.id);
-                      }}
-                      className="recent-song-pill active-touch text-left shrink-0"
-                    >
-                      <div className="text-[13px] font-bold text-white truncate leading-tight">{song.title}</div>
-                      <div className="text-[10px] text-zinc-555 font-mono mt-1 truncate">{song.author || 'Traditional'}</div>
-                      {song.category && (
-                        <div className="text-[9px] font-bold uppercase text-amber-500/90 mt-1">{song.category}</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </motion.div>
-  )}
+                    {/* Autocomplete Popup List */}
+                    {quickSearchInput.trim() && (
+                      <div className="absolute left-0 right-0 mt-1.5 bg-[#12131A] border border-[#1E202B] rounded-2xl shadow-2xl z-30 overflow-hidden max-h-[350px] overflow-y-auto divide-y divide-[#1E202B]">
+                        {quickSearchMatches.length === 0 ? (
+                          <div className="p-4 text-center text-zinc-500 text-xs italic">
+                            No matching songs found in {activeServerId} library
+                          </div>
+                        ) : (
+                          quickSearchMatches.map((song) => (
+                            <button
+                              key={song.id}
+                              onClick={() => {
+                                setQuickSearchInput('');
+                                setSongSourceTab('search');
+                                navigateTo('search');
+                                handleSelectSong(song.id);
+                              }}
+                              className="w-full p-3.5 hover:bg-[#1A1C26] transition-colors flex items-center justify-between text-left cursor-pointer group"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="h-8 w-8 rounded-xl bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors shrink-0">
+                                  <Music className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-semibold text-zinc-200 group-hover:text-amber-400 transition-colors truncate">
+                                    {song.title}
+                                  </div>
+                                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                                    {song.author || 'Traditional'}
+                                  </div>
+                                </div>
+                              </div>
+                              {song.category && (
+                                <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded shrink-0">
+                                  {song.category}
+                                </span>
+                              )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* === JUMP BACK IN / RECENT SONGS === */}
+                  {recentSongs.length > 0 && (
+                    <div className="w-full">
+                      <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-semibold block mb-3 pl-0.5 text-left">
+                        Jump Back In &bull; Recently Viewed
+                      </span>
+                      
+                      {/* Desktop View */}
+                      <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-3 bg-[#12131A] p-4 rounded-2xl border border-[#1E202B]">
+                        {recentSongs.map(song => (
+                          <button
+                            key={song.id}
+                            onClick={() => {
+                              navigateTo('search');
+                              setSongSourceTab('search');
+                              handleSelectSong(song.id);
+                            }}
+                            className="p-3 bg-[#1A1C26]/40 hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded-xl flex items-center justify-between gap-3 text-left transition-all cursor-pointer group active-touch"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="h-7 w-7 rounded-lg bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors shrink-0">
+                                <Music className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold text-white group-hover:text-amber-400 transition-colors truncate">{song.title}</div>
+                                <div className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">{song.author || 'Traditional'}</div>
+                              </div>
+                            </div>
+                            {song.category && (
+                              <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded shrink-0">
+                                {song.category}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Mobile View */}
+                      <div className="md:hidden flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
+                        {recentSongs.map(song => (
+                          <button
+                            key={song.id}
+                            onClick={() => {
+                              navigateTo('search');
+                              setSongSourceTab('search');
+                              handleSelectSong(song.id);
+                            }}
+                            className="recent-song-pill active-touch text-left shrink-0"
+                          >
+                            <div className="text-[13px] font-bold text-white truncate leading-tight">{song.title}</div>
+                            <div className="text-[10px] text-zinc-400 font-mono mt-1 truncate">{song.author || 'Traditional'}</div>
+                            {song.category && (
+                              <div className="text-[9px] font-bold uppercase text-amber-500/90 mt-1">{song.category}</div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </motion.div>
+          )}
 
           {/* VIEW 2: DEDICATED SONG SEARCH VIEW */}
           {activeTab === 'search' && (
