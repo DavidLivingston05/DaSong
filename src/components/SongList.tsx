@@ -36,22 +36,9 @@ function SongList({
   const [kbdIndex, setKbdIndex] = useState<number>(-1);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [showRecommendations, setShowRecommendations] = useState<boolean>(true);
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const searchContainerRef = useRef<HTMLDivElement | null>(null);
   
   const deleteTimerRef = useRef<number | null>(null);
   const observerTarget = useRef<HTMLDivElement | null>(null);
-
-  // Click outside to close instant search dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Debounce search query update cleanly
   useEffect(() => {
@@ -104,12 +91,6 @@ function SongList({
     });
     return scoredMatches.map(sm => sm.song);
   }, [songs, searchQuery, showFavoritesOnly]);
-
-  // Top 5 instant dropdown matches for typeahead menu
-  const topDropdownMatches = useMemo(() => {
-    if (!inputValue.trim()) return [];
-    return sortedSongs.slice(0, 5);
-  }, [sortedSongs, inputValue]);
 
   // Slice list up to visible count for performance
   const paginatedSongs = useMemo(() => {
@@ -244,7 +225,7 @@ function SongList({
       {/* Search Input Toolbar with Instant Dropdown Menu */}
       <div className="flex flex-col gap-2 w-full">
         <div className="flex flex-col sm:flex-row gap-2 w-full">
-          <div ref={searchContainerRef} className="relative group flex-1">
+          <div className="relative group flex-1">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
               <Search className="h-4 w-4 text-zinc-500 transition-colors group-focus-within:text-amber-500" aria-hidden={true} />
             </div>
@@ -253,11 +234,8 @@ function SongList({
               type="text"
               placeholder="Type song title or lyrics ('aaradhani', 'neere'). Press '/' to focus..."
               value={inputValue}
-              onFocus={() => { if (inputValue.trim()) setIsDropdownOpen(true); }}
               onChange={(e) => {
                 setInputValue(e.target.value);
-                setIsDropdownOpen(true);
-                setKbdIndex(0);
               }}
               className="block w-full pl-11 pr-16 py-3 bg-zinc-950/40 text-zinc-250 placeholder-zinc-550 focus:outline-none text-sm transition-all premium-input rounded"
               aria-label="Search songs by title, author, or lyrics snippets"
@@ -266,7 +244,6 @@ function SongList({
               <button
                 onClick={() => {
                   setInputValue('');
-                  setIsDropdownOpen(false);
                 }}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-zinc-500 hover:text-white z-10"
               >
@@ -276,63 +253,6 @@ function SongList({
               <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[10px] font-mono font-bold text-zinc-600 bg-zinc-900/60 px-1.5 py-0.5 rounded my-auto h-5 border border-zinc-800 z-10">
                 /
               </span>
-            )}
-
-            {/* Instant Floating Typeahead Dropdown Menu */}
-            {isDropdownOpen && inputValue.trim() !== '' && (
-              <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-[#090A0F] border border-amber-500/40 rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] overflow-hidden backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="px-3.5 py-2.5 bg-zinc-950 border-b border-zinc-850 flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5 font-mono">
-                    <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" /> Instant Top Song Matches
-                  </span>
-                  <span className="text-[10px] text-zinc-500">Tap song to view sheet</span>
-                </div>
-                
-                <div className="divide-y divide-zinc-900/80 max-h-[340px] overflow-y-auto">
-                  {topDropdownMatches.length > 0 ? (
-                    topDropdownMatches.map((song, idx) => {
-                      const matchingSnippet = findMatchingLyricLine(song, inputValue);
-                      const isKbdSelected = kbdIndex === idx;
-                      return (
-                        <div
-                          key={`drop-${song.id}`}
-                          onClick={() => {
-                            onSelectSong(song.id);
-                            setIsDropdownOpen(false);
-                          }}
-                          className={`p-3.5 cursor-pointer transition-all flex items-center justify-between gap-3 group active-touch ${
-                            isKbdSelected 
-                              ? 'bg-amber-500/15 border-l-4 border-amber-500' 
-                              : 'hover:bg-zinc-900/70'
-                          }`}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors truncate">
-                                <HighlightText text={song.title} query={inputValue} />
-                              </span>
-                            </div>
-                            {matchingSnippet ? (
-                              <p className="text-[11px] text-zinc-350 mt-1 line-clamp-1 italic font-serif">
-                                "<HighlightText text={matchingSnippet} query={inputValue} />"
-                              </p>
-                            ) : (
-                              song.author && (
-                                <p className="text-[10px] text-zinc-500 mt-0.5 truncate">{song.author}</p>
-                              )
-                            )}
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-amber-500/70 group-hover:text-amber-400 group-hover:translate-x-1 transition-all shrink-0" />
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="p-5 text-center text-xs text-zinc-400 font-sans">
-                      No matching songs found for "{inputValue}".
-                    </div>
-                  )}
-                </div>
-              </div>
             )}
           </div>
           <div className="flex gap-2">
