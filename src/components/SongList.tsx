@@ -310,11 +310,6 @@ function SongList({
                               <span className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors truncate">
                                 <HighlightText text={song.title} query={inputValue} />
                               </span>
-                              {(song as any).key && (
-                                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-amber-400 shrink-0">
-                                  Key of {(song as any).key}
-                                </span>
-                              )}
                             </div>
                             {matchingSnippet ? (
                               <p className="text-[11px] text-zinc-350 mt-1 line-clamp-1 italic font-serif">
@@ -336,49 +331,6 @@ function SongList({
                     </div>
                   )}
                 </div>
-
-                {/* Recommended Next Songs section for the typed lyrics */}
-                {smartRecommendations.length > 0 && (
-                  <div className="bg-zinc-950/95 border-t border-amber-500/25 p-3 space-y-2 select-none">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-                        <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
-                        Recommended Next Tracks for Service
-                      </span>
-                      <span className="text-[9.5px] text-zinc-500">Same Key & Worship Theme</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {smartRecommendations.slice(0, 4).map(({ song: recSong, reasons }) => (
-                        <div
-                          key={`drop-rec-${recSong.id}`}
-                          onClick={() => {
-                            onSelectSong(recSong.id);
-                            setIsDropdownOpen(false);
-                          }}
-                          className="p-2.5 rounded-lg bg-zinc-900/90 hover:bg-amber-500/10 border border-zinc-800 hover:border-amber-500/40 cursor-pointer transition-all flex flex-col justify-between group active-touch"
-                        >
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-xs font-bold text-white group-hover:text-amber-400 truncate">
-                              {recSong.title}
-                            </span>
-                            {(recSong as any).key && (
-                              <span className="text-[8.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-amber-400 shrink-0">
-                                Key of {(recSong as any).key}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {reasons.slice(0, 1).map((r, i) => (
-                              <span key={i} className="text-[8.5px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                                {r}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -396,100 +348,9 @@ function SongList({
               <Star className={`h-4 w-4 ${showFavoritesOnly ? 'fill-amber-500 text-amber-500' : ''}`} aria-hidden={true} />
               <span className="hidden sm:inline">Favorites</span>
             </button>
-
-            <button
-              onClick={() => setShowRecommendations(!showRecommendations)}
-              className={`px-3 py-3 rounded text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 border ${
-                showRecommendations
-                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                  : 'premium-btn-secondary border-[#1E202B] text-zinc-500'
-              }`}
-              title="Toggle Smart Recommendations"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
-              <span className="hidden md:inline">Recommendations</span>
-            </button>
           </div>
-        </div>
-
-        {/* 1-Tap Quick Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[11px] font-medium select-none">
-          <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider shrink-0 mr-1">Quick Themes:</span>
-          {['All', 'Praise', 'Worship', 'Holy Spirit', 'Communion', 'Grace', 'Youth', 'Christmas', 'Key of G', 'Key of D', 'Key of C', 'Tamil / Tanglish'].map(tag => {
-            const isSelected = (tag === 'All' && !inputValue) || (inputValue.toLowerCase() === tag.toLowerCase());
-            return (
-              <button
-                key={tag}
-                onClick={() => {
-                  setInputValue(tag === 'All' ? '' : tag);
-                  setIsDropdownOpen(false);
-                }}
-                className={`px-3 py-1 rounded-full border transition-all shrink-0 cursor-pointer text-xs ${
-                  isSelected 
-                    ? 'bg-amber-500 text-black border-amber-500 font-bold shadow-[0_0_10px_rgba(245,158,11,0.3)]' 
-                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
-                }`}
-              >
-                {tag}
-              </button>
-            );
-          })}
         </div>
       </div>
-
-      {/* Smart Recommendations Section */}
-      {showRecommendations && smartRecommendations.length > 0 && (
-        <div className="bg-[#12131A] border border-amber-500/20 rounded-md p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-amber-450 uppercase tracking-wider flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-500" />
-              {selectedSong 
-                ? `Recommended After "${selectedSong.title}"`
-                : searchQuery.trim()
-                  ? `Recommended Worship Songs for "${searchQuery.trim()}"`
-                  : `Top Recommended Worship Songs`
-              }
-            </h3>
-            <span className="text-[11px] text-zinc-500">Matched by Key, Theme & Lyrics</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
-            {smartRecommendations.map(({ song, reasons }) => (
-              <div
-                key={`rec-${song.id}`}
-                onClick={() => onSelectSong(song.id)}
-                className="bg-zinc-950/60 hover:bg-amber-500/[0.06] border border-zinc-850 hover:border-amber-500/40 p-3 rounded cursor-pointer transition-all duration-200 flex flex-col justify-between group active-touch"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors truncate">
-                      {song.title}
-                    </span>
-                    {(song as any).key && (
-                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-amber-400 shrink-0">
-                        {(song as any).key}
-                      </span>
-                    )}
-                  </div>
-                  {song.author && (
-                    <p className="text-[10px] text-zinc-500 truncate mb-1">
-                      {song.author}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {reasons.map((r, i) => (
-                    <span key={i} className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                      {r}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Song Grid / Lists layout */}
       <div className="bg-[#12131A] border border-[#1E202B] overflow-hidden rounded-md">
@@ -501,7 +362,7 @@ function SongList({
               <tr className="bg-zinc-950/80 border-b border-zinc-900/35 select-none">
                 <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500 w-14 text-center">Fav</th>
                 <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500">Song Title & Lyrics Preview</th>
-                <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500 w-28 text-center">Key / Theme</th>
+                <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500 w-28 text-center">Category</th>
                 {currentRole === 'admin' && (
                   <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500 w-28 text-center">Actions</th>
                 )}
@@ -512,7 +373,6 @@ function SongList({
                 paginatedSongs.map((song, index) => {
                   const isSelected = selectedSongId === song.id;
                   const matchingSnippetLine = searchQuery.trim() ? findMatchingLyricLine(song, searchQuery) : undefined;
-                  const songKey = (song as any).key || undefined;
 
                   return (
                     <tr
@@ -563,14 +423,10 @@ function SongList({
                         </div>
                       </td>
 
-                      {/* Key & Category Column */}
+                      {/* Category Column */}
                       <td className="p-4 text-center">
                         <div className="flex flex-col items-center gap-1">
-                          {songKey ? (
-                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-amber-400">
-                              {songKey}
-                            </span>
-                          ) : song.category ? (
+                          {song.category ? (
                             <span className="text-[10px] font-sans text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-850">
                               {song.category}
                             </span>
@@ -625,7 +481,6 @@ function SongList({
             paginatedSongs.map((song, index) => {
               const isSelected = selectedSongId === song.id;
               const matchingSnippetLine = searchQuery.trim() ? findMatchingLyricLine(song, searchQuery) : undefined;
-              const songKey = (song as any).key || undefined;
 
               return (
                 <div
@@ -659,13 +514,8 @@ function SongList({
                       </div>
                     </div>
 
-                    {/* Right: Key badge & favorite button */}
+                    {/* Right: favorite button */}
                     <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {songKey && (
-                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-amber-400 border border-zinc-800">
-                          {songKey}
-                        </span>
-                      )}
                       <button
                         onClick={() => onToggleFavorite(song.id, !!song.favorite)}
                         className="p-2 text-zinc-650 hover:text-amber-550 transition-all cursor-pointer active-touch rounded"
