@@ -1,12 +1,12 @@
 import React from 'react';
-import { Home, BookOpen, Plus, Smartphone } from 'lucide-react';
+import { Home, BookOpen, Calendar, Plus, Smartphone } from 'lucide-react';
 import { UserRole } from '../../types';
 
 interface MobileBottomNavProps {
   session: { role: UserRole; name?: string } | null;
-  activeTab: 'dashboard' | 'search';
-  setActiveTab: (tab: 'dashboard' | 'search') => void;
-  navigateTo: (tab: 'dashboard' | 'search') => void;
+  activeTab: 'dashboard' | 'search' | 'schedule';
+  setActiveTab: (tab: 'dashboard' | 'search' | 'schedule') => void;
+  navigateTo: (tab: 'dashboard' | 'search' | 'schedule') => void;
   showInstallBanner: boolean;
   isInstalled: boolean;
   handleInstallApp: () => void;
@@ -31,14 +31,14 @@ export default function MobileBottomNav({
     >
       <button
         onClick={() => setActiveTab('dashboard')}
-        className={`flex flex-col items-center gap-1 px-5 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[56px] ${
+        className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
           activeTab === 'dashboard' ? 'text-amber-500' : 'text-zinc-500'
         }`}
         aria-current={activeTab === 'dashboard' ? 'page' : undefined}
       >
         {activeTab === 'dashboard' && <span className="nav-tab-active-bar" />}
-        <Home className={`w-6 h-6 transition-transform duration-200 ${activeTab === 'dashboard' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
-        <span className={`text-[11px] font-bold uppercase tracking-wider ${activeTab === 'dashboard' ? 'font-black' : ''}`}>Home</span>
+        <Home className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'dashboard' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'dashboard' ? 'font-black' : ''}`}>Home</span>
       </button>
 
       <button
@@ -46,14 +46,29 @@ export default function MobileBottomNav({
           setSelectedSongId(null);
           navigateTo('search');
         }}
-        className={`flex flex-col items-center gap-1 px-5 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[56px] ${
+        className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
           activeTab === 'search' ? 'text-amber-500' : 'text-zinc-500'
         }`}
         aria-current={activeTab === 'search' ? 'page' : undefined}
       >
         {activeTab === 'search' && <span className="nav-tab-active-bar" />}
-        <BookOpen className={`w-6 h-6 transition-transform duration-200 ${activeTab === 'search' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
-        <span className={`text-[11px] font-bold uppercase tracking-wider ${activeTab === 'search' ? 'font-black' : ''}`}>Library</span>
+        <BookOpen className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'search' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'search' ? 'font-black' : ''}`}>Library</span>
+      </button>
+
+      <button
+        onClick={() => {
+          setSelectedSongId(null);
+          navigateTo('schedule');
+        }}
+        className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
+          activeTab === 'schedule' ? 'text-amber-500' : 'text-zinc-500'
+        }`}
+        aria-current={activeTab === 'schedule' ? 'page' : undefined}
+      >
+        {activeTab === 'schedule' && <span className="nav-tab-active-bar" />}
+        <Calendar className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'schedule' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'schedule' ? 'font-black' : ''}`}>Schedule</span>
       </button>
 
       {(session?.role === 'admin' || session?.role === 'guest') && (

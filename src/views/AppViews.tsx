@@ -7,6 +7,8 @@ import { SongMetadata } from '../lib/db';
 import { motion } from 'motion/react';
 import SongDetail from '../components/SongDetail';
 import SongList from '../components/SongList';
+import { ScheduleListView } from '../components/ScheduleListView';
+import { ScheduledSong } from '../lib/useSchedule';
 
 
 interface DashboardViewProps {
@@ -28,7 +30,7 @@ interface DashboardViewProps {
   setQuickSearchInput: (value: string) => void;
   quickSearchMatches: SongMetadata[];
   setSongSourceTab: (tab: 'search' | 'dashboard') => void;
-  setActiveTab: (tab: 'dashboard' | 'search') => void;
+  setActiveTab: (tab: 'dashboard' | 'search' | 'schedule') => void;
   handleSelectSong: (id: string | null) => void;
   stats: { total: number; favorites: number; categories: number };
   recentSongs: SongMetadata[];
@@ -42,7 +44,7 @@ interface SongSearchViewProps {
   selectedSongId: string | null;
   handleSelectSong: (id: string | null) => void;
   songSourceTab: 'search' | 'dashboard';
-  setActiveTab: (tab: 'dashboard' | 'search') => void;
+  setActiveTab: (tab: 'dashboard' | 'search' | 'schedule') => void;
   loadEvents?: () => void;
   handleEnterStageMode: () => void;
   handleToggleFavorite: (id: string, currentFav: boolean) => void;
@@ -58,6 +60,8 @@ interface SongSearchViewProps {
   handleClearLibrary: () => void;
   mongoStatus: 'connecting' | 'connected' | 'error' | 'offline';
   onExportSong?: (song: Song) => void;
+  onScheduleSong?: (data: any) => void;
+  isScheduled?: boolean;
 }
 
 export function DashboardView({
@@ -443,6 +447,8 @@ export function SongSearchView({
   handleClearLibrary,
   mongoStatus,
   onExportSong,
+  onScheduleSong,
+  isScheduled,
 }: SongSearchViewProps) {
   return (
     <motion.div
@@ -469,6 +475,8 @@ export function SongSearchView({
             songsMetadata={songs}
             isFavorite={selectedSongId ? favoriteSongIds.has(selectedSongId) : false}
             onExportSong={onExportSong}
+            onScheduleSong={onScheduleSong}
+            isScheduled={isScheduled}
           />
         </div>
       ) : (
@@ -508,6 +516,41 @@ export function SongSearchView({
           />
         </div>
       )}
+    </motion.div>
+  );
+}
+
+interface ScheduleViewProps {
+  songs: ScheduledSong[];
+  onRemove: (id: string) => void;
+  onMarkCompleted: (id: string) => void;
+  onReschedule: (id: string, newDate: string) => void;
+  onSelectSong: (songId: string) => void;
+}
+
+export function ScheduleView({
+  songs,
+  onRemove,
+  onMarkCompleted,
+  onReschedule,
+  onSelectSong,
+}: ScheduleViewProps) {
+  return (
+    <motion.div
+      key="schedule-tab"
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -4 }}
+      transition={{ duration: 0.18 }}
+      className="w-full flex flex-col px-4 sm:px-6 md:px-8 py-6"
+    >
+      <ScheduleListView
+        songs={songs}
+        onRemove={onRemove}
+        onMarkCompleted={onMarkCompleted}
+        onReschedule={onReschedule}
+        onSelectSong={onSelectSong}
+      />
     </motion.div>
   );
 }

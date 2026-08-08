@@ -6,8 +6,8 @@ import {
 import { UserRole } from '../../types';
 
 interface HeaderProps {
-  navigateTo: (tab: 'dashboard' | 'search') => void;
-  activeTab: 'dashboard' | 'search';
+  navigateTo: (tab: 'dashboard' | 'search' | 'schedule') => void;
+  activeTab: 'dashboard' | 'search' | 'schedule';
   selectedSongId: string | null;
   session: { role: UserRole; name?: string } | null;
   activeServerId: string;
@@ -22,6 +22,7 @@ interface HeaderProps {
   handleLeaveServer: () => void;
   setShowAddModal: (show: boolean) => void;
   setShowUploadModal: (show: boolean) => void;
+  scheduledCount?: number;
 }
 
 export default function Header({
@@ -41,6 +42,7 @@ export default function Header({
   handleLeaveServer,
   setShowAddModal,
   setShowUploadModal,
+  scheduledCount = 0,
 }: HeaderProps) {
   const [currentTheme, setCurrentTheme] = useState<string>(() => {
     return localStorage.getItem('dasong_visual_theme') || 'amber';
@@ -57,6 +59,7 @@ export default function Header({
     const saved = localStorage.getItem('dasong_visual_theme') || 'amber';
     document.documentElement.setAttribute('data-theme', saved);
   }, []);
+
   return (
     <header id="main-header" className={`bg-[#090A0F] border-b border-[#1E202B] text-white z-20 px-6 py-4 relative ${selectedSongId ? 'hidden md:block' : ''}`}>
       <div className="w-full max-w-[1850px] mx-auto flex items-center justify-between gap-6">
@@ -98,6 +101,22 @@ export default function Header({
           >
             <BookOpen className="h-3.5 w-3.5" />
             <span>Library</span>
+          </button>
+          <button
+            onClick={() => navigateTo('schedule')}
+            className={`px-4 py-2 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 relative ${
+              activeTab === 'schedule'
+                ? 'bg-[#1E202B] text-amber-500 border border-amber-500/25'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1E202B]/40'
+            }`}
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            <span>Schedule</span>
+            {scheduledCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.2 bg-amber-500/20 text-amber-400 font-mono text-[9px] font-bold rounded-full border border-amber-500/30">
+                {scheduledCount}
+              </span>
+            )}
           </button>
         </nav>
 

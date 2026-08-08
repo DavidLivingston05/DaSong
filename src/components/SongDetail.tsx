@@ -9,6 +9,8 @@ import FocusTrap from './FocusTrap';
 import { getRecommendedSongs } from '../lib/recommendations';
 
 
+import { ScheduleButton } from './ScheduleButton';
+
 interface SongDetailProps {
   songId: string;
   onClose: () => void;
@@ -23,6 +25,8 @@ interface SongDetailProps {
   songsMetadata?: SongMetadata[];
   isFavorite?: boolean;
   onExportSong?: (song: Song) => void;
+  onScheduleSong?: (data: any) => void;
+  isScheduled?: boolean;
 }
 
 export default function SongDetail({
@@ -38,7 +42,9 @@ export default function SongDetail({
   tempBroadcastSong = null,
   songsMetadata,
   isFavorite = false,
-  onExportSong
+  onExportSong,
+  onScheduleSong,
+  isScheduled = false,
 }: SongDetailProps) {
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -780,6 +786,15 @@ export default function SongDetail({
           )}
 
 
+
+          {/* Schedule Button */}
+          {onScheduleSong && song && (
+            <ScheduleButton
+              song={song}
+              onSchedule={onScheduleSong}
+              isAlreadyScheduled={isScheduled}
+            />
+          )}
 
           {/* Fullscreen Presentation Trigger Selection */}
           {onExportSong && song && (

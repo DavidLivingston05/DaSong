@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dasong-v28';
+const CACHE_NAME = 'dasong-v29';
 const ASSETS = [
   '/',
   '/index.html',

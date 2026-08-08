@@ -28,12 +28,14 @@ import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
 import SongList from './components/SongList';
 import SongDetail from './components/SongDetail';
+import { useSchedule } from './lib/useSchedule';
+import { ScheduleView } from './views/AppViews';
 import { motion, AnimatePresence } from 'motion/react';
 import { parseTwoLineChords } from './utils/lyricsParser';
 
 interface AppHistoryState {
   id: string;
-  tab: 'dashboard' | 'search';
+  tab: 'dashboard' | 'search' | 'schedule';
   songId: string | null;
   stageMode: boolean;
   modal: 'add' | 'upload' | 'events' | 'join' | 'create' | null;
@@ -162,8 +164,19 @@ export default function App() {
     const saved = localStorage.getItem(`lyrasync_guideline_suggestions_${activeServerId}`);
     setSuggestions(saved ? JSON.parse(saved) : []);
   }, [activeServerId]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'search'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'search' | 'schedule'>('dashboard');
   const [songSourceTab, setSongSourceTab] = useState<'search' | 'dashboard'>('search');
+
+  // Practice Schedule Hook
+  const {
+    scheduledSongs,
+    scheduleSong,
+    removeSong,
+    markCompleted,
+    rescheduleSong,
+    getSongsSortedByDate,
+    isScheduledOnDate,
+  } = useSchedule();
 
   // Quick Search Dashboard State
   const [quickSearchInput, setQuickSearchInput] = useState<string>('');
@@ -193,7 +206,7 @@ export default function App() {
   // ── Android Back Button / History API ──────────────────────────────────────
   // Push a history entry on every meaningful navigation so Android's back button
   // steps back through in-app screens instead of closing the PWA.
-  const navigateTo = useCallback((tab: 'dashboard' | 'search') => {
+  const navigateTo = useCallback((tab: 'dashboard' | 'search' | 'schedule') => {
     setActiveTab(tab);
   }, []);
   // ───────────────────────────────────────────────────────────────────────────
@@ -1662,6 +1675,22 @@ export default function App() {
               <BookOpen className="h-3.5 w-3.5" />
               <span>Library</span>
             </button>
+            <button
+              onClick={() => navigateTo('schedule')}
+              className={`px-4 py-2 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+                activeTab === 'schedule'
+                  ? 'bg-[#1E202B] text-amber-500 border border-amber-500/25'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1E202B]/40'
+              }`}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Schedule</span>
+              {scheduledSongs.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 bg-amber-500/20 text-amber-400 font-mono text-[9px] font-bold rounded-full border border-amber-500/30">
+                  {scheduledSongs.length}
+                </span>
+              )}
+            </button>
           </nav>
 
           {/* Right Action / Profile Controls */}
@@ -2147,6 +2176,8 @@ export default function App() {
                   backLabel="Back to Search"
                   songsMetadata={songs}
                   isFavorite={selectedSongId ? favoriteSongIds.has(selectedSongId) : false}
+                  onScheduleSong={scheduleSong}
+                  isScheduled={selectedSongId ? isScheduledOnDate(selectedSongId, new Date().toISOString().split('T')[0]) : false}
                 />
 
               </div>
@@ -2189,6 +2220,21 @@ export default function App() {
               </div>
             )}
             </motion.div>
+          )}
+
+          {/* VIEW 3: PRACTICE SCHEDULE VIEW */}
+          {activeTab === 'schedule' && (
+            <ScheduleView
+              songs={getSongsSortedByDate()}
+              onRemove={removeSong}
+              onMarkCompleted={markCompleted}
+              onReschedule={rescheduleSong}
+              onSelectSong={(id) => {
+                setSongSourceTab('search');
+                handleSelectSong(id);
+                setActiveTab('search');
+              }}
+            />
           )}
 
         </AnimatePresence>
@@ -2813,13 +2859,28 @@ That saved a wretch like me!`}
               setSelectedSongId(null);
               navigateTo('search');
             }}
-            className={`flex flex-col items-center gap-1 px-5 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[56px] ${
+            className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
               activeTab === 'search' ? 'text-amber-500' : 'text-zinc-500'
             }`}
           >
             {activeTab === 'search' && <span className="nav-tab-active-bar" />}
-            <BookOpen className={`w-6 h-6 transition-transform duration-200 ${activeTab === 'search' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
-            <span className={`text-[11px] font-bold uppercase tracking-wider ${activeTab === 'search' ? 'font-black' : ''}`}>Library</span>
+            <BookOpen className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'search' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'search' ? 'font-black' : ''}`}>Library</span>
+          </button>
+
+          {/* SCHEDULE */}
+          <button
+            onClick={() => {
+              setSelectedSongId(null);
+              navigateTo('schedule');
+            }}
+            className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
+              activeTab === 'schedule' ? 'text-amber-500' : 'text-zinc-500'
+            }`}
+          >
+            {activeTab === 'schedule' && <span className="nav-tab-active-bar" />}
+            <Calendar className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'schedule' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'schedule' ? 'font-black' : ''}`}>Schedule</span>
           </button>
 
           {/* ADMIN/GUEST FAB — center elevated button for quick actions */}
