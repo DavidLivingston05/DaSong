@@ -296,6 +296,7 @@ export default function SongDetail({
   };
 
   const handleCopyLyrics = async () => {
+    if (!song) return;
     try {
       let processed = stripChords(song.lyrics);
       const rawLines = processed.split('\n');
@@ -330,6 +331,7 @@ export default function SongDetail({
   };
 
   const getSongLinkUrl = () => {
+    if (!song) return '';
     const currentUrl = window.location.href;
     const url = new URL(currentUrl);
     url.searchParams.set('song', song.id);
@@ -342,6 +344,7 @@ export default function SongDetail({
   };
 
   const handleCopyWebLink = async () => {
+    if (!song) return;
     try {
       const shareUrl = getSongLinkUrl();
       const copySuccess = await copyTextToClipboard(shareUrl);
@@ -358,6 +361,7 @@ export default function SongDetail({
   };
 
   const handleNativeShare = async () => {
+    if (!song) return;
     try {
       const shareUrl = getSongLinkUrl();
       if (navigator.share) {

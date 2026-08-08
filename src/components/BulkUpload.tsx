@@ -272,9 +272,9 @@ To save a wretch like me`;
         bpm: 75,
         lyrics: formattedLyrics
       });
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error(err);
-      alert('Error fetching lyrics from URL: ' + err.message);
+      alert('Error fetching lyrics from URL: ' + (err?.message || err));
     } finally {
       setScrapeLoading(false);
     }
@@ -305,9 +305,9 @@ To save a wretch like me`;
       setScrapeUrl('');
       setLoading(false);
       onSuccess([newSong.id]);
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed saving song: ' + err.message);
+      alert('Failed saving song: ' + (err?.message || err));
       setLoading(false);
     }
   };

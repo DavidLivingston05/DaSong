@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useDeferredValue } from 'react';
 import { Music, Star, Trash2, Layers, ChevronRight, Search, Plus, Database, BookOpen, Sparkles, Key, Tag } from 'lucide-react';
 import { SongMetadata } from '../lib/db';
 import { UserRole } from '../types';
