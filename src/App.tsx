@@ -1821,13 +1821,13 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18 }}
-              className="w-full max-w-6xl mx-auto py-4 md:py-6 px-3 md:px-6 flex flex-col gap-6"
+              className="w-full max-w-5xl mx-auto py-4 md:py-6 px-3 md:px-6 flex flex-col gap-6"
             >
               {activeServerId === 'default' ? renderGuestWelcome() : (
                 <>
-                  {/* === WORKSPACE & ADMIN HEADER BANNER === */}
-                  <div className="w-full bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-955/20 p-5 md:p-7 rounded-3xl border border-zinc-800 shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                  {/* === CLEAN WORKSPACE GREETING BANNER === */}
+                  <div className="w-full bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-955/15 p-6 md:p-8 rounded-3xl border border-zinc-800/80 shadow-lg relative overflow-hidden flex flex-col justify-between gap-4">
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
                     
                     <div className="relative z-10 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1847,41 +1847,12 @@ export default function App() {
                         </span>
                       </div>
 
-                      <h1 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+                      <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight pt-1">
                         Welcome back, <span className="text-amber-500">{session?.name || 'Administrator'}</span>
                       </h1>
                       <p className="text-xs text-zinc-400 max-w-xl leading-relaxed">
-                        Manage worship songs, view practice schedules, and control live broadcasts for server <strong className="text-zinc-200">{activeServerId}</strong>.
+                        Worship studio dashboard & song library management for <strong className="text-zinc-200">{activeServerId}</strong>.
                       </p>
-                    </div>
-
-                    {/* Quick Admin Actions in Header */}
-                    <div className="relative z-10 flex flex-wrap items-center gap-2.5 shrink-0">
-                      {session?.role === 'admin' && (
-                        <>
-                          <button
-                            onClick={() => setShowAddModal(true)}
-                            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer active-touch"
-                          >
-                            <Plus className="w-4 h-4 stroke-[3]" />
-                            <span>Add Song</span>
-                          </button>
-                          <button
-                            onClick={() => setShowUploadModal(true)}
-                            className="px-4 py-2.5 bg-zinc-850 hover:bg-zinc-800 text-white font-bold text-xs border border-zinc-700 rounded-xl transition-all flex items-center gap-2 cursor-pointer active-touch"
-                          >
-                            <Upload className="w-4 h-4 text-amber-500" />
-                            <span>Import</span>
-                          </button>
-                        </>
-                      )}
-                      <button
-                        onClick={handleLogout}
-                        className="px-3.5 py-2.5 bg-zinc-900 hover:bg-rose-950/30 text-rose-400 border border-zinc-800 hover:border-rose-900/50 rounded-xl transition-all text-xs font-mono font-bold cursor-pointer active-touch flex items-center gap-1.5"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Exit</span>
-                      </button>
                     </div>
                   </div>
 
@@ -1907,7 +1878,7 @@ export default function App() {
 
                   {/* === QUICK METRICS CARDS (4 COLUMNS) === */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full">
-                    <div className="bg-[#12131A] border border-[#1E202B] p-4 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
+                    <div className="bg-[#12131A] border border-[#1E202B] p-4.5 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
                       <span className="text-[10px] font-mono tracking-wider uppercase text-zinc-500 font-semibold">Total Songs</span>
                       <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
                         {stats.total}
@@ -1915,7 +1886,7 @@ export default function App() {
                       <span className="text-[10px] text-zinc-500 font-sans">In Library</span>
                     </div>
 
-                    <div className="bg-[#12131A] border border-[#1E202B] p-4 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
+                    <div className="bg-[#12131A] border border-[#1E202B] p-4.5 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
                       <span className="text-[10px] font-mono tracking-wider uppercase text-zinc-500 font-semibold">Favorites</span>
                       <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
                         {stats.favorites}
@@ -1923,7 +1894,7 @@ export default function App() {
                       <span className="text-[10px] text-zinc-500 font-sans">Starred Songs</span>
                     </div>
 
-                    <div className="bg-[#12131A] border border-[#1E202B] p-4 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
+                    <div className="bg-[#12131A] border border-[#1E202B] p-4.5 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
                       <span className="text-[10px] font-mono tracking-wider uppercase text-zinc-500 font-semibold">Categories</span>
                       <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
                         {stats.categories}
@@ -1933,7 +1904,7 @@ export default function App() {
 
                     <button
                       onClick={() => navigateTo('schedule')}
-                      className="bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/40 p-4 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between transition-all cursor-pointer group text-left"
+                      className="bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/40 p-4.5 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between transition-all cursor-pointer group text-left"
                     >
                       <div className="flex items-center justify-between w-full">
                         <span className="text-[10px] font-mono tracking-wider uppercase text-amber-400 font-semibold flex items-center gap-1">
@@ -1951,158 +1922,40 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* === ADMIN QUICK ACTIONS GRID (4 CARDS) === */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full">
-                    <button 
-                      onClick={() => navigateTo('search')}
-                      className="p-4 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded-2xl text-left transition-all cursor-pointer group flex flex-col justify-between gap-3 active-touch"
-                    >
-                      <div className="p-2.5 bg-[#1A1C26] border border-[#272A37] rounded-xl group-hover:border-amber-500/20 transition-all w-fit text-amber-500">
-                        <BookOpen className="w-5 h-5" />
+                  {/* === LIVE BROADCAST SYNC PANEL === */}
+                  <div className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                    isFollowing 
+                      ? 'bg-amber-500/5 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.05)]' 
+                      : 'bg-[#12131A] border-[#1E202B] hover:border-zinc-700'
+                  }`}>
+                    <div className="flex items-start gap-3.5">
+                      <div className="pt-0.5 shrink-0">
+                        <span className="relative flex h-3 w-3">
+                          {isFollowing && (
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                          )}
+                          <span className={`relative inline-flex rounded-full h-3 w-3 ${isFollowing ? 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' : 'bg-zinc-650'}`}></span>
+                        </span>
                       </div>
                       <div>
-                        <div className="text-sm font-semibold text-white tracking-wide group-hover:text-amber-400 transition-colors">Song Library</div>
-                        <p className="text-[11px] text-zinc-500 mt-0.5">Search and view all songs.</p>
+                        <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Live Broadcast Follow Mode</h3>
+                        <p className="text-[11px] text-zinc-400 mt-0.5 select-none font-medium leading-relaxed">
+                          {isFollowing 
+                            ? 'Connected to live broadcast. Your screen will automatically navigate when songs are projected.' 
+                            : 'Enable to automatically sync screen with projected worship lyrics.'}
+                        </p>
                       </div>
-                    </button>
-
-                    <button 
-                      onClick={() => navigateTo('schedule')}
-                      className="p-4 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded-2xl text-left transition-all cursor-pointer group flex flex-col justify-between gap-3 active-touch"
-                    >
-                      <div className="p-2.5 bg-[#1A1C26] border border-[#272A37] rounded-xl group-hover:border-amber-500/20 transition-all w-fit text-amber-500">
-                        <Calendar className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-white tracking-wide group-hover:text-amber-400 transition-colors">Practice Schedule</div>
-                        <p className="text-[11px] text-zinc-500 mt-0.5">View set dates & practice songs.</p>
-                      </div>
-                    </button>
-
-                    {session?.role === 'admin' ? (
-                      <>
-                        <button 
-                          onClick={() => setShowAddModal(true)}
-                          className="p-4 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded-2xl text-left transition-all cursor-pointer group flex flex-col justify-between gap-3 active-touch"
-                        >
-                          <div className="p-2.5 bg-[#1A1C26] border border-[#272A37] rounded-xl group-hover:border-amber-500/20 transition-all w-fit text-amber-500">
-                            <Plus className="w-5 h-5 stroke-[2.5]" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-white tracking-wide group-hover:text-amber-400 transition-colors">Add New Song</div>
-                            <p className="text-[11px] text-zinc-500 mt-0.5">Create custom song or lyrics.</p>
-                          </div>
-                        </button>
-
-                        <button 
-                          onClick={() => setShowUploadModal(true)}
-                          className="p-4 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded-2xl text-left transition-all cursor-pointer group flex flex-col justify-between gap-3 active-touch"
-                        >
-                          <div className="p-2.5 bg-[#1A1C26] border border-[#272A37] rounded-xl group-hover:border-amber-500/20 transition-all w-fit text-amber-500">
-                            <Upload className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-white tracking-wide group-hover:text-amber-400 transition-colors">Bulk Import</div>
-                            <p className="text-[11px] text-zinc-500 mt-0.5">Import TXT or JSON songbooks.</p>
-                          </div>
-                        </button>
-                      </>
-                    ) : (
-                      <div className="col-span-2 p-4 bg-[#12131A] border border-[#1E202B] rounded-2xl flex items-center gap-3 text-zinc-400 text-xs">
-                        <ShieldCheck className="w-5 h-5 text-amber-500 shrink-0" />
-                        <span>Logged in as <strong>{session?.role}</strong>. Administrator controls are unlocked for admin accounts.</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* === LIVE BROADCAST SYNC & PWA BANNER (2 EQUAL COLUMNS ON DESKTOP) === */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                    {/* Live Broadcast Follow Panel */}
-                    <div className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between gap-4 ${
-                      isFollowing 
-                        ? 'bg-amber-500/5 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.05)]' 
-                        : 'bg-[#12131A] border-[#1E202B] hover:border-zinc-700'
-                    }`}>
-                      <div className="flex items-start gap-3.5">
-                        <div className="pt-0.5 shrink-0">
-                          <span className="relative flex h-3 w-3">
-                            {isFollowing && (
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                            )}
-                            <span className={`relative inline-flex rounded-full h-3 w-3 ${isFollowing ? 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' : 'bg-zinc-650'}`}></span>
-                          </span>
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Live Broadcast Sync</h3>
-                          <p className="text-[11px] text-zinc-400 mt-1 select-none font-medium leading-relaxed">
-                            {isFollowing 
-                              ? 'Connected to live broadcast. Your screen will automatically navigate when songs are projected.' 
-                              : 'Enable auto-sync to follow projected lyrics during live worship sessions.'}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleToggleFollow(!isFollowing)}
-                        className={`w-full py-2.5 rounded-xl text-xs font-bold font-mono tracking-wider uppercase transition-all cursor-pointer active-touch text-center ${
-                          isFollowing 
-                            ? 'bg-amber-500 text-black shadow-md hover:bg-amber-400 shadow-amber-500/25' 
-                            : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700'
-                        }`}
-                      >
-                        {isFollowing ? 'Connected & Syncing' : 'Enable Follow Mode'}
-                      </button>
                     </div>
-
-                    {/* PWA App Banner */}
-                    {showInstallBanner && !isInstalled && !dismissedInstall ? (
-                      <div className="p-5 bg-gradient-to-br from-zinc-900 to-amber-955/20 rounded-2xl border border-amber-500/20 shadow-lg relative overflow-hidden flex flex-col justify-between gap-3">
-                        <button 
-                          onClick={handleDismissInstall}
-                          className="absolute top-3 right-3 p-1 rounded-full text-zinc-500 hover:text-zinc-300 transition-colors"
-                          title="Dismiss"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-amber-500/20 flex items-center justify-center shrink-0 text-amber-500">
-                            <Smartphone className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <h3 className="text-xs font-bold text-white">Install DaSong App</h3>
-                            <p className="text-[11px] text-zinc-400 mt-0.5">Pin to Home Screen for native desktop & mobile worship sets.</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <button 
-                            onClick={handleDismissInstall}
-                            className="text-[11px] font-bold text-zinc-400 hover:text-zinc-200 px-3 py-2 rounded-xl transition-all cursor-pointer"
-                          >
-                            Maybe Later
-                          </button>
-                          <button 
-                            onClick={handleInstallApp}
-                            className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-md active-touch flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <Download className="h-3.5 w-3.5 stroke-[3]" /> Install App
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-5 bg-[#12131A] border border-[#1E202B] rounded-2xl flex flex-col justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-[#1A1C26] border border-[#272A37] flex items-center justify-center shrink-0 text-amber-500">
-                            <Server className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <h3 className="text-xs font-bold text-white uppercase font-mono">Server Instance: {activeServerId}</h3>
-                            <p className="text-[11px] text-zinc-400 mt-0.5">Independent song schedules & offline PWA cache active.</p>
-                          </div>
-                        </div>
-                        <div className="text-[10px] font-mono text-zinc-500 bg-[#1A1C26] px-3 py-1.5 rounded-lg border border-[#272A37] text-center">
-                          {songs.length} Songs Loaded for {activeServerId}
-                        </div>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => handleToggleFollow(!isFollowing)}
+                      className={`px-5 py-2.5 rounded-xl text-xs font-bold font-mono tracking-wider uppercase transition-all cursor-pointer active-touch shrink-0 ${
+                        isFollowing 
+                          ? 'bg-amber-500 text-black shadow-md hover:bg-amber-400 shadow-amber-500/25' 
+                          : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700'
+                      }`}
+                    >
+                      {isFollowing ? 'Connected & Syncing' : 'Enable Follow Mode'}
+                    </button>
                   </div>
 
                   {/* === QUICK SONG SEARCH BAR === */}
