@@ -53,7 +53,7 @@ function SongList({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const deferredInputValue = useDeferredValue(inputValue);
+  const deferredInputValue = React.useDeferredValue ? React.useDeferredValue(inputValue) : inputValue;
 
   // Sync searchQuery with deferredInputValue without blocking main UI thread
   useEffect(() => {
