@@ -1,17 +1,102 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@400;500;600;700;800&family=Cinzel:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-serif: "Playfair Display", Georgia, serif;
   --font-sans: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+  --color-amber-450: #F8B012;
+  --color-amber-550: #E08B09;
+  --color-amber-555: #D77F08;
+  --color-amber-505: #E8900A;
+  --color-zinc-500: #A1A1AA;
+  --color-zinc-450: #898990;
+  --color-zinc-550: #61616A;
+  --color-zinc-555: #5C5C65;
+  --color-zinc-650: #4A4A52;
+  --color-zinc-850: #1F1F23;
+  --color-zinc-955: #0D0D0F;
+  --color-zinc-250: #D6D6DB;
+  --color-zinc-305: #C2C2C8;
+  --color-emerald-450: #22CA90;
+  --color-slate-350: #B0BCCE;
+  --color-slate-550: #546078;
+  --color-sky-450: #26B1F0;
+  --color-rose-550: #EA2E53;
 }
 
 /* Force clean flat dark style defaults globally */
 body {
   background: #090A0F;
-  color: #F1F5F9; /* Slate 100 */
-  min-height: 100vh;
+  color: #F1F5F9;
+  min-height: 100dvh;
+  overscroll-behavior-y: contain;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Visual Theme Overrides */
+[data-theme="emerald"] body {
+  background: #04140E !important;
+}
+[data-theme="emerald"] .text-amber-500,
+[data-theme="emerald"] .text-amber-400 {
+  color: #10b981 !important;
+}
+[data-theme="emerald"] .bg-amber-500 {
+  background-color: #10b981 !important;
+}
+[data-theme="emerald"] .border-amber-500\/40,
+[data-theme="emerald"] .border-amber-500\/30,
+[data-theme="emerald"] .border-amber-500\/20 {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+[data-theme="purple"] body {
+  background: #0D0714 !important;
+}
+[data-theme="purple"] .text-amber-500,
+[data-theme="purple"] .text-amber-400 {
+  color: #a855f7 !important;
+}
+[data-theme="purple"] .bg-amber-500 {
+  background-color: #a855f7 !important;
+}
+[data-theme="purple"] .border-amber-500\/40,
+[data-theme="purple"] .border-amber-500\/30,
+[data-theme="purple"] .border-amber-500\/20 {
+  border-color: rgba(168, 85, 247, 0.3) !important;
+}
+
+[data-theme="cyan"] body {
+  background: #06101E !important;
+}
+[data-theme="cyan"] .text-amber-500,
+[data-theme="cyan"] .text-amber-400 {
+  color: #06b6d4 !important;
+}
+[data-theme="cyan"] .bg-amber-500 {
+  background-color: #06b6d4 !important;
+}
+[data-theme="cyan"] .border-amber-500\/40,
+[data-theme="cyan"] .border-amber-500\/30,
+[data-theme="cyan"] .border-amber-500\/20 {
+  border-color: rgba(6, 182, 212, 0.3) !important;
+}
+
+[data-theme="crimson"] body {
+  background: #17070B !important;
+}
+[data-theme="crimson"] .text-amber-500,
+[data-theme="crimson"] .text-amber-400 {
+  color: #f43f5e !important;
+}
+[data-theme="crimson"] .bg-amber-500 {
+  background-color: #f43f5e !important;
+}
+[data-theme="crimson"] .border-amber-500\/40,
+[data-theme="crimson"] .border-amber-500\/30,
+[data-theme="crimson"] .border-amber-500\/20 {
+  border-color: rgba(244, 63, 94, 0.3) !important;
 }
 
 /* Custom scrollbars for the high-end parchment and pristine dark feel */
@@ -44,18 +129,6 @@ body {
   background: rgba(245, 158, 11, 0.4);
 }
 
-/* Clean panel background controls */
-.glass-effect {
-  background: #12131A;
-  border: 1px solid #1E202B;
-}
-
-/* No glowing light beams on backgrounds */
-.atmosphere-overlay {
-  background-image: none;
-  background-color: #090A0F;
-}
-
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -71,11 +144,6 @@ body {
   to { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes slideDown {
-  from { transform: translateY(0); opacity: 1; }
-  to { transform: translateY(100%); opacity: 0; }
-}
-
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out forwards;
 }
@@ -86,10 +154,6 @@ body {
 
 .animate-slideUp {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-slideDown {
-  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .active-touch {
@@ -186,32 +250,24 @@ input, select, textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Visible focus indicators for keyboard navigation */
+:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+[tabindex]:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* Mobile row utility: tall enough for easy finger tapping (min 56px) */
 .mobile-row {
   min-height: 56px;
   display: flex;
   align-items: center;
-}
-
-/* Floating Action Button — admin quick-add on mobile */
-.fab {
-  position: fixed;
-  z-index: 50;
-  width: 52px;
-  height: 52px;
-  border-radius: 4px;
-  background: #f59e0b;
-  box-shadow: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border: none;
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-  will-change: transform;
-}
-.fab:active {
-  transform: scale(0.92);
 }
 
 /* Active bottom-nav tab bar indicator */
@@ -253,63 +309,6 @@ input, select, textarea {
   background: #12131A !important;
   border: 1px solid #1E202B !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-/* No Amber Glow Background */
-.amber-glow-backdrop {
-  position: relative;
-}
-
-/* Premium Hover Lift & Outline Accent */
-.premium-hover-card {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  cursor: pointer !important;
-}
-.premium-hover-card:hover {
-  border-color: #f59e0b !important;
-  background: #161722 !important;
-}
-
-/* Clean Song Row Hover */
-.song-row-card {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-.song-row-card:hover {
-  background-color: #161722 !important;
-  border-color: #272A37 !important;
-}
-
-/* Sync Badge animations */
-@keyframes breathingPulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.2);
-  }
-  50% {
-    transform: scale(1.02);
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
-  }
-}
-
-@keyframes breathingPulseSyncing {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.2);
-  }
-  50% {
-    transform: scale(1.02);
-    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
-  }
-}
-
-.sync-badge-saved {
-  animation: breathingPulse 3s infinite ease-in-out;
-  transition: all 0.3s ease-in-out;
-}
-
-.sync-badge-syncing {
-  animation: breathingPulseSyncing 1.5s infinite ease-in-out;
-  transition: all 0.3s ease-in-out;
 }
 
 /* Clean Flat Inputs */
@@ -354,31 +353,93 @@ input, select, textarea {
   border-color: #3F4357 !important;
 }
 
-.premium-btn-success {
-  background: #10b981 !important;
-  color: #090A0F !important;
-  box-shadow: none !important;
-  font-weight: 700 !important;
-  transition: all 0.15s ease-in-out !important;
+/* iOS-style shake animation for reorder mode */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 50%, 90% { transform: translateX(-1px); }
+  30%, 70% { transform: translateX(1px); }
 }
-.premium-btn-success:hover {
-  background: #059669 !important;
-  transform: translateY(-0.5px) !important;
+.animate-shake {
+  animation: shake 0.4s ease-in-out infinite;
 }
 
-/* Custom Scrollbar for Presentation Lists */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+/* ===== MULTI-DEVICE RESPONSIVE OPTIMIZATIONS ===== */
+
+/* Phone Screen (320px to 480px) */
+@media (max-width: 480px) {
+  .app-container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  /* Touch target safety for mobile inputs */
+  input, select, button {
+    min-height: 44px;
+  }
 }
 
+/* Tablet & iPad Screens (768px to 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tablet-grid-split {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 1rem;
+  }
+}
 
+/* Desktop & Ultrawide Displays (1920px+) */
+@media (min-width: 1920px) {
+  .app-container {
+    max-width: 1800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* ===== HIGH-RESOLUTION PRINT & PDF STYLES ===== */
+@media print {
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  }
+
+  /* Hide app chrome, navigation, headers, sidebars when printing */
+  body > *:not(#root),
+  nav,
+  header,
+  footer,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Force printable area to occupy full page width */
+  #print-setlist-content {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Smart page breaks - prevent breaking songs across pages */
+  .page-break-inside-avoid,
+  .print-song-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Clean print typography */
+  pre {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    font-family: "JetBrains Mono", Consolas, monospace !important;
+    color: #000000 !important;
+  }
+}

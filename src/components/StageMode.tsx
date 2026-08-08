@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Minimize, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Columns, Type, Check, RefreshCw, ChevronLeft, ChevronRight, Presentation, FileText, Radio } from 'lucide-react';
+import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio } from 'lucide-react';
 import { Song, PresentationConfig } from '../types';
 import { stripChords } from '../utils/chordTransposer';
 import { getBroadcastState } from '../lib/db';
@@ -11,7 +11,7 @@ interface StageModeProps {
   onSelectSong?: (id: string) => void;
 }
 
-export default function StageMode({ song, onClose, broadcastSlideIndex, onSelectSong }: StageModeProps) {
+export default React.memo(function StageMode({ song, onClose, broadcastSlideIndex, onSelectSong }: StageModeProps) {
   const [lyrics, setLyrics] = useState<string>('');
   const [config, setConfig] = useState<PresentationConfig>({
     fontSize: 28,
@@ -138,7 +138,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
     };
 
     checkBroadcast();
-    const intervalId = setInterval(checkBroadcast, 2000);
+    const intervalId = setInterval(checkBroadcast, 400);
 
     return () => {
       active = false;
@@ -318,7 +318,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
             const headingColor = isLightTheme ? 'text-amber-800' : 'text-amber-500 font-extrabold';
             const normalColor = isSectionHighlighted
               ? 'text-white font-extrabold tracking-wide'
-              : (isLightTheme ? 'text-stone-900 font-bold' : 'text-zinc-350 font-medium tracking-wide');
+              : (isLightTheme ? 'text-stone-900 font-bold' : 'text-zinc-400 font-medium tracking-wide');
 
             return (
               <div
@@ -418,7 +418,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
       case 'retro-terminal':
         return 'bg-black text-[#00FF66] font-mono border-emerald-950';
       default: // Pitch black backstage pro teleprompter theme
-        return 'bg-black text-zinc-150';
+        return 'bg-black text-zinc-200';
     }
   };
 
@@ -473,7 +473,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                 }`}
                 title="Follow Live Service Broadcast"
               >
-                <Radio className="h-3 w-3" />
+                <Radio className="h-3 w-3" aria-hidden={true} />
                 <span>{isFollowing ? 'Syncing' : 'Follow'}</span>
               </button>
 
@@ -491,7 +491,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                   }`}
                   title="Continuous Scroll View"
                 >
-                  <FileText className="h-3 w-3" /> Scroll
+                  <FileText className="h-3 w-3" aria-hidden={true} /> Scroll
                 </button>
                 <button
                   onClick={() => {
@@ -505,7 +505,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                   }`}
                   title="Stanza Slide Presentation"
                 >
-                  <Presentation className="h-3 w-3" /> Slides
+                  <Presentation className="h-3 w-3" aria-hidden={true} /> Slides
                 </button>
               </div>
 
@@ -513,8 +513,9 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
               <div className="flex items-center bg-zinc-900/60 px-2.5 py-1 rounded border border-[#1E202B]">
                 <button
                   onClick={() => setConfig((p) => ({ ...p, fontSize: Math.max(16, p.fontSize - 3) }))}
-                  className="p-1 text-slate-400 hover:text-white rounded cursor-pointer"
+                  className="p-3 min-w-[44px] min-h-[44px] text-slate-400 hover:text-white rounded cursor-pointer"
                   title="Decrease font size"
+                  aria-label="Decrease font size"
                 >
                   <ZoomOut className="h-3.5 w-3.5" />
                 </button>
@@ -523,8 +524,9 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                 </span>
                 <button
                   onClick={() => setConfig((p) => ({ ...p, fontSize: Math.min(50, p.fontSize + 3) }))}
-                  className="p-1 text-slate-400 hover:text-white rounded cursor-pointer"
+                  className="p-3 min-w-[44px] min-h-[44px] text-slate-400 hover:text-white rounded cursor-pointer"
                   title="Increase font size"
+                  aria-label="Increase font size"
                 >
                   <ZoomIn className="h-3.5 w-3.5" />
                 </button>
@@ -537,6 +539,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                   config.twoColumns ? 'bg-amber-500 border-amber-500 text-black' : 'bg-zinc-900/60 border-[#1E202B] text-slate-400'
                 }`}
                 title="Toggle double columns layout"
+                aria-label="Toggle columns layout"
               >
                 <Columns className="h-3.5 w-3.5" />
               </button>
@@ -547,6 +550,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                   onClick={() => setScrolling((prev) => !prev)}
                   className={`p-1.5 rounded cursor-pointer ${scrolling ? 'bg-amber-500 text-black' : 'text-slate-400'}`}
                   title={scrolling ? 'Pause scroll' : 'Start auto-scroll'}
+                  aria-label={scrolling ? 'Pause scroll' : 'Start auto-scroll'}
                 >
                   {scrolling ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                 </button>
@@ -563,6 +567,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                   }}
                   className="w-16 h-1 bg-white/15 rounded accent-amber-500 appearance-none cursor-pointer"
                   title="Auto scroll speed"
+                  aria-label="Auto scroll speed"
                 />
                 <span className="text-[10px] font-mono text-slate-400 pr-2">
                   Spd {config.autoScrollSpeed}
@@ -575,7 +580,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                   <button
                     key={t}
                     onClick={() => changeTheme(t)}
-                    className={`w-5 h-5 rounded border flex items-center justify-center capitalize text-[8px] transition-all cursor-pointer ${
+                    className={`w-11 h-11 rounded border flex items-center justify-center capitalize text-[8px] transition-all cursor-pointer ${
                       t === 'dark'
                         ? 'bg-stone-900 border-[#1E202B]'
                         : t === 'parchment'
@@ -584,6 +589,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                             ? 'bg-white border-slate-355'
                             : 'bg-black border-emerald-500/80 text-[#00FF55]'
                     }`}
+                    aria-label={`${t} theme`}
                   >
                     {config.theme === t && (
                       <Check className={`h-2.5 w-2.5 ${t === 'classic' || t === 'parchment' ? 'text-black' : 'text-amber-500'}`} />
@@ -598,6 +604,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                 onClick={onClose}
                 className="cursor-pointer p-2 hover:bg-rose-500/15 text-slate-400 hover:text-rose-455 rounded transition-all"
                 title="Exit Presentation"
+                aria-label="Exit presentation"
               >
                 <Minimize className="h-4 w-4" />
               </button>
@@ -608,8 +615,9 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
             <button 
               onClick={onClose} 
               className="p-2 bg-zinc-900/60 border border-[#1E202B] text-zinc-400 hover:text-white rounded active-touch"
+              aria-label="Exit presentation"
             >
-              <Minimize className="h-4.5 w-4.5" />
+              <Minimize className="h-[18px] w-[18px]" />
             </button>
             <div className="text-center select-none truncate flex-1 px-2">
               <div className="text-xs font-bold text-white truncate">{song.title}</div>
@@ -631,6 +639,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                     : 'bg-zinc-900/60 border border-[#1E202B] text-zinc-400'
                 }`}
                 title="Follow Live Sync"
+                aria-label="Follow live broadcast"
               >
                 <Radio className="h-4 w-4" />
               </button>
@@ -638,6 +647,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
                 onClick={() => setShowMobileSettings(true)}
                 className="p-2 bg-zinc-900/60 border border-[#1E202B] text-zinc-400 hover:text-white rounded active-touch"
                 title="Settings"
+                aria-label="Open settings"
               >
                 <Type className="h-4 w-4" />
               </button>
@@ -706,21 +716,24 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
             <div className="fixed right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
               <button
                 onClick={() => setConfig(p => ({ ...p, autoScrollSpeed: Math.min(10, p.autoScrollSpeed + 1) }))}
-                className="w-10 h-10 rounded bg-black/75 border border-[#1E202B] text-white text-lg font-bold flex items-center justify-center active:scale-90 transition-all"
+                className="w-11 h-11 rounded bg-black/75 border border-[#1E202B] text-white text-lg font-bold flex items-center justify-center active:scale-90 transition-all"
                 title="Faster"
+                aria-label="Increase scroll speed"
               >＋</button>
-              <div className="w-10 h-8 rounded bg-black/50 border border-[#1E202B] text-amber-400 text-[10px] font-mono font-bold flex items-center justify-center">
+              <div className="w-11 h-8 rounded bg-black/50 border border-[#1E202B] text-amber-400 text-[10px] font-mono font-bold flex items-center justify-center">
                 {config.autoScrollSpeed}x
               </div>
               <button
                 onClick={() => setConfig(p => ({ ...p, autoScrollSpeed: Math.max(1, p.autoScrollSpeed - 1) }))}
-                className="w-10 h-10 rounded bg-black/75 border border-[#1E202B] text-white text-lg font-bold flex items-center justify-center active:scale-90 transition-all"
+                className="w-11 h-11 rounded bg-black/75 border border-[#1E202B] text-white text-lg font-bold flex items-center justify-center active:scale-90 transition-all"
                 title="Slower"
+                aria-label="Decrease scroll speed"
               >－</button>
               <button
                 onClick={() => setScrolling(false)}
-                className="w-10 h-10 rounded bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold flex items-center justify-center active:scale-90 transition-all mt-1"
+                className="w-11 h-11 rounded bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold flex items-center justify-center active:scale-90 transition-all mt-1"
                 title="Stop scroll"
+                aria-label="Stop auto-scroll"
               >⏹</button>
             </div>
           )}
@@ -739,6 +752,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
               onClick={() => setCurrentSlideIndex(prev => Math.max(0, prev - 1))}
               className={`absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded bg-[#12131A] border border-[#1E202B] hover:bg-zinc-800 transition-all text-slate-400 hover:text-white cursor-pointer active-touch z-25 duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
               title="Previous Slide"
+              aria-label="Previous slide"
             >
               <ChevronLeft className="h-6 w-6 stroke-[3]" />
             </button>
@@ -752,6 +766,7 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
               onClick={() => setCurrentSlideIndex(prev => Math.min(lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n+/).filter(Boolean).length - 1, prev + 1))}
               className={`absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded bg-[#12131A] border border-[#1E202B] hover:bg-zinc-800 transition-all text-slate-400 hover:text-white cursor-pointer active-touch z-25 duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
               title="Next Slide"
+              aria-label="Next slide"
             >
               <ChevronRight className="h-6 w-6 stroke-[3]" />
             </button>
@@ -954,4 +969,4 @@ export default function StageMode({ song, onClose, broadcastSlideIndex, onSelect
 
     </div>
   );
-}
+});

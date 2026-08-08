@@ -52,6 +52,17 @@ export function cleanForSearch(str: string): string {
 
 const singleWordMatchCache = new Map<string, boolean>();
 
+function normalizePhoneticVariants(w: string): string {
+  return w
+    .replace(/aa/g, 'a')
+    .replace(/ee/g, 'i')
+    .replace(/oo/g, 'u')
+    .replace(/th/g, 't')
+    .replace(/dh/g, 'd')
+    .replace(/sh/g, 's')
+    .replace(/zh/g, 'l');
+}
+
 function isSingleWordMatch(queryWord: string, songWord: string): boolean {
   const cacheKey = `${queryWord}:${songWord}`;
   const cached = singleWordMatchCache.get(cacheKey);
@@ -61,17 +72,24 @@ function isSingleWordMatch(queryWord: string, songWord: string): boolean {
   if (songWord.includes(queryWord) || queryWord.includes(songWord)) {
     match = true;
   } else {
-    const isShortOrNumeric = queryWord.length < 4 || /^\d+$/.test(queryWord);
-    if (!isShortOrNumeric) {
-      const lengthDiff = Math.abs(queryWord.length - songWord.length);
-      const maxLength = Math.max(queryWord.length, songWord.length);
-      
-      // Lowered threshold from 0.75 to 0.60 for more forgiving typo tolerance
-      if (lengthDiff <= Math.floor(maxLength * 0.40)) {
-        const distance = getLevenshteinDistance(queryWord, songWord);
-        const similarity = 1 - distance / maxLength;
-        if (similarity >= 0.60) {
-          match = true;
+    // Try phonetic variant matching (e.g. aradhani vs aaradhani, yisu vs yeesu, karthar vs kartar)
+    const normQ = normalizePhoneticVariants(queryWord);
+    const normS = normalizePhoneticVariants(songWord);
+    if (normS.includes(normQ) || normQ.includes(normS)) {
+      match = true;
+    } else {
+      const isNumeric = /^\d+$/.test(queryWord);
+      if (!isNumeric && queryWord.length >= 3) {
+        const lengthDiff = Math.abs(queryWord.length - songWord.length);
+        const maxLength = Math.max(queryWord.length, songWord.length);
+        
+        if (lengthDiff <= Math.floor(maxLength * 0.45)) {
+          const distance = getLevenshteinDistance(queryWord, songWord);
+          const similarity = 1 - distance / maxLength;
+          const minSimilarity = queryWord.length >= 5 ? 0.50 : 0.60;
+          if (similarity >= minSimilarity) {
+            match = true;
+          }
         }
       }
     }
@@ -101,10 +119,16 @@ const TAMIL_VOWEL_SIGNS: Record<string, string> = {
   'ெ': 'e', 'ே': 'e', 'ை': 'ai', 'ொ': 'o', 'ோ': 'o', 'ௌ': 'au'
 };
 
+const transliterationCache = new Map<string, string>();
+
 /**
  * Transliterates Tamil characters to their phonetically equivalent Tanglish text.
  */
 export function transliterateTamilToTanglish(text: string): string {
+  if (!text) return '';
+  const cached = transliterationCache.get(text);
+  if (cached !== undefined) return cached;
+
   let result = '';
   let i = 0;
   while (i < text.length) {
@@ -136,6 +160,9 @@ export function transliterateTamilToTanglish(text: string): string {
     result += char;
     i++;
   }
+
+  if (transliterationCache.size > 10000) transliterationCache.clear();
+  transliterationCache.set(text, result);
   return result;
 }
 
@@ -195,6 +222,8 @@ export interface CachedSongData {
   transliteratedSnippet: string;
   lyricWords: string[];
   songWords: string[];
+  fastSearchText: string;
+  normSearchText: string;
   lyricLines: CachedLyricLine[];
 }
 
@@ -235,8 +264,9 @@ export function getCachedSongData(song: FilterableSong): CachedSongData {
     }
 
     const cleanId = cleanForSearch(song.id);
-    const songWords = `${cleanId} ${cleanTitle} ${transliteratedTitle} ${cleanAuthor} ${cleanCategory} ${cleanSnippet} ${transliteratedSnippet}`
-      .split(' ').filter(Boolean);
+    const fastSearchText = `${cleanId} ${cleanTitle} ${transliteratedTitle} ${cleanAuthor} ${cleanCategory} ${cleanSnippet} ${transliteratedSnippet}`.toLowerCase();
+    const normSearchText = normalizePhoneticVariants(fastSearchText);
+    const songWords = fastSearchText.split(' ').filter(Boolean);
 
     cached = {
       cleanTitle,
@@ -248,6 +278,8 @@ export function getCachedSongData(song: FilterableSong): CachedSongData {
       transliteratedSnippet,
       lyricWords,
       songWords,
+      fastSearchText,
+      normSearchText,
       lyricLines
     };
 
@@ -259,17 +291,30 @@ export function getCachedSongData(song: FilterableSong): CachedSongData {
 
 /**
  * Returns how many query words match the song (0 to queryWords.length).
- * This replaces the old boolean matchSong and enables partial/forgiving search.
+ * Fast-path optimized for instant sub-millisecond execution.
  */
 export function matchSongScore(song: FilterableSong, searchQuery: string): number {
   const query = searchQuery.trim();
   if (!query) return 1;
 
   const cleanQuery = cleanForSearch(query);
-  const queryWords = cleanQuery.split(' ').filter(Boolean);
-  if (queryWords.length === 0) return 1;
+  if (!cleanQuery) return 1;
 
   const cached = getCachedSongData(song);
+
+  // Fast Pass 1: Direct Substring Match (0.0001ms execution)
+  if (cached.fastSearchText.includes(cleanQuery)) {
+    return 100;
+  }
+
+  // Fast Pass 2: Phonetic Normalized Substring Match
+  const normQ = normalizePhoneticVariants(cleanQuery);
+  if (normQ.length >= 3 && cached.normSearchText.includes(normQ)) {
+    return 80;
+  }
+
+  const queryWords = cleanQuery.split(' ').filter(Boolean);
+  if (queryWords.length === 0) return 1;
 
   let matched = 0;
   for (const qWord of queryWords) {
@@ -280,22 +325,29 @@ export function matchSongScore(song: FilterableSong, searchQuery: string): numbe
 
 /**
  * Returns true if at least HALF of the query words match the song.
- * This is the forgiving "Google-style" filter — partial matches still show up.
  */
 export function matchSong(song: FilterableSong, searchQuery: string): boolean {
   const query = searchQuery.trim();
   if (!query) return true;
 
   const cleanQuery = cleanForSearch(query);
+  if (!cleanQuery) return true;
+
+  const cached = getCachedSongData(song);
+
+  // Ultra Fast Pass (Sub-millisecond instant exit)
+  if (cached.fastSearchText.includes(cleanQuery)) return true;
+  const normQ = normalizePhoneticVariants(cleanQuery);
+  if (normQ.length >= 3 && cached.normSearchText.includes(normQ)) return true;
+
   const queryWords = cleanQuery.split(' ').filter(Boolean);
   if (queryWords.length === 0) return true;
 
   const score = matchSongScore(song, searchQuery);
+  if (score >= 80) return true;
 
-  // Single-word query: must match (no partial for 1 word)
   if (queryWords.length === 1) return score >= 1;
 
-  // Multi-word query: need at least 50% of words to match (minimum 1)
   const threshold = Math.max(1, Math.ceil(queryWords.length * 0.5));
   return score >= threshold;
 }

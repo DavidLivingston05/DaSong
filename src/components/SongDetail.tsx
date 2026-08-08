@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock } from 'lucide-react';
-import { Song, UserRole, WorshipEvent } from '../types';
-import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions, getLocalWorshipEvents, saveWorshipEvent, broadcastState, getBroadcastState } from '../lib/db';
+import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer } from 'lucide-react';
+import { Song, UserRole } from '../types';
+import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions, broadcastState, getBroadcastState } from '../lib/db';
 import { stripChords } from '../utils/chordTransposer';
 import { parseTwoLineChords } from '../utils/lyricsParser';
 import Metronome from './Metronome';
+import FocusTrap from './FocusTrap';
+import { getRecommendedSongs } from '../lib/recommendations';
 
 
 interface SongDetailProps {
@@ -20,6 +22,7 @@ interface SongDetailProps {
   tempBroadcastSong?: Song | null;
   songsMetadata?: SongMetadata[];
   isFavorite?: boolean;
+  onExportSong?: (song: Song) => void;
 }
 
 export default function SongDetail({
@@ -34,41 +37,13 @@ export default function SongDetail({
   setlistSongIds = [],
   tempBroadcastSong = null,
   songsMetadata,
-  isFavorite = false
+  isFavorite = false,
+  onExportSong
 }: SongDetailProps) {
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [allMetadataState, setAllMetadataState] = useState<SongMetadata[]>([]);
   const allMetadata = songsMetadata || allMetadataState;
-
-  const [events, setEvents] = useState<WorshipEvent[]>([]);
-  const [showSetlistDropdown, setShowSetlistDropdown] = useState<boolean>(false);
-
-  useEffect(() => {
-    setEvents(getLocalWorshipEvents());
-  }, [songId]);
-
-  const sortedEvents = useMemo(() => {
-    return [...events].sort((a, b) => b.date.localeCompare(a.date));
-  }, [events]);
-
-  const handleToggleSongInSetlist = async (ev: WorshipEvent) => {
-    const songIds = ev.songIds || [];
-    const exists = songIds.includes(songId);
-    const updatedIds = exists 
-      ? songIds.filter(id => id !== songId) 
-      : [...songIds, songId];
-    
-    const updatedEv = { ...ev, songIds: updatedIds, updatedAt: Date.now() };
-    
-    setEvents(prev => prev.map(e => e.id === ev.id ? updatedEv : e));
-    
-    try {
-      await saveWorshipEvent(updatedEv);
-    } catch (err) {
-      console.error('Failed to toggle song in event:', err);
-    }
-  };
 
 
   // Setup active worship set sequence helpers based on passed array
@@ -145,7 +120,7 @@ export default function SongDetail({
     };
 
     checkBroadcast();
-    const intervalId = setInterval(checkBroadcast, 2000);
+    const intervalId = setInterval(checkBroadcast, 400);
 
     return () => {
       active = false;
@@ -245,8 +220,8 @@ export default function SongDetail({
     if (!song) return;
     const suggestions = getLocalSuggestions();
     
-    if (suggestions.some((s: any) => s.songId === song.id && s.eventId === (sugEventId || undefined))) {
-      alert(`"${song.title}" has already been suggested for this meeting.`);
+    if (suggestions.some((s: any) => s.songId === song.id)) {
+      alert(`"${song.title}" has already been suggested.`);
       return;
     }
 
@@ -255,24 +230,18 @@ export default function SongDetail({
     localStorage.setItem(`lyrasync_user_name_${serverId}`, nameToSave);
     localStorage.setItem('lyrasync_user_name', nameToSave);
 
-    const localEvents = getLocalWorshipEvents();
-    const selectedEvent = localEvents.find(e => e.id === sugEventId);
-
     const newSuggestion = {
       id: `sug-${Date.now()}`,
       songId: song.id,
       songTitle: song.title,
       suggestedBy: nameToSave,
       timestamp: Date.now(),
-      eventId: sugEventId || undefined,
-      eventTitle: selectedEvent ? selectedEvent.title : undefined,
-      eventDate: selectedEvent ? selectedEvent.date : undefined,
       note: sugNote.trim() || undefined
     };
 
     try {
       await saveSuggestion(newSuggestion);
-      alert(`"${song.title}" has been successfully suggested for ${selectedEvent ? `"${selectedEvent.title}"` : 'General Catalog'}!`);
+      alert(`"${song.title}" has been successfully suggested!`);
       setShowSuggestModal(false);
       onLyricsUpdated(); // notify parent
     } catch (err) {
@@ -619,51 +588,10 @@ export default function SongDetail({
     }
   };
 
-  // Calculate recommended related songs based on category, title overlaps, author, and BPM
+  // Calculate recommended related songs based on key match, theme, and author
   const relatedSongs = useMemo(() => {
     if (!song || allMetadata.length === 0) return [];
-    
-    const getWords = (str: string) => 
-      new Set(str.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 2));
-    
-    const songTitleWords = getWords(song.title);
-    
-    return allMetadata
-      .filter(m => m.id !== song.id)
-      .map(m => {
-        let score = 0;
-        
-        // Category similarity (high weight)
-        if (m.category === song.category) {
-          score += 10;
-        }
-        
-        // Title similarity (word matching matches potential typos / duplicate subparts)
-        const otherTitleWords = getWords(m.title);
-        otherTitleWords.forEach(w => {
-          if (songTitleWords.has(w)) {
-            score += 15; // super strong match if words overlap
-          }
-        });
-        
-        // Artist/Author match
-        if (m.author && song.author && m.author.toLowerCase() === song.author.toLowerCase()) {
-          score += 8;
-        }
-        
-        // BPM closeness (similar tempo is useful for playlists/melodies)
-        if (m.bpm && song.bpm) {
-          const diff = Math.abs(m.bpm - song.bpm);
-          if (diff < 10) score += 4;
-          else if (diff < 20) score += 2;
-        }
-        
-        return { metadata: m, score };
-      })
-      .filter(item => item.score > 2) // Must have some meaningful relevance
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 4) // Fetch up to 4 suggestions
-      .map(item => item.metadata);
+    return getRecommendedSongs(song as any, allMetadata as any, 6).map(item => item.song as SongMetadata);
   }, [song, allMetadata]);
 
   if (loading) {
@@ -754,13 +682,13 @@ export default function SongDetail({
             onClick={() => handleToggleFollow(!isFollowing)}
             className={`h-10 px-2.5 sm:px-4 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold ${
               isFollowing
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse'
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 animate-pulse'
                 : 'premium-btn-secondary'
             }`}
             title={isFollowing ? "Following active live service broadcast" : "Follow active live service broadcast"}
           >
             <Radio className="h-4 w-4" />
-            <span className="hidden sm:inline">{isFollowing ? 'Syncing' : 'Follow'}</span>
+            <span className="hidden sm:inline">{isFollowing ? '🔴 Live Syncing' : '📡 Follow Live'}</span>
           </button>
 
           {/* Broadcast Live Service (For admin role only) */}
@@ -769,7 +697,7 @@ export default function SongDetail({
               onClick={() => handleToggleBroadcast(!isBroadcasting)}
               className={`h-10 px-2.5 sm:px-4 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold relative ${
                 isBroadcasting
-                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
                   : 'premium-btn-secondary'
               }`}
               title={isBroadcasting ? "Broadcasting live screen state" : "Broadcast live screen state"}
@@ -778,7 +706,7 @@ export default function SongDetail({
                 <Radio className="h-4 w-4 animate-ping duration-1000 absolute opacity-30" />
               )}
               <Radio className="h-4 w-4" />
-              <span className="hidden sm:inline">{isBroadcasting ? 'Broadcasting' : 'Broadcast'}</span>
+              <span className="hidden sm:inline">{isBroadcasting ? '📡 Live Broadcast' : '📻 Broadcast'}</span>
             </button>
           )}
 
@@ -847,53 +775,20 @@ export default function SongDetail({
             </button>
           )}
 
-          {/* Add to Setlist Dropdown Trigger */}
-          {(currentRole === 'admin' || currentRole === 'guest') && song && (
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowSetlistDropdown(!showSetlistDropdown)}
-                className="h-10 px-4 premium-btn-secondary rounded text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                title="Add to Setlist"
-              >
-                <Plus className="h-4 w-4 shrink-0" /> 
-                <span className="hidden sm:inline">Add to Setlist</span>
-              </button>
-              {showSetlistDropdown && (
-                <div className="absolute right-0 top-12 w-60 bg-[#12131A] border border-[#1E202B] rounded z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-[#1E202B]">Select Target Setlist</p>
-                  <div className="max-h-[160px] overflow-y-auto pr-1">
-                    {sortedEvents.length === 0 ? (
-                      <p className="text-[10px] text-zinc-500 italic p-3 text-center">No setlists created yet.</p>
-                    ) : (
-                      sortedEvents.map(ev => {
-                        const isAdded = (ev.songIds || []).includes(song.id);
-                        return (
-                          <button
-                            type="button"
-                            key={ev.id}
-                            onClick={() => handleToggleSongInSetlist(ev)}
-                            className={`w-full text-left p-2.5 rounded text-xs flex items-center justify-between gap-2 hover:bg-white/5 transition-all cursor-pointer ${
-                              isAdded ? 'text-emerald-400 font-bold' : 'text-zinc-300'
-                            }`}
-                          >
-                            <span className="truncate">{ev.title}</span>
-                            {isAdded ? (
-                              <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                            ) : (
-                              <Plus className="h-3.5 w-3.5 text-zinc-650 shrink-0" />
-                            )}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+
 
           {/* Fullscreen Presentation Trigger Selection */}
+          {onExportSong && song && (
+            <button
+              onClick={() => onExportSong(song)}
+              className="h-10 px-4 premium-btn-secondary rounded text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+              title="Print or Export Lead Sheet"
+            >
+              <Printer className="h-4 w-4 text-amber-400 shrink-0" />
+              <span className="hidden md:inline">Print / Export Sheet</span>
+            </button>
+          )}
+
           <button
             id="stage-presentation-trigger"
             onClick={() => onEnterStageMode()}
@@ -1216,7 +1111,7 @@ export default function SongDetail({
               <div className="p-4 border-t border-[#1E202B] bg-[#12131A] flex flex-col sm:flex-row items-center justify-between gap-4 select-none relative">
                 <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-zinc-500">
                   <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
-                  <span>General Catalog Explorer Mode</span>
+                  <span>Library Song View</span>
                 </div>
                 
                 <div className="flex items-center gap-3 w-full sm:w-auto sm:justify-end">
@@ -1239,10 +1134,10 @@ export default function SongDetail({
           {relatedSongs.length > 0 && (
             <div className="hidden md:flex md:w-64 border-t md:border-t-0 md:border-l border-[#1E202B] p-5 bg-[#12131A] flex-col min-h-0 font-sans select-none">
               <h5 className="font-bold text-xs text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-[#1E202B] pb-2">
-                <Music className="h-3.5 w-3.5 text-amber-500" /> Related Songs
+                <Music className="h-3.5 w-3.5 text-amber-500" /> Recommended Songs
               </h5>
-              <p className="text-[10px] text-slate-500 mt-1 pb-1">
-                Suggested based on category or name matches:
+              <p className="text-[10px] text-zinc-400 mt-1 pb-1">
+                Suggested next tracks by key & theme:
               </p>
               
               <div className="space-y-2.5 mt-3 overflow-y-auto pr-1 flex-1">
@@ -1467,25 +1362,6 @@ export default function SongDetail({
                   className="w-full text-xs p-2.5 rounded premium-input focus:outline-none"
                   placeholder="e.g. Choir Member, Guest"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Target Worship Event / Meeting</label>
-                <select
-                  value={sugEventId}
-                  onChange={(e) => setSugEventId(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded cursor-pointer premium-input focus:outline-none"
-                >
-                  <option value="">General Catalog (No specific meeting)</option>
-                  {getLocalWorshipEvents()
-                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                    .map(ev => (
-                      <option key={ev.id} value={ev.id}>
-                         {ev.title} ({new Date(ev.date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})})
-                      </option>
-                    ))
-                  }
-                </select>
               </div>
 
               <div>

@@ -5,7 +5,7 @@ import {
   ChevronRight, Compass, HelpCircle, Calendar, Download, Smartphone,
   Home, Search, LogOut
 } from 'lucide-react';
-import { Song, UserRole, WorshipEvent } from './types';
+import { Song, UserRole } from './types';
 import { 
   initDB, 
   getAllSongsMetadata, 
@@ -16,8 +16,6 @@ import {
   clearAllSongs, 
   SongMetadata,
   syncWithMongoDB,
-  getLocalWorshipEvents,
-  saveWorshipEvent,
   deleteSuggestion,
   getActiveServerId,
   switchActiveServer,
@@ -30,13 +28,12 @@ import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
 import SongList from './components/SongList';
 import SongDetail from './components/SongDetail';
-import WorshipEvents from './components/WorshipEvents';
 import { motion, AnimatePresence } from 'motion/react';
 import { parseTwoLineChords } from './utils/lyricsParser';
 
 interface AppHistoryState {
   id: string;
-  tab: 'dashboard' | 'search' | 'calendar';
+  tab: 'dashboard' | 'search';
   songId: string | null;
   stageMode: boolean;
   modal: 'add' | 'upload' | 'events' | 'join' | 'create' | null;
@@ -143,36 +140,6 @@ export default function App() {
   // Choir Suggestions Review State & Helpers
   const [suggestions, setSuggestions] = useState<any[]>([]);
 
-  // Worship Calendar Events State & Helpers
-  const [events, setEvents] = useState<WorshipEvent[]>([]);
-
-  const loadEvents = useCallback(() => {
-    setEvents(getLocalWorshipEvents());
-  }, []);
-
-  const linkSongsToEvent = useCallback(async (eventId: string, songIds: string[]) => {
-    const localEvents = getLocalWorshipEvents();
-    const ev = localEvents.find(e => e.id === eventId);
-    if (!ev) return;
-    
-    const currentSongIds = ev.songIds || [];
-    const updatedIds = [...currentSongIds];
-    songIds.forEach(id => {
-      if (!updatedIds.includes(id)) {
-        updatedIds.push(id);
-      }
-    });
-    
-    const updatedEv = { ...ev, songIds: updatedIds };
-    try {
-      await saveWorshipEvent(updatedEv);
-    } catch (err) {
-      console.error('Failed to link songs to event:', err);
-    } finally {
-      loadEvents();
-    }
-  }, [loadEvents]);
-
   const loadSuggestions = useCallback(() => {
     const saved = localStorage.getItem(`lyrasync_guideline_suggestions_${activeServerId}`);
     if (saved) {
@@ -195,14 +162,8 @@ export default function App() {
     const saved = localStorage.getItem(`lyrasync_guideline_suggestions_${activeServerId}`);
     setSuggestions(saved ? JSON.parse(saved) : []);
   }, [activeServerId]);
-
-
-
-
-  
-  // App view toggle states
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'search' | 'calendar'>('dashboard');
-  const [songSourceTab, setSongSourceTab] = useState<'search' | 'calendar' | 'dashboard'>('search');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'search'>('dashboard');
+  const [songSourceTab, setSongSourceTab] = useState<'search' | 'dashboard'>('search');
 
   // Quick Search Dashboard State
   const [quickSearchInput, setQuickSearchInput] = useState<string>('');
@@ -232,7 +193,7 @@ export default function App() {
   // ── Android Back Button / History API ──────────────────────────────────────
   // Push a history entry on every meaningful navigation so Android's back button
   // steps back through in-app screens instead of closing the PWA.
-  const navigateTo = useCallback((tab: 'dashboard' | 'search' | 'calendar') => {
+  const navigateTo = useCallback((tab: 'dashboard' | 'search') => {
     setActiveTab(tab);
   }, []);
   // ───────────────────────────────────────────────────────────────────────────
@@ -470,13 +431,12 @@ export default function App() {
       await syncWithMongoDB();
       await syncSongsList();
       loadSuggestions();
-      loadEvents();
       setMongoStatus('connected');
     } catch (err) {
       console.error('Failed to synchronize with MongoDB Cloud:', err);
       setMongoStatus('error');
     }
-  }, [syncSongsList, loadSuggestions, loadEvents]);
+  }, [syncSongsList, loadSuggestions]);
 
   const handleSwitchServer = useCallback(async (newServerId: string) => {
     switchActiveServer(newServerId);
@@ -499,7 +459,6 @@ export default function App() {
 
     // Clear/reload states
     setSongs([]);
-    setEvents([]);
     setSuggestions([]);
     
     // Trigger database re-initialization and background sync
@@ -507,12 +466,11 @@ export default function App() {
       await initDB();
       await syncSongsList();
       loadSuggestions();
-      loadEvents();
       triggerMongoSync();
     } catch (err) {
       console.error('Error switching server DB:', err);
     }
-  }, [syncSongsList, loadSuggestions, loadEvents, triggerMongoSync]);
+  }, [syncSongsList, loadSuggestions, triggerMongoSync]);
 
   // Handle shared link query parameters on mount
   useEffect(() => {
@@ -646,7 +604,6 @@ export default function App() {
       
       // Clear states
       setSongs([]);
-      setEvents([]);
       setSuggestions([]);
       
       try {
@@ -732,7 +689,6 @@ export default function App() {
         
         await syncSongsList();
         loadSuggestions();
-        loadEvents();
       } catch (err) {
         console.error('Database setup error:', err);
       } finally {
@@ -740,7 +696,7 @@ export default function App() {
       }
     }
     bootApp();
-  }, [activeServerId, syncSongsList, loadSuggestions, loadEvents]);
+  }, [activeServerId, syncSongsList, loadSuggestions]);
 
   // Auto-reload the page when a new Service Worker (Vercel deploy) takes control
   useEffect(() => {
@@ -951,10 +907,6 @@ export default function App() {
       setSelectedSongId(newSong.id);
       setShowAddModal(false);
 
-      if (targetEventIdForAdd) {
-        await linkSongsToEvent(targetEventIdForAdd, [newSong.id]);
-      }
-
       setAddForm({
         title: '',
         author: '',
@@ -1056,7 +1008,7 @@ export default function App() {
               <BookOpen className="w-6 h-6" />
             </div>
             <div className="mt-6">
-              <h3 className="text-base font-extrabold text-white group-hover:text-amber-400 transition-colors">Offline Songbook & Setlists</h3>
+              <h3 className="text-base font-extrabold text-white group-hover:text-amber-400 transition-colors">Offline Songbook & Library</h3>
               <p className="text-xs text-zinc-400 mt-2 leading-relaxed font-sans">
                 Browse cataloged songbooks, transpose chords, and practice. Stored locally on your device for offline use!
               </p>
@@ -1710,19 +1662,6 @@ export default function App() {
               <BookOpen className="h-3.5 w-3.5" />
               <span>Library</span>
             </button>
-            {session && (
-              <button
-                onClick={() => navigateTo('calendar')}
-                className={`px-4 py-2 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === 'calendar'
-                    ? 'bg-[#1E202B] text-amber-500 border border-amber-500/25'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1E202B]/40'
-                }`}
-              >
-                <Calendar className="h-3.5 w-3.5" />
-                <span>Setlists</span>
-              </button>
-            )}
           </nav>
 
           {/* Right Action / Profile Controls */}
@@ -2115,19 +2054,6 @@ export default function App() {
                   <p className="text-[11px] md:text-xs text-zinc-500 mt-0.5 md:mt-1">Search and browse all songs.</p>
                 </div>
               </button>
-              
-              <button 
-                onClick={() => setActiveTab('calendar')}
-                className="p-4 md:p-5 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/35 rounded text-left transition-all cursor-pointer group flex flex-col md:flex-row md:items-start gap-2 md:gap-4 active-touch"
-              >
-                <div className="p-2.5 md:p-3 bg-[#1A1C26] border border-[#272A37] rounded group-hover:border-amber-500/20 transition-all w-fit shrink-0">
-                  <Calendar className="w-5 h-5 text-amber-555" />
-                </div>
-                <div>
-                  <div className="text-[13px] md:text-sm font-semibold text-white tracking-wide">Worship Setlists</div>
-                  <p className="text-[11px] md:text-xs text-zinc-500 mt-0.5 md:mt-1">Plan services and arrange setlists.</p>
-                </div>
-              </button>
             </div>
 
             {/* === RESPONSIVE JUMP BACK IN === */}
@@ -2328,18 +2254,13 @@ export default function App() {
                   songId={selectedSongId}
                   onClose={() => {
                     handleSelectSong(null);
-                    if (songSourceTab === 'calendar') {
-                      setActiveTab('calendar');
-                    }
-                    loadEvents();
                   }}
                   onEnterStageMode={handleEnterStageMode}
                   onToggleFavorite={handleToggleFavorite}
                   onLyricsUpdated={handleSongUpdateOrReview}
                   onSelectSong={handleSelectSong}
                   currentRole={currentRole}
-                  backLabel={songSourceTab === 'calendar' ? 'Back to Setlist' : 'Back to Search'}
-                  setlistSongIds={activeSetlistIds}
+                  backLabel="Back to Search"
                   songsMetadata={songs}
                   isFavorite={selectedSongId ? favoriteSongIds.has(selectedSongId) : false}
                 />
@@ -2386,39 +2307,6 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* VIEW 3: CALENDAR VIEW */}
-          {activeTab === 'calendar' && session && (
-            <motion.div
-              key="calendar"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.18 }}
-              className="w-full min-h-0"
-            >
-            <WorshipEvents
-              songs={songs}
-              events={events}
-              onEventsChange={loadEvents}
-              onClose={() => setActiveTab('dashboard')}
-              onSelectSong={(id, setlistSongIds) => {
-                setSongSourceTab('calendar');
-                handleSelectSong(id, setlistSongIds);
-                setActiveTab('search');
-              }}
-              selectedSongId={selectedSongId}
-              currentRole={currentRole}
-              onOpenAddModal={(eventId) => {
-                setTargetEventIdForAdd(eventId);
-                setShowAddModal(true);
-              }}
-              onOpenUploadModal={(eventId) => {
-                setTargetEventIdForAdd(eventId);
-                setShowUploadModal(true);
-              }}
-            />
-          </motion.div>
-        )}
         </AnimatePresence>
       </main>
 
@@ -2984,11 +2872,8 @@ That saved a wretch like me!`}
               </button>
             </div>
 
-            <BulkUpload onSuccess={async (importedSongIds) => {
+            <BulkUpload onSuccess={async () => {
               await syncSongsList();
-              if (targetEventIdForAdd && importedSongIds && importedSongIds.length > 0) {
-                await linkSongsToEvent(targetEventIdForAdd, importedSongIds);
-              }
             }} />
 
             <div className="flex gap-2 justify-end pt-3 border-t border-[#1E202B] pb-6 md:pb-0">
@@ -3067,19 +2952,7 @@ That saved a wretch like me!`}
             </div>
           )}
 
-          {/* SETLISTS — available to all roles */}
-          {session && (
-            <button
-              onClick={() => navigateTo('calendar')}
-              className={`flex flex-col items-center gap-1 px-5 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[56px] ${
-                activeTab === 'calendar' ? 'text-amber-500' : 'text-zinc-500'
-              }`}
-            >
-              {activeTab === 'calendar' && <span className="nav-tab-active-bar" />}
-              <Calendar className={`w-6 h-6 transition-transform duration-200 ${activeTab === 'calendar' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
-              <span className={`text-[11px] font-bold uppercase tracking-wider ${activeTab === 'calendar' ? 'font-black' : ''}`}>Setlists</span>
-            </button>
-          )}
+
 
           {/* INSTALL PWA (shown when installable and guest/choir nav would leave empty slot) */}
           {showInstallBanner && !isInstalled && (

@@ -1,7 +1,8 @@
-const CACHE_NAME = 'dasong-v20';
+const CACHE_NAME = 'dasong-v25';
 const ASSETS = [
   '/',
   '/index.html',
+  '/offline.html',
   '/manifest.json',
   '/assets/icon-192-v2.png',
   '/assets/icon-512-v2.png'
@@ -13,7 +14,12 @@ self.addEventListener('install', (e) => {
       return cache.addAll(ASSETS);
     })
   );
-  self.skipWaiting(); // Force activation immediately
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (e) => {
@@ -26,17 +32,15 @@ self.addEventListener('activate', (e) => {
           }
         })
       );
-    }).then(() => self.clients.claim()) // Claim clients immediately
+    }).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (e) => {
-  // Bypass service worker for API calls and non-GET requests
   if (e.request.url.includes('/api/') || e.request.method !== 'GET') {
     return;
   }
 
-  // Use Network-First strategy for the entry page and navigation requests
   if (e.request.mode === 'navigate' || e.request.url.endsWith('/') || e.request.url.endsWith('/index.html')) {
     e.respondWith(
       fetch(e.request)
@@ -54,10 +58,9 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Use Cache-First for static assets (images, manifest, icons, hashed JS/CSS bundles)
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
-      return cachedResponse || fetch(e.request);
+      return cachedResponse || fetch(e.request).catch(() => caches.match('/offline.html'));
     })
   );
 });

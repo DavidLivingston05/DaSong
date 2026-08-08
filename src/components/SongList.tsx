@@ -1,7 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Music, Star, Trash2, Layers, ChevronRight, Search, Plus, Database, BookOpen } from 'lucide-react';
+import { Music, Star, Trash2, Layers, ChevronRight, Search, Plus, Database, BookOpen, Sparkles, Key, Tag } from 'lucide-react';
 import { SongMetadata } from '../lib/db';
 import { UserRole } from '../types';
+import { matchSong, getSearchRelevanceScore, findMatchingLyricLine } from '../lib/search';
+import { getRecommendedSongs, RecommendedSongItem } from '../lib/recommendations';
+import HighlightText from './HighlightText';
 
 interface SongListProps {
   songs: SongMetadata[];
@@ -13,7 +16,6 @@ interface SongListProps {
   onOpenUploadModal: () => void;
   onClearLibrary: () => void;
   currentRole: UserRole;
-  onSuggestSong?: (id: string, title: string) => void;
 }
 
 function SongList({
@@ -33,34 +35,80 @@ function SongList({
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
   const [kbdIndex, setKbdIndex] = useState<number>(-1);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [showRecommendations, setShowRecommendations] = useState<boolean>(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
+  
   const deleteTimerRef = useRef<number | null>(null);
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
-  // Debounce search input by 150ms to prevent key lag when searching a large catalog
+  // Click outside to close instant search dropdown
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setSearchQuery(inputValue);
-      setVisibleCount(50);
-    }, 150);
-    return () => clearTimeout(handler);
-  }, [inputValue]);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  // Sort songs alphabetically by title
+  const deferredInputValue = useDeferredValue(inputValue);
+
+  // Sync searchQuery with deferredInputValue without blocking main UI thread
+  useEffect(() => {
+    setSearchQuery(deferredInputValue);
+    setVisibleCount(50);
+  }, [deferredInputValue]);
+
+  // Currently selected song object
+  const selectedSong = useMemo(() => {
+    return songs.find(s => s.id === selectedSongId) || null;
+  }, [songs, selectedSongId]);
+
+  // Compute smart recommendations for selected song OR current search query
+  const smartRecommendations = useMemo<RecommendedSongItem[]>(() => {
+    if (!showRecommendations) return [];
+    const target = selectedSong || searchQuery.trim();
+    if (!target) {
+      // Default top recommendations when no search/selection
+      return getRecommendedSongs(songs[0] || '', songs, 6);
+    }
+    return getRecommendedSongs(target, songs, 6);
+  }, [showRecommendations, selectedSong, searchQuery, songs]);
+
+  // Improvised search matching & relevance-based scoring
   const sortedSongs = useMemo(() => {
     let filtered = songs;
     if (showFavoritesOnly) {
       filtered = filtered.filter(s => !!s.favorite);
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(s => 
-        (s.title || '').toLowerCase().includes(q) || 
-        (s.author && s.author.toLowerCase().includes(q)) ||
-        (s.lyricsSnippet && s.lyricsSnippet.toLowerCase().includes(q))
-      );
+
+    const q = searchQuery.trim();
+    if (!q) {
+      // Alphabetical sort when no search query
+      return [...filtered].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     }
-    return [...filtered].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+
+    // Filter using matchSong (Tanglish/Tamil phonetic tolerant & multi-word forgiving)
+    const matches = filtered.filter(s => matchSong(s, q));
+
+    // Pre-calculate relevance scores in single O(N) linear pass for sub-millisecond sorting
+    const scoredMatches = matches.map(s => ({ song: s, score: getSearchRelevanceScore(s, q) }));
+    scoredMatches.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return (a.song.title || '').localeCompare(b.song.title || '');
+    });
+    return scoredMatches.map(sm => sm.song);
   }, [songs, searchQuery, showFavoritesOnly]);
+
+  // Top 5 instant dropdown matches for typeahead menu
+  const topDropdownMatches = useMemo(() => {
+    if (!inputValue.trim()) return [];
+    return sortedSongs.slice(0, 5);
+  }, [sortedSongs, inputValue]);
 
   // Slice list up to visible count for performance
   const paginatedSongs = useMemo(() => {
@@ -92,7 +140,9 @@ function SongList({
     setKbdIndex(-1);
   }, [songs]);
 
-  // Keyboard navigation listener (ArrowUp, ArrowDown, Enter)
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Keyboard navigation listener (ArrowUp, ArrowDown, Enter, '/')
   React.useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const activeElement = document.activeElement;
@@ -101,6 +151,14 @@ function SongList({
         activeElement.tagName === 'INPUT' ||
         (activeElement as HTMLElement).isContentEditable
       );
+
+      if (e.key === '/' && !isTypingInChat) {
+        e.preventDefault();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+        return;
+      }
 
       if (isTypingInChat) return;
 
@@ -140,18 +198,6 @@ function SongList({
     }
   }, [kbdIndex, paginatedSongs]);
 
-  // Color-coded category badge styles
-  const getCategoryStyle = (category?: string): string => {
-    switch ((category || '').toLowerCase()) {
-      case 'worship': return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
-      case 'gospel': return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
-      case 'christmas': return 'bg-sky-500/10 border-sky-500/20 text-sky-405';
-      case 'classic': return 'bg-rose-500/10 border-rose-500/20 text-rose-400';
-      case 'praise & thanksgiving': return 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400';
-      default: return 'bg-zinc-800/40 border-zinc-800/60 text-zinc-400';
-    }
-  };
-
   // Two-step delete handler
   const handleDeleteClick = (songId: string) => {
     if (pendingDeleteId === songId) {
@@ -172,9 +218,9 @@ function SongList({
       <div className="flex items-center justify-between gap-4 flex-wrap pb-4 border-b border-zinc-900/20 select-none">
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <BookOpen className="h-5.5 w-5.5 text-amber-550" /> Song Library
+            <BookOpen className="h-5.5 w-5.5 text-amber-550" aria-hidden={true} /> Song Library
           </h2>
-          <p className="text-xs text-zinc-500 mt-1">Browse, filter, and manage workspace lyrics with ease.</p>
+          <p className="text-xs text-zinc-500 mt-1">Browse, filter, and discover songs with smart recommendations & phonetics.</p>
         </div>
         {(currentRole === 'admin' || currentRole === 'guest') && (
           <div className="flex items-center gap-2.5">
@@ -182,45 +228,268 @@ function SongList({
               onClick={onOpenAddModal}
               className="premium-btn-primary font-bold px-4 py-2 rounded text-xs transition-all flex items-center gap-1.5 h-10 cursor-pointer active-touch"
             >
-              <Plus className="h-4 w-4 text-black stroke-[3]" /> Create Song
+              <Plus className="h-4 w-4 text-black stroke-[3]" aria-hidden={true} /> Create Song
             </button>
             <button
               onClick={onOpenUploadModal}
               className="premium-btn-secondary font-bold px-4 py-2 rounded text-xs transition-all h-10 cursor-pointer flex items-center gap-1.5 active-touch"
             >
-              <Database className="h-4 w-4 text-amber-500" /> Import Files
+              <Database className="h-4 w-4 text-amber-500" aria-hidden={true} /> Import Files
             </button>
           </div>
         )}
       </div>
 
-      {/* Search Input Toolbar */}
-      <div className="flex gap-2 w-full">
-        <div className="relative group flex-1">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-zinc-500 transition-colors group-focus-within:text-amber-500" />
+      {/* Search Input Toolbar with Instant Dropdown Menu */}
+      <div className="flex flex-col gap-2 w-full">
+        <div className="flex flex-col sm:flex-row gap-2 w-full">
+          <div ref={searchContainerRef} className="relative group flex-1">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+              <Search className="h-4 w-4 text-zinc-500 transition-colors group-focus-within:text-amber-500" aria-hidden={true} />
+            </div>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Type song title or lyrics ('aaradhani', 'neere'). Press '/' to focus..."
+              value={inputValue}
+              onFocus={() => { if (inputValue.trim()) setIsDropdownOpen(true); }}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                setIsDropdownOpen(true);
+                setKbdIndex(0);
+              }}
+              className="block w-full pl-11 pr-16 py-3 bg-zinc-950/40 text-zinc-250 placeholder-zinc-550 focus:outline-none text-sm transition-all premium-input rounded"
+              aria-label="Search songs by title, author, or lyrics snippets"
+            />
+            {inputValue ? (
+              <button
+                onClick={() => {
+                  setInputValue('');
+                  setIsDropdownOpen(false);
+                }}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-zinc-500 hover:text-white z-10"
+              >
+                Clear
+              </button>
+            ) : (
+              <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[10px] font-mono font-bold text-zinc-600 bg-zinc-900/60 px-1.5 py-0.5 rounded my-auto h-5 border border-zinc-800 z-10">
+                /
+              </span>
+            )}
+
+            {/* Instant Floating Typeahead Dropdown Menu */}
+            {isDropdownOpen && inputValue.trim() !== '' && (
+              <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-[#090A0F] border border-amber-500/40 rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] overflow-hidden backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="px-3.5 py-2.5 bg-zinc-950 border-b border-zinc-850 flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5 font-mono">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" /> Instant Top Song Matches
+                  </span>
+                  <span className="text-[10px] text-zinc-500">Tap song to view sheet</span>
+                </div>
+                
+                <div className="divide-y divide-zinc-900/80 max-h-[340px] overflow-y-auto">
+                  {topDropdownMatches.length > 0 ? (
+                    topDropdownMatches.map((song, idx) => {
+                      const matchingSnippet = findMatchingLyricLine(song, inputValue);
+                      const isKbdSelected = kbdIndex === idx;
+                      return (
+                        <div
+                          key={`drop-${song.id}`}
+                          onClick={() => {
+                            onSelectSong(song.id);
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`p-3.5 cursor-pointer transition-all flex items-center justify-between gap-3 group active-touch ${
+                            isKbdSelected 
+                              ? 'bg-amber-500/15 border-l-4 border-amber-500' 
+                              : 'hover:bg-zinc-900/70'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors truncate">
+                                <HighlightText text={song.title} query={inputValue} />
+                              </span>
+                              {(song as any).key && (
+                                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-amber-400 shrink-0">
+                                  Key of {(song as any).key}
+                                </span>
+                              )}
+                            </div>
+                            {matchingSnippet ? (
+                              <p className="text-[11px] text-zinc-350 mt-1 line-clamp-1 italic font-serif">
+                                "<HighlightText text={matchingSnippet} query={inputValue} />"
+                              </p>
+                            ) : (
+                              song.author && (
+                                <p className="text-[10px] text-zinc-500 mt-0.5 truncate">{song.author}</p>
+                              )
+                            )}
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-amber-500/70 group-hover:text-amber-400 group-hover:translate-x-1 transition-all shrink-0" />
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-5 text-center text-xs text-zinc-400 font-sans">
+                      No matching songs found for "{inputValue}".
+                    </div>
+                  )}
+                </div>
+
+                {/* Recommended Next Songs section for the typed lyrics */}
+                {smartRecommendations.length > 0 && (
+                  <div className="bg-zinc-950/95 border-t border-amber-500/25 p-3 space-y-2 select-none">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+                        Recommended Next Tracks for Service
+                      </span>
+                      <span className="text-[9.5px] text-zinc-500">Same Key & Worship Theme</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {smartRecommendations.slice(0, 4).map(({ song: recSong, reasons }) => (
+                        <div
+                          key={`drop-rec-${recSong.id}`}
+                          onClick={() => {
+                            onSelectSong(recSong.id);
+                            setIsDropdownOpen(false);
+                          }}
+                          className="p-2.5 rounded-lg bg-zinc-900/90 hover:bg-amber-500/10 border border-zinc-800 hover:border-amber-500/40 cursor-pointer transition-all flex flex-col justify-between group active-touch"
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs font-bold text-white group-hover:text-amber-400 truncate">
+                              {recSong.title}
+                            </span>
+                            {(recSong as any).key && (
+                              <span className="text-[8.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-amber-400 shrink-0">
+                                Key of {(recSong as any).key}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {reasons.slice(0, 1).map((r, i) => (
+                              <span key={i} className="text-[8.5px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          <input
-            type="text"
-            placeholder="Search songs by title, author, or lyrics snippets..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            className="block w-full pl-11 pr-4 py-3 bg-zinc-950/40 text-zinc-250 placeholder-zinc-550 focus:outline-none text-sm transition-all premium-input rounded"
-          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              className={`px-4 py-3 rounded text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 border ${
+                showFavoritesOnly 
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]' 
+                  : 'premium-btn-secondary border-[#1E202B] text-zinc-400 hover:text-white'
+              }`}
+              title={showFavoritesOnly ? "Showing Favorites Only" : "Show Favorites Only"}
+              aria-label={showFavoritesOnly ? "Showing favorites only" : "Show favorites only"}
+            >
+              <Star className={`h-4 w-4 ${showFavoritesOnly ? 'fill-amber-500 text-amber-500' : ''}`} aria-hidden={true} />
+              <span className="hidden sm:inline">Favorites</span>
+            </button>
+
+            <button
+              onClick={() => setShowRecommendations(!showRecommendations)}
+              className={`px-3 py-3 rounded text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 border ${
+                showRecommendations
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                  : 'premium-btn-secondary border-[#1E202B] text-zinc-500'
+              }`}
+              title="Toggle Smart Recommendations"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+              <span className="hidden md:inline">Recommendations</span>
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-          className={`px-4 py-3 rounded text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 border ${
-            showFavoritesOnly 
-              ? 'bg-amber-500/10 text-amber-500 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]' 
-              : 'premium-btn-secondary border-[#1E202B] text-zinc-400 hover:text-white'
-          }`}
-          title={showFavoritesOnly ? "Showing Favorites Only" : "Show Favorites Only"}
-        >
-          <Star className={`h-4 w-4 ${showFavoritesOnly ? 'fill-amber-500 text-amber-500' : ''}`} />
-          <span className="hidden xs:inline">Favorites</span>
-        </button>
+
+        {/* 1-Tap Quick Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[11px] font-medium select-none">
+          <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider shrink-0 mr-1">Quick Themes:</span>
+          {['All', 'Praise', 'Worship', 'Holy Spirit', 'Communion', 'Grace', 'Youth', 'Christmas', 'Key of G', 'Key of D', 'Key of C', 'Tamil / Tanglish'].map(tag => {
+            const isSelected = (tag === 'All' && !inputValue) || (inputValue.toLowerCase() === tag.toLowerCase());
+            return (
+              <button
+                key={tag}
+                onClick={() => {
+                  setInputValue(tag === 'All' ? '' : tag);
+                  setIsDropdownOpen(false);
+                }}
+                className={`px-3 py-1 rounded-full border transition-all shrink-0 cursor-pointer text-xs ${
+                  isSelected 
+                    ? 'bg-amber-500 text-black border-amber-500 font-bold shadow-[0_0_10px_rgba(245,158,11,0.3)]' 
+                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                }`}
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Smart Recommendations Section */}
+      {showRecommendations && smartRecommendations.length > 0 && (
+        <div className="bg-[#12131A] border border-amber-500/20 rounded-md p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-amber-450 uppercase tracking-wider flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              {selectedSong 
+                ? `Recommended After "${selectedSong.title}"`
+                : searchQuery.trim()
+                  ? `Recommended Worship Songs for "${searchQuery.trim()}"`
+                  : `Top Recommended Worship Songs`
+              }
+            </h3>
+            <span className="text-[11px] text-zinc-500">Matched by Key, Theme & Lyrics</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            {smartRecommendations.map(({ song, reasons }) => (
+              <div
+                key={`rec-${song.id}`}
+                onClick={() => onSelectSong(song.id)}
+                className="bg-zinc-950/60 hover:bg-amber-500/[0.06] border border-zinc-850 hover:border-amber-500/40 p-3 rounded cursor-pointer transition-all duration-200 flex flex-col justify-between group active-touch"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors truncate">
+                      {song.title}
+                    </span>
+                    {(song as any).key && (
+                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-amber-400 shrink-0">
+                        {(song as any).key}
+                      </span>
+                    )}
+                  </div>
+                  {song.author && (
+                    <p className="text-[10px] text-zinc-500 truncate mb-1">
+                      {song.author}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {reasons.map((r, i) => (
+                    <span key={i} className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                      {r}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Song Grid / Lists layout */}
       <div className="bg-[#12131A] border border-[#1E202B] overflow-hidden rounded-md">
@@ -231,9 +500,8 @@ function SongList({
             <thead>
               <tr className="bg-zinc-950/80 border-b border-zinc-900/35 select-none">
                 <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500 w-14 text-center">Fav</th>
-                <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500">Song Title</th>
-                <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500 hidden lg:table-cell">Author</th>
-                <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500">Category</th>
+                <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500">Song Title & Lyrics Preview</th>
+                <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500 w-28 text-center">Key / Theme</th>
                 {currentRole === 'admin' && (
                   <th className="p-4 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500 w-28 text-center">Actions</th>
                 )}
@@ -243,11 +511,17 @@ function SongList({
               {paginatedSongs.length > 0 ? (
                 paginatedSongs.map((song, index) => {
                   const isSelected = selectedSongId === song.id;
+                  const matchingSnippetLine = searchQuery.trim() ? findMatchingLyricLine(song, searchQuery) : undefined;
+                  const songKey = (song as any).key || undefined;
+
                   return (
                     <tr
                       key={song.id}
                       id={`song-row-${song.id}`}
                       onClick={() => onSelectSong(song.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelectSong(song.id); }}
                       className={`group border-b border-zinc-900/15 cursor-pointer transition-all duration-200 ${
                         isSelected 
                           ? 'bg-amber-500/[0.03] text-white shadow-[inset_4px_0_0_0_#f59e0b]' 
@@ -258,7 +532,7 @@ function SongList({
                     >
                       {/* Favorite Toggle button cells */}
                       <td className="p-4 text-center" onClick={(e) => { e.stopPropagation(); onToggleFavorite(song.id, !!song.favorite); }}>
-                        <button className="text-amber-500 hover:text-amber-400 transition-all cursor-pointer p-1">
+                        <button className="text-amber-500 hover:text-amber-400 transition-all cursor-pointer p-1" aria-label="Toggle favorite">
                           {song.favorite ? (
                             <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
                           ) : (
@@ -267,30 +541,43 @@ function SongList({
                         </button>
                       </td>
                       
-                      {/* Title block with music symbol */}
+                      {/* Title block with music symbol & highlighted lyric preview */}
                       <td className="p-4 text-xs font-semibold">
-                        <div className="flex items-center gap-3">
-                          <Music className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${isSelected ? 'text-amber-500' : 'text-zinc-650'}`} />
-                          <div className="flex flex-col text-left">
+                        <div className="flex items-start gap-3">
+                          <Music className={`h-4 w-4 shrink-0 mt-0.5 transition-transform group-hover:scale-110 ${isSelected ? 'text-amber-500' : 'text-zinc-650'}`} aria-hidden={true} />
+                          <div className="flex flex-col text-left min-w-0">
                             <span className={`text-[13px] font-bold tracking-tight transition-colors ${isSelected ? 'text-amber-555' : 'text-zinc-200 group-hover:text-amber-400'}`}>
-                              {song.title}
+                              <HighlightText text={song.title} query={searchQuery} />
                             </span>
+                            {song.author && (
+                              <span className="text-[11px] text-zinc-500 font-normal mt-0.5">
+                                by <HighlightText text={song.author} query={searchQuery} />
+                              </span>
+                            )}
+                            {matchingSnippetLine && (
+                              <div className="mt-1.5 text-[11px] font-mono text-zinc-400 bg-zinc-950/70 border border-zinc-900/80 px-2 py-1 rounded inline-block max-w-xl truncate">
+                                "<HighlightText text={matchingSnippetLine} query={searchQuery} />"
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
 
-                      {/* Author column (lg+) */}
-                      <td className="p-4 text-xs text-zinc-500 hidden lg:table-cell font-sans font-medium">
-                        {song.author || 'Traditional'}
-                      </td>
-
-                      {/* Category column */}
-                      <td className="p-4">
-                        {song.category && (
-                          <span className={`text-[9px] font-bold uppercase px-2.5 py-0.5 rounded-md tracking-wider select-none ${getCategoryStyle(song.category)}`}>
-                            {song.category}
-                          </span>
-                        )}
+                      {/* Key & Category Column */}
+                      <td className="p-4 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          {songKey ? (
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-amber-400">
+                              {songKey}
+                            </span>
+                          ) : song.category ? (
+                            <span className="text-[10px] font-sans text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-850">
+                              {song.category}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-700 text-xs">-</span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Delete actions — two-step confirm */}
@@ -304,6 +591,7 @@ function SongList({
                                 : 'text-zinc-650 hover:text-red-400 hover:bg-red-950/20'
                             }`}
                             title={pendingDeleteId === song.id ? 'Click again to confirm delete' : 'Delete song'}
+                            aria-label="Delete song"
                           >
                             {pendingDeleteId === song.id ? 'Confirm?' : <Trash2 className="h-3.5 w-3.5" />}
                           </button>
@@ -314,40 +602,40 @@ function SongList({
                 })
               ) : (
                 <tr>
-                  <td colSpan={currentRole === 'admin' ? 5 : 4} className="text-center py-20 px-6 bg-zinc-950/40 select-none">
+                  <td colSpan={currentRole === 'admin' ? 4 : 3} className="text-center py-16 px-6 bg-zinc-950/40 select-none">
                     <div className="max-w-md mx-auto flex flex-col items-center justify-center">
                       <div className="p-4 bg-zinc-900/40 rounded-full mb-4">
-                        <Layers className="h-8 w-8 text-zinc-650" />
+                        <Layers className="h-8 w-8 text-zinc-650" aria-hidden={true} />
                       </div>
-                      <p className="font-bold text-white text-xs font-mono tracking-widest uppercase">No Songs Found</p>
+                      <p className="font-bold text-white text-xs font-mono tracking-widest uppercase">No Exact Matches Found</p>
                       <p className="text-[11px] text-zinc-500 mt-2 font-sans max-w-xs leading-relaxed">
-                        We couldn't find any songs matching your filter. Try adding a new track or importing files.
+                        We couldn't find any songs matching "{searchQuery}". Check recommendations above or create a new track.
                       </p>
-                      {(currentRole === 'admin' || currentRole === 'guest') && (
-                        <button
-                          onClick={onOpenAddModal}
-                          className="mt-5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold px-4 py-2 rounded text-[10px] font-mono tracking-wider transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
-                        >
-                          <Plus className="h-3.5 w-3.5" /> Create New Song
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>        {/* Mobile Grid View */}
+        </div>
+
+        {/* Mobile Grid View */}
         <div className="block md:hidden bg-zinc-950/10 py-3 space-y-3">
           {paginatedSongs.length > 0 ? (
             paginatedSongs.map((song, index) => {
               const isSelected = selectedSongId === song.id;
+              const matchingSnippetLine = searchQuery.trim() ? findMatchingLyricLine(song, searchQuery) : undefined;
+              const songKey = (song as any).key || undefined;
+
               return (
                 <div
                   key={song.id}
                   id={`song-card-${song.id}`}
                   onClick={() => onSelectSong(song.id)}
-                  className={`mobile-row mx-3.5 px-4 py-4 flex items-center justify-between gap-3 cursor-pointer rounded-md transition-all duration-200 active-touch select-none ${
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelectSong(song.id); }}
+                  className={`mobile-row mx-3.5 px-4 py-3.5 flex flex-col gap-2 cursor-pointer rounded-md transition-all duration-200 active-touch select-none ${
                     isSelected
                       ? 'bg-amber-500/[0.03] border border-amber-500/20'
                       : kbdIndex === index
@@ -355,77 +643,80 @@ function SongList({
                         : 'premium-glass-card'
                   }`}
                 >
-                  {/* Left: indicator dot */}
-                  {isSelected ? (
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                  ) : (
-                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-800 shrink-0" />
-                  )}
-
-                  {/* Center: song info */}
-                  <div className="flex-1 truncate text-left min-w-0">
-                    <div className={`text-sm font-bold truncate leading-snug ${isSelected ? 'text-amber-550' : 'text-zinc-200'}`}>
-                      {song.title}
+                  <div className="flex items-center justify-between gap-3 w-full">
+                    {/* Left: indicator dot & title */}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-amber-500' : 'bg-zinc-800'}`} />
+                      <div className="flex flex-col min-w-0">
+                        <div className={`text-sm font-bold truncate leading-snug ${isSelected ? 'text-amber-550' : 'text-zinc-200'}`}>
+                          <HighlightText text={song.title} query={searchQuery} />
+                        </div>
+                        {song.author && (
+                          <span className="text-[10px] text-zinc-500 truncate">
+                            <HighlightText text={song.author} query={searchQuery} />
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      <span className="text-[10px] font-medium text-zinc-550 truncate max-w-[130px] font-sans">
-                        {song.author || 'Traditional'}
-                      </span>
-                      {song.category && (
-                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${getCategoryStyle(song.category)}`}>{song.category}</span>
-                      )}
-                      {song.bpm && (
-                        <span className="text-[9px] font-mono text-zinc-500 bg-zinc-900/40 px-1.5 py-0.5 rounded">{song.bpm} bpm</span>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Right: actions */}
-                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => onToggleFavorite(song.id, !!song.favorite)}
-                      className="p-2 text-zinc-650 hover:text-amber-550 transition-all cursor-pointer active-touch rounded"
-                      title="Toggle Favorite"
-                    >
-                      {song.favorite ? (
-                        <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
-                      ) : (
-                        <Star className="h-5 w-5 text-zinc-700" />
+                    {/* Right: Key badge & favorite button */}
+                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {songKey && (
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-amber-400 border border-zinc-800">
+                          {songKey}
+                        </span>
                       )}
-                    </button>
-                    {currentRole === 'admin' && (
                       <button
-                        onClick={() => handleDeleteClick(song.id)}
-                        className={`p-2 transition-colors cursor-pointer active-touch rounded ${
-                          pendingDeleteId === song.id
-                            ? 'text-red-400 bg-red-500/10'
-                            : 'text-zinc-700 hover:text-red-400'
-                        }`}
-                        title={pendingDeleteId === song.id ? 'Tap again to confirm' : 'Delete Song'}
+                        onClick={() => onToggleFavorite(song.id, !!song.favorite)}
+                        className="p-2 text-zinc-650 hover:text-amber-550 transition-all cursor-pointer active-touch rounded"
+                        title="Toggle Favorite"
+                        aria-label="Toggle favorite"
                       >
-                        {pendingDeleteId === song.id ? (
-                          <span className="text-[10px] font-bold font-sans">Del?</span>
+                        {song.favorite ? (
+                          <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
                         ) : (
-                          <Trash2 className="h-4 w-4" />
+                          <Star className="h-4 w-4 text-zinc-700" />
                         )}
                       </button>
-                    )}
-                    {!isSelected && (
-                      <ChevronRight className="h-4 w-4 text-zinc-700 ml-0.5 shrink-0" />
-                    )}
+                      {currentRole === 'admin' && (
+                        <button
+                          onClick={() => handleDeleteClick(song.id)}
+                          className={`p-2 transition-colors cursor-pointer active-touch rounded ${
+                            pendingDeleteId === song.id
+                              ? 'text-red-400 bg-red-500/10'
+                              : 'text-zinc-700 hover:text-red-400'
+                          }`}
+                          title={pendingDeleteId === song.id ? 'Tap again to confirm' : 'Delete Song'}
+                          aria-label="Delete song"
+                        >
+                          {pendingDeleteId === song.id ? (
+                            <span className="text-[10px] font-bold font-sans">Del?</span>
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Matching Lyric Line snippet on Mobile */}
+                  {matchingSnippetLine && (
+                    <div className="text-[11px] font-mono text-zinc-400 bg-zinc-950/80 border border-zinc-900 px-2 py-1 rounded truncate w-full">
+                      "<HighlightText text={matchingSnippetLine} query={searchQuery} />"
+                    </div>
+                  )}
                 </div>
               );
             })
           ) : (
-            <div className="text-center py-20 px-6 bg-zinc-950/20 select-none">
+            <div className="text-center py-12 px-6 bg-zinc-950/20 select-none">
               <div className="max-w-md mx-auto flex flex-col items-center justify-center">
                 <div className="p-4 bg-zinc-900/40 border border-zinc-850 rounded-full mb-4">
-                  <Layers className="h-8 w-8 text-zinc-650" />
+                  <Layers className="h-8 w-8 text-zinc-650" aria-hidden={true} />
                 </div>
-                <p className="font-bold text-white text-xs font-mono tracking-widest uppercase">No Songs Found</p>
+                <p className="font-bold text-white text-xs font-mono tracking-widest uppercase">No Matches Found</p>
                 <p className="text-[11px] text-zinc-500 mt-2 font-sans max-w-xs leading-relaxed">
-                  We couldn't find any songs matching your filter. Try adding a new track or importing files.
+                  No exact matches found for "{searchQuery}". See recommendations above!
                 </p>
               </div>
             </div>
@@ -435,7 +726,7 @@ function SongList({
         {/* Dynamic Infinite Scroll Load-More Trigger Strip */}
         <div ref={observerTarget} id="lyrics-paginator" className="p-4 border-t border-zinc-900/60 bg-zinc-950/60 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono select-none">
           <div className="text-[11px] text-zinc-500 uppercase tracking-wider">
-            Showing <strong className="text-zinc-350">{paginatedSongs.length}</strong> of <strong className="text-zinc-350">{sortedSongs.length}</strong> songs
+            Showing <strong className="text-zinc-400">{paginatedSongs.length}</strong> of <strong className="text-zinc-400">{sortedSongs.length}</strong> songs
           </div>
 
           {visibleCount < sortedSongs.length && (

@@ -132,7 +132,7 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
     }`}>
       <div className="flex items-center justify-between mb-4 border-b border-zinc-900/20 pb-2.5 select-none">
         <div className="flex items-center gap-2">
-          <Compass className="h-4.5 w-4.5 text-amber-500 animate-spin" style={{ animationDuration: status === 'playing' ? `${60 / bpm * 2}s` : '8s' }} />
+          <Compass className="h-[18px] w-[18px] text-amber-500 animate-spin" style={{ animationDuration: status === 'playing' ? `${60 / bpm * 2}s` : '8s' }} />
           <span className="text-[10px] font-mono font-bold text-white uppercase tracking-widest">Worship Metronome</span>
         </div>
         <div className="flex items-center gap-1.5 bg-zinc-900/60 px-2.5 py-0.5 rounded border border-[#1E202B]">
@@ -154,12 +154,12 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
                 <div
                   key={index}
                   style={{ transition: 'all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
-                  className={`h-4.5 rounded-full ${
+                  className={`h-[18px] rounded-full ${
                     isActive
                       ? isFirst
                         ? 'w-8 bg-amber-500 scale-125' 
                         : 'w-6 bg-amber-500 scale-110'
-                      : 'w-4.5 bg-zinc-900/80'
+                      : 'w-[18px] bg-zinc-900/80'
                   }`}
                 />
               );
@@ -223,7 +223,7 @@ function Metronome({ initialBpm = 72, compact = false }: MetronomeProps) {
             className="p-1.5 px-3 text-zinc-400 bg-zinc-900/40 hover:bg-zinc-900 rounded hover:text-white cursor-pointer transition-colors"
             title={soundEnabled ? 'Mute click sound' : 'Enable click sound'}
           >
-            {soundEnabled ? <Volume2 className="h-4.5 w-4.5 text-amber-500" /> : <VolumeX className="h-4.5 w-4.5 text-rose-500" />}
+            {soundEnabled ? <Volume2 className="h-[18px] w-[18px] text-amber-500" /> : <VolumeX className="h-[18px] w-[18px] text-rose-500" />}
           </button>
 
           <button

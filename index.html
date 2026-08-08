@@ -12,7 +12,7 @@
     <!-- Open Graph Metadata for Social Link Previews -->
     <meta property="og:title" content="DaSong Studio" />
     <meta property="og:description" content="Premium digital lyrics and chord library styled like professional DAW hardware with transposition and teleprompters." />
-    <meta property="og:image" content="https://dasong.vercel.app/assets/og_image.png?v=2" />
+    <meta property="og:image" content="https://dasong.vercel.app/assets/og_image.png?v=3" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
     <meta property="og:type" content="website" />
@@ -22,39 +22,16 @@
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="DaSong Studio" />
     <meta name="twitter:description" content="Premium digital lyrics and chord library styled like professional DAW hardware with transposition and teleprompters." />
-    <meta name="twitter:image" content="https://dasong.vercel.app/assets/og_image.png?v=2" />
+    <meta name="twitter:image" content="https://dasong.vercel.app/assets/og_image.png?v=3" />
 
-    <link rel="manifest" href="/manifest.json?v=2" />
+    <link rel="manifest" href="/manifest.json?v=3" />
     <link rel="icon" type="image/png" href="/assets/icon-192-v2.png" />
     <link rel="apple-touch-icon" href="/assets/icon-192-v2.png" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => {
-              console.log('Service Worker registered successfully!', reg.scope);
-              reg.onupdatefound = () => {
-                const installingWorker = reg.installing;
-                if (installingWorker) {
-                  installingWorker.onstatechange = () => {
-                    if (installingWorker.state === 'installed') {
-                      if (navigator.serviceWorker.controller) {
-                        console.log('New content available, auto-reloading page...');
-                        window.location.reload();
-                      }
-                    }
-                  };
-                }
-              };
-            })
-            .catch(err => console.log('Service Worker registration failed:', err));
-        });
-      }
-    </script>
+
   </body>
 </html>
 

@@ -301,5 +301,32 @@ Can ever [Bm] pluck me [C] from His [D] hand:
 Till He re[G]turns or [D] calls me [G] home,
 [A] Here in the [G] power of [D] Christ I’ll [Em] stand. [D]`,
     createdAt: Date.now() - 65000
+  },
+  {
+    id: 'tamil-neere-en-balan',
+    title: 'Neere En Balan (நீரே என் பெலன்)',
+    author: 'Worship Hymn',
+    key: 'G',
+    bpm: 74,
+    category: 'Tamil Worship',
+    favorite: true,
+    lyrics: `Verse 1:
+[G] நீரே என் பெலன் [C] நீரே என் கோட்டை
+[Em] ஆபத்து காலத்தில் [D] அனுகூல துணையுமானவர்
+[G] Neere En Balan [C] Neere En Kottai
+[Em] Aabaththu Kaalaththil [D] Anugoola Thunaiyumaanavar
+
+Chorus:
+[G] ஆராதனை [C] ஆராதனை
+[Am] என் இயேசு [D] ராஜனுக்கே [G]
+[G] Aaradhani [C] Aaradhani
+[Am] En Yesu [D] Raajanukke [G]
+
+Verse 2:
+[G] தாயின் வயிற்றில் [C] உருவாகும் முன்னே
+[Em] பேர் சொல்லி என்னை [D] அழைத்தவரே
+[G] Thaayin Vayitril [C] Uruvaagum Munne
+[Em] Per Solli Ennai [D] Alaiththavare`,
+    createdAt: Date.now() - 60000
   }
 ];

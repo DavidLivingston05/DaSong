@@ -13,12 +13,6 @@ export interface Song {
 
 export type PlaybackStatus = 'idle' | 'playing' | 'paused';
 
-export interface MetronomeConfig {
-  bpm: number;
-  beatsPerMeasure: number; // 2, 3, 4, 6
-  soundEnabled: boolean;
-}
-
 export interface PresentationConfig {
   fontSize: number; // 12px to 48px
   theme: 'parchment' | 'dark' | 'classic' | 'retro-terminal';
@@ -26,15 +20,6 @@ export interface PresentationConfig {
   autoScrollSpeed: number; // 0 to 10 scale
 }
 
-export interface WorshipEvent {
-  id: string;
-  title: string;
-  date: string;
-  time?: string;
-  description?: string;
-  songIds: string[]; // references of Song IDs
-  updatedAt?: number;
-}
 
 export type UserRole = 'admin' | 'guest' | 'choir';
 

@@ -5,8 +5,78 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ limit: '5mb', extended: true }));
+
+function sanitizeString(val, maxLen = 5000) {
+  if (typeof val !== 'string') return '';
+  return val.trim().replace(/\0/g, '').slice(0, maxLen);
+}
+
+function validateSongBody(body) {
+  if (!body || typeof body !== 'object') return 'Request body must be an object or array';
+  if (Array.isArray(body)) {
+    for (let i = 0; i < body.length; i++) {
+      const s = body[i];
+      if (!s || typeof s !== 'object') return `Item ${i} is not an object`;
+      if (!s.id || typeof s.id !== 'string') return `Item ${i} missing string id`;
+      if (!s.title || typeof s.title !== 'string') return `Item ${i} missing string title`;
+      s.id = sanitizeString(s.id, 200);
+      s.title = sanitizeString(s.title, 500);
+      if (s.author) s.author = sanitizeString(s.author, 500);
+      if (s.category) s.category = sanitizeString(s.category, 200);
+      if (s.key) s.key = sanitizeString(s.key, 50);
+      if (s.capo) s.capo = sanitizeString(s.capo, 50);
+      if (s.bpm) s.bpm = sanitizeString(s.bpm, 50);
+      if (s.lyrics) s.lyrics = sanitizeString(s.lyrics, 100000);
+      if (s.notes) s.notes = sanitizeString(s.notes, 5000);
+    }
+  } else {
+    if (!body.id || typeof body.id !== 'string') return 'Song must have a string id';
+    if (!body.title || typeof body.title !== 'string') return 'Song must have a string title';
+    body.id = sanitizeString(body.id, 200);
+    body.title = sanitizeString(body.title, 500);
+    if (body.author) body.author = sanitizeString(body.author, 500);
+    if (body.category) body.category = sanitizeString(body.category, 200);
+    if (body.key) body.key = sanitizeString(body.key, 50);
+    if (body.capo) body.capo = sanitizeString(body.capo, 50);
+    if (body.bpm) body.bpm = sanitizeString(body.bpm, 50);
+    if (body.lyrics) body.lyrics = sanitizeString(body.lyrics, 100000);
+    if (body.notes) body.notes = sanitizeString(body.notes, 5000);
+  }
+  return null;
+}
+
+function validateEventBody(body) {
+  if (!body || typeof body !== 'object') return 'Request body must be an object';
+  if (!body.id || typeof body.id !== 'string') return 'Event must have a string id';
+  if (!body.title || typeof body.title !== 'string') return 'Event must have a string title';
+  body.id = sanitizeString(body.id, 200);
+  body.title = sanitizeString(body.title, 500);
+  if (body.description) body.description = sanitizeString(body.description, 2000);
+  if (body.date) body.date = sanitizeString(body.date, 20);
+  if (body.time) body.time = sanitizeString(body.time, 20);
+  if (body.songIds != null) {
+    if (!Array.isArray(body.songIds)) return 'songIds must be an array';
+    body.songIds = body.songIds.map(id => (typeof id === 'string' ? sanitizeString(id, 200) : String(id)));
+  }
+  return null;
+}
+
+function validateSuggestionBody(body) {
+  if (!body || typeof body !== 'object') return 'Request body must be an object';
+  if (!body.id || typeof body.id !== 'string') return 'Suggestion must have a string id';
+  if (!body.songId || typeof body.songId !== 'string') return 'Suggestion must have a string songId';
+  body.id = sanitizeString(body.id, 200);
+  body.songId = sanitizeString(body.songId, 200);
+  if (body.songTitle) body.songTitle = sanitizeString(body.songTitle, 500);
+  if (body.suggestedBy) body.suggestedBy = sanitizeString(body.suggestedBy, 500);
+  if (body.note) body.note = sanitizeString(body.note, 2000);
+  if (body.eventId) body.eventId = sanitizeString(body.eventId, 200);
+  if (body.eventTitle) body.eventTitle = sanitizeString(body.eventTitle, 500);
+  if (body.eventDate) body.eventDate = sanitizeString(body.eventDate, 20);
+  return null;
+}
 
 // Disable browser caching for all API endpoints to prevent stale data on mobile devices
 app.use('/api', (req, res, next) => {
@@ -199,6 +269,9 @@ app.post('/api/songs/fetch-batch', asyncHandler(async (req, res) => {
 
 // POST /api/songs
 app.post('/api/songs', asyncHandler(async (req, res) => {
+  const error = validateSongBody(req.body);
+  if (error) return res.status(400).json({ error });
+
   const { db } = await connectToDatabase();
   const body = req.body;
   
@@ -241,8 +314,12 @@ app.post('/api/songs', asyncHandler(async (req, res) => {
 app.delete('/api/songs', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const query = getQueryWithServer(req);
+  const count = await db.collection('songs').countDocuments(query);
+  if (count === 0) {
+    return res.status(404).json({ error: 'No songs found to delete' });
+  }
   await db.collection('songs').deleteMany(query);
-  res.json({ success: true });
+  res.json({ success: true, deletedCount: count });
 }));
 
 // DELETE /api/songs/:id
@@ -264,12 +341,11 @@ app.get('/api/events', asyncHandler(async (req, res) => {
 
 // POST /api/events
 app.post('/api/events', asyncHandler(async (req, res) => {
+  const error = validateEventBody(req.body);
+  if (error) return res.status(400).json({ error });
+
   const { db } = await connectToDatabase();
   const event = req.body;
-  
-  if (!event.id || !event.title) {
-    return res.status(400).json({ error: 'Event must contain id and title' });
-  }
 
   // Strip MongoDB's immutable _id field to prevent update errors on existing documents
   const { _id, ...eventData } = event;
@@ -301,12 +377,11 @@ app.get('/api/suggestions', asyncHandler(async (req, res) => {
 
 // POST /api/suggestions
 app.post('/api/suggestions', asyncHandler(async (req, res) => {
+  const error = validateSuggestionBody(req.body);
+  if (error) return res.status(400).json({ error });
+
   const { db } = await connectToDatabase();
   const suggestion = req.body;
-  
-  if (!suggestion.id || !suggestion.songId) {
-    return res.status(400).json({ error: 'Suggestion must contain id and songId' });
-  }
 
   const { _id, ...sugData } = suggestion;
   sugData.serverId = req.serverId;
@@ -513,8 +588,13 @@ app.post('/api/lyrics/scrape-url', asyncHandler(async (req, res) => {
 
 // POST /api/broadcast - update active broadcast state
 app.post('/api/broadcast', asyncHandler(async (req, res) => {
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ error: 'Request body must be an object' });
+  }
+
   const { db } = await connectToDatabase();
-  const { songId, activeLineIndex } = req.body;
+  const songId = typeof req.body.songId === 'string' ? sanitizeString(req.body.songId, 200) : null;
+  const activeLineIndex = typeof req.body.activeLineIndex === 'number' ? req.body.activeLineIndex : -1;
   const serverId = req.serverId || 'default';
 
   const broadcastState = {

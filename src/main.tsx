@@ -49,7 +49,28 @@ createRoot(document.getElementById('root')!).render(
 );
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
+
+      const checkForUpdate = () => { reg.update().catch(() => {}); };
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') checkForUpdate();
+      });
+      setInterval(checkForUpdate, 60 * 60 * 1000);
+
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            localStorage.setItem('dasong_sw_update', 'true');
+            window.dispatchEvent(new CustomEvent('sw-update-available'));
+          }
+        });
+      });
+    } catch (err) {
+      console.warn('Service Worker registration failed:', err);
+    }
   });
 }

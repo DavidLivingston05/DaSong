@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, Flame, AlertCircle, Copy, Check, Globe, Link, Save, ArrowRight, Clipboard, Sparkles } from 'lucide-react';
+import { Upload, FileText, CheckCircle, Flame, Copy, Check, Globe, Link, Save, ArrowRight, Clipboard } from 'lucide-react';
 import { Song } from '../types';
 import { saveSongsBatch } from '../lib/db';
 import { parseTwoLineChords } from '../utils/lyricsParser';
@@ -9,7 +9,7 @@ interface BulkUploadProps {
   onSuccess: (importedSongIds?: string[]) => void;
 }
 
-export default function BulkUpload({ onSuccess }: BulkUploadProps) {
+export default React.memo(function BulkUpload({ onSuccess }: BulkUploadProps) {
   const [activeImportTab, setActiveImportTab] = useState<'file' | 'paste' | 'url'>('file');
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -195,9 +195,9 @@ To save a wretch like me`;
       setImportStats({ imported: processedSongs.length, timeMs: Math.round(elapsed) });
       setLoading(false);
       onSuccess(processedSongs.map(s => s.id));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert('Failed to sync uploaded songs to cloud database: ' + (err.message || err));
+      alert('Failed to sync uploaded songs to cloud database: ' + (err instanceof Error ? err.message : String(err)));
       setLoading(false);
     }
   };
@@ -234,9 +234,9 @@ To save a wretch like me`;
       setLoading(false);
       setBulkTextArea('');
       onSuccess(importedSongs.map(s => s.id));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert('Failed to sync pasted songs to cloud database: ' + (err.message || err));
+      alert('Failed to sync pasted songs to cloud database: ' + (err instanceof Error ? err.message : String(err)));
       setLoading(false);
     }
   };
@@ -272,7 +272,7 @@ To save a wretch like me`;
         bpm: 75,
         lyrics: formattedLyrics
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       alert('Error fetching lyrics from URL: ' + err.message);
     } finally {
@@ -305,7 +305,7 @@ To save a wretch like me`;
       setScrapeUrl('');
       setLoading(false);
       onSuccess([newSong.id]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       alert('Failed saving song: ' + err.message);
       setLoading(false);
@@ -439,17 +439,18 @@ To save a wretch like me`;
                 Copy Template Script
               </button>
             </div>
-            <textarea
-              value={bulkTextArea}
-              onChange={(e) => setBulkTextArea(e.target.value)}
-              placeholder={`Paste multiple songs. Divide them with "---" (three dashes) on an empty line. e.g.
+                <textarea
+                  value={bulkTextArea}
+                  onChange={(e) => setBulkTextArea(e.target.value)}
+                  placeholder={`Paste multiple songs. Divide them with "---" (three dashes) on an empty line. e.g.
 
 Title: Cornerstone
 Author: Hillsong
 Lyrics:
 My hope is built on nothing less`}
-              className="w-full min-h-[220px] rounded-2xl border border-white/10 p-3.5 font-mono text-xs bg-[#09090b] text-slate-300 outline-none focus:border-amber-500"
-            />
+                  className="w-full min-h-[220px] rounded-2xl border border-white/10 p-3.5 font-mono text-xs bg-[#09090b] text-slate-300 outline-none focus:border-amber-500"
+                  aria-label="Bulk lyrics text input"
+                />
             <button
               onClick={handleBulkTextAreaImport}
               disabled={!bulkTextArea.trim() || loading}
@@ -490,6 +491,7 @@ My hope is built on nothing less`}
                   onChange={(e) => setScrapeUrl(e.target.value)}
                   placeholder="Paste lyrics page URL (e.g. https://www.azlyrics.com/lyrics/...)"
                   className="w-full pl-10 pr-4 py-3 text-xs rounded-xl border border-white/[0.04] bg-[#09090b] text-white placeholder-slate-600 outline-none focus:border-amber-500 font-sans"
+                  aria-label="Song lyrics page URL"
                 />
               </div>
               <button
@@ -514,21 +516,23 @@ My hope is built on nothing less`}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 <div>
                   <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Song Title</label>
-                  <input
-                    type="text"
-                    value={scrapePreview.title}
-                    onChange={(e) => setScrapePreview(p => p ? { ...p, title: e.target.value } : null)}
-                    className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans font-bold"
-                  />
+                    <input
+                      type="text"
+                      value={scrapePreview.title}
+                      onChange={(e) => setScrapePreview(p => p ? { ...p, title: e.target.value } : null)}
+                      className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans font-bold"
+                      aria-label="Song title"
+                    />
                 </div>
                 <div>
                   <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Author / Artist</label>
-                  <input
-                    type="text"
-                    value={scrapePreview.author}
-                    onChange={(e) => setScrapePreview(p => p ? { ...p, author: e.target.value } : null)}
-                    className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans"
-                  />
+                    <input
+                      type="text"
+                      value={scrapePreview.author}
+                      onChange={(e) => setScrapePreview(p => p ? { ...p, author: e.target.value } : null)}
+                      className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans"
+                      aria-label="Author or artist"
+                    />
                 </div>
                 <div>
                   <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Category</label>
@@ -536,6 +540,7 @@ My hope is built on nothing less`}
                     value={scrapePreview.category}
                     onChange={(e) => setScrapePreview(p => p ? { ...p, category: e.target.value } : null)}
                     className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 cursor-pointer"
+                    aria-label="Song category"
                   >
                     <option value="Worship">Contemporary Worship</option>
                     <option value="Classic">Classic Lyric</option>
@@ -551,6 +556,7 @@ My hope is built on nothing less`}
                     value={scrapePreview.bpm}
                     onChange={(e) => setScrapePreview(p => p ? { ...p, bpm: parseInt(e.target.value) || 72 } : null)}
                     className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
+                    aria-label="Tempo BPM"
                   />
                 </div>
               </div>
@@ -564,6 +570,7 @@ My hope is built on nothing less`}
                   onChange={(e) => setScrapePreview(p => p ? { ...p, lyrics: e.target.value } : null)}
                   rows={8}
                   className="w-full text-xs p-3.5 rounded-xl bg-[#09090B] text-slate-200 font-mono outline-none focus:border-amber-500"
+                  aria-label="Lyrics sheet preview"
                 />
               </div>
 
@@ -603,4 +610,4 @@ My hope is built on nothing less`}
 
     </div>
   );
-}
+});
