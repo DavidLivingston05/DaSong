@@ -1,8 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio, Paintbrush } from 'lucide-react';
+import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio, Paintbrush, Palette } from 'lucide-react';
 import { Song, PresentationConfig } from '../types';
 import { stripChords } from '../utils/chordTransposer';
 import { getBroadcastState } from '../lib/db';
+
+const PRESET_BG_COLORS = [
+  '#090A0F',
+  '#12131A',
+  '#0A0F1D',
+  '#04140E',
+  '#1F1A24',
+  '#FFFFFF',
+  '#F7F4EA',
+];
+
+const PRESET_TEXT_COLORS = [
+  '#f59e0b',
+  '#f4f4f5',
+  '#EBE6D8',
+  '#10b981',
+  '#06b6d4',
+  '#fb7185',
+  '#c084fc',
+];
 
 interface StageModeProps {
   song: Song;
@@ -727,53 +747,71 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                         </div>
                       </div>
 
-                      {/* Custom Colors — only when Custom theme */}
+                      {/* Custom Colors — 1-Tap Swatch Palette */}
                       {config.theme === 'custom' && (
                         <>
                           <div className="h-px bg-white/5" />
-                          <div className="space-y-3">
+                          <div className="space-y-4">
                             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Custom Colors</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              {/* Background picker */}
-                              <label className="block cursor-pointer group">
-                                <span className="text-[9px] text-zinc-600 uppercase tracking-wider block mb-1.5 font-semibold">Background</span>
-                                <div className="relative flex items-center gap-2.5 bg-white/4 border border-white/8 rounded-xl p-2.5 group-hover:border-white/15 transition-all">
-                                  <div
-                                    className="w-8 h-8 rounded-lg border border-white/10 shrink-0 shadow-inner"
-                                    style={{ backgroundColor: config.customBg }}
+                            
+                            {/* Background Color Swatches */}
+                            <div className="space-y-1.5">
+                              <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold block">Background Color</span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {PRESET_BG_COLORS.map(color => (
+                                  <button
+                                    key={color}
+                                    type="button"
+                                    onClick={() => setConfig(p => ({ ...p, customBg: color }))}
+                                    className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${
+                                      config.customBg.toLowerCase() === color.toLowerCase()
+                                        ? 'border-amber-500 scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                                        : 'border-white/20 hover:scale-105'
+                                    }`}
+                                    style={{ backgroundColor: color }}
+                                    title={color}
                                   />
-                                  <div>
-                                    <p className="text-[10px] font-mono text-zinc-300 font-medium">{config.customBg}</p>
-                                    <p className="text-[9px] text-zinc-600">tap to change</p>
-                                  </div>
+                                ))}
+                                <div className="relative w-7 h-7 rounded-full border-2 border-white/20 overflow-hidden flex items-center justify-center bg-white/5 cursor-pointer shrink-0" title="Custom Hex Picker">
+                                  <Palette className="w-3.5 h-3.5 text-zinc-400" />
                                   <input
                                     type="color"
                                     value={config.customBg}
                                     onChange={(e) => setConfig(p => ({ ...p, customBg: e.target.value }))}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                                   />
                                 </div>
-                              </label>
-                              {/* Text color picker */}
-                              <label className="block cursor-pointer group">
-                                <span className="text-[9px] text-zinc-600 uppercase tracking-wider block mb-1.5 font-semibold">Text Color</span>
-                                <div className="relative flex items-center gap-2.5 bg-white/4 border border-white/8 rounded-xl p-2.5 group-hover:border-white/15 transition-all">
-                                  <div
-                                    className="w-8 h-8 rounded-lg border border-white/10 shrink-0 shadow-inner"
-                                    style={{ backgroundColor: config.customTextColor }}
+                              </div>
+                            </div>
+
+                            {/* Text Color Swatches */}
+                            <div className="space-y-1.5">
+                              <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold block">Text Color</span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {PRESET_TEXT_COLORS.map(color => (
+                                  <button
+                                    key={color}
+                                    type="button"
+                                    onClick={() => setConfig(p => ({ ...p, customTextColor: color }))}
+                                    className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${
+                                      config.customTextColor.toLowerCase() === color.toLowerCase()
+                                        ? 'border-amber-500 scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                                        : 'border-white/20 hover:scale-105'
+                                    }`}
+                                    style={{ backgroundColor: color }}
+                                    title={color}
                                   />
-                                  <div>
-                                    <p className="text-[10px] font-mono text-zinc-300 font-medium">{config.customTextColor}</p>
-                                    <p className="text-[9px] text-zinc-600">tap to change</p>
-                                  </div>
+                                ))}
+                                <div className="relative w-7 h-7 rounded-full border-2 border-white/20 overflow-hidden flex items-center justify-center bg-white/5 cursor-pointer shrink-0" title="Custom Hex Picker">
+                                  <Palette className="w-3.5 h-3.5 text-zinc-400" />
                                   <input
                                     type="color"
                                     value={config.customTextColor}
                                     onChange={(e) => setConfig(p => ({ ...p, customTextColor: e.target.value }))}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                                   />
                                 </div>
-                              </label>
+                              </div>
                             </div>
                             {/* Live preview */}
                             <div
@@ -979,51 +1017,71 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                         </div>
                       </div>
 
-                      {/* Custom Colors — only when Custom theme */}
+                      {/* Custom Colors — 1-Tap Swatch Palette */}
                       {config.theme === 'custom' && (
                         <>
                           <div className="h-px bg-white/5" />
-                          <div className="space-y-3">
+                          <div className="space-y-4">
                             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Custom Colors</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              <label className="block cursor-pointer group">
-                                <span className="text-[9px] text-zinc-600 uppercase tracking-wider block mb-1.5 font-semibold">Background</span>
-                                <div className="relative flex items-center gap-2.5 bg-white/4 border border-white/8 rounded-xl p-2.5 group-hover:border-white/15 transition-all">
-                                  <div
-                                    className="w-8 h-8 rounded-lg border border-white/10 shrink-0 shadow-inner"
-                                    style={{ backgroundColor: config.customBg }}
+                            
+                            {/* Background Color Swatches */}
+                            <div className="space-y-1.5">
+                              <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold block">Background Color</span>
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                {PRESET_BG_COLORS.map(color => (
+                                  <button
+                                    key={color}
+                                    type="button"
+                                    onClick={() => setConfig(p => ({ ...p, customBg: color }))}
+                                    className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer ${
+                                      config.customBg.toLowerCase() === color.toLowerCase()
+                                        ? 'border-amber-500 scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                                        : 'border-white/20 active:scale-95'
+                                    }`}
+                                    style={{ backgroundColor: color }}
+                                    title={color}
                                   />
-                                  <div>
-                                    <p className="text-[10px] font-mono text-zinc-300 font-medium">{config.customBg}</p>
-                                    <p className="text-[9px] text-zinc-600">tap to change</p>
-                                  </div>
+                                ))}
+                                <div className="relative w-8 h-8 rounded-full border-2 border-white/20 overflow-hidden flex items-center justify-center bg-white/5 cursor-pointer shrink-0" title="Custom Hex Picker">
+                                  <Palette className="w-4 h-4 text-zinc-400" />
                                   <input
                                     type="color"
                                     value={config.customBg}
                                     onChange={(e) => setConfig(p => ({ ...p, customBg: e.target.value }))}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                                   />
                                 </div>
-                              </label>
-                              <label className="block cursor-pointer group">
-                                <span className="text-[9px] text-zinc-600 uppercase tracking-wider block mb-1.5 font-semibold font-mono font-bold">Text Color</span>
-                                <div className="relative flex items-center gap-2.5 bg-white/4 border border-white/8 rounded-xl p-2.5 group-hover:border-white/15 transition-all">
-                                  <div
-                                    className="w-8 h-8 rounded-lg border border-white/10 shrink-0 shadow-inner"
-                                    style={{ backgroundColor: config.customTextColor }}
+                              </div>
+                            </div>
+
+                            {/* Text Color Swatches */}
+                            <div className="space-y-1.5">
+                              <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold block">Text Color</span>
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                {PRESET_TEXT_COLORS.map(color => (
+                                  <button
+                                    key={color}
+                                    type="button"
+                                    onClick={() => setConfig(p => ({ ...p, customTextColor: color }))}
+                                    className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer ${
+                                      config.customTextColor.toLowerCase() === color.toLowerCase()
+                                        ? 'border-amber-500 scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                                        : 'border-white/20 active:scale-95'
+                                    }`}
+                                    style={{ backgroundColor: color }}
+                                    title={color}
                                   />
-                                  <div>
-                                    <p className="text-[10px] font-mono text-zinc-300 font-medium">{config.customTextColor}</p>
-                                    <p className="text-[9px] text-zinc-600">tap to change</p>
-                                  </div>
+                                ))}
+                                <div className="relative w-8 h-8 rounded-full border-2 border-white/20 overflow-hidden flex items-center justify-center bg-white/5 cursor-pointer shrink-0" title="Custom Hex Picker">
+                                  <Palette className="w-4 h-4 text-zinc-400" />
                                   <input
                                     type="color"
                                     value={config.customTextColor}
                                     onChange={(e) => setConfig(p => ({ ...p, customTextColor: e.target.value }))}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                                   />
                                 </div>
-                              </label>
+                              </div>
                             </div>
                             <div
                               className="w-full rounded-xl px-4 py-3 flex items-center justify-between border border-white/6"
