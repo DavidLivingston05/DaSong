@@ -92,9 +92,21 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// Global open catalog: all songs are shared and accessible globally to all users across all workspaces.
-function getQueryWithServer(req, customQuery = {}) {
+// Global open catalog helper for songs: all songs are shared and accessible globally across all workspaces.
+function getSongQuery(req, customQuery = {}) {
   return customQuery;
+}
+
+// Strict partition helper for server events & suggestions: each server workspace sees ONLY its own setlists/events.
+function getEventQuery(req, customQuery = {}) {
+  const serverId = req.serverId || 'default';
+  const serverFilter = { serverId };
+  if (Object.keys(customQuery).length > 0) {
+    return {
+      $and: [serverFilter, customQuery]
+    };
+  }
+  return serverFilter;
 }
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -310,7 +322,7 @@ app.delete('/api/songs/:id', asyncHandler(async (req, res) => {
 // GET /api/events
 app.get('/api/events', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  const events = await db.collection('worship_events').find(getQueryWithServer(req)).toArray();
+  const events = await db.collection('worship_events').find(getEventQuery(req)).toArray();
   res.json(events);
 }));
 
@@ -337,7 +349,7 @@ app.post('/api/events', asyncHandler(async (req, res) => {
 app.delete('/api/events/:id', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
   const { id } = req.params;
-  const query = getQueryWithServer(req, { id });
+  const query = getEventQuery(req, { id });
   
   await db.collection('worship_events').deleteOne(query);
   res.json({ success: true });
@@ -346,7 +358,7 @@ app.delete('/api/events/:id', asyncHandler(async (req, res) => {
 // GET /api/suggestions
 app.get('/api/suggestions', asyncHandler(async (req, res) => {
   const { db } = await connectToDatabase();
-  const suggestions = await db.collection('suggestions').find(getQueryWithServer(req)).toArray();
+  const suggestions = await db.collection('suggestions').find(getEventQuery(req)).toArray();
   res.json(suggestions);
 }));
 
