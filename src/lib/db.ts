@@ -8,11 +8,16 @@ export function getActiveServerId(): string {
   return localStorage.getItem('dasong_active_server_id') || 'default';
 }
 
-export function shouldSkipSync(): boolean {
-  if (typeof window === 'undefined') return true;
+export function canMutateCloud(): boolean {
+  if (typeof window === 'undefined') return false;
   const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
   const savedRole = localStorage.getItem(`lyrasync_user_role_${serverId}`) || 'guest';
-  return savedRole === 'guest' || serverId === 'default';
+  return savedRole === 'admin';
+}
+
+export function shouldSkipSync(): boolean {
+  // Read & fetch operations are never skipped so Guests get 100% of all songs from MongoDB
+  return false;
 }
 
 export function switchActiveServer(serverId: string): void {
@@ -241,8 +246,8 @@ export async function syncWithMongoDB(): Promise<void> {
     console.warn('Cleanup of corrupted local songs failed:', err);
   }
 
-  // 0. Sync unsynced songs and events/suggestions to cloud first
-  if (!shouldSkipSync()) {
+  // 0. Sync unsynced songs to cloud first (Admin only)
+  if (canMutateCloud()) {
     const unsyncedIds = getUnsyncedSongIds();
     if (unsyncedIds.length > 0) {
       const songsToSync: Song[] = [];
@@ -379,7 +384,7 @@ export async function saveSongsBatch(songs: Song[]): Promise<void> {
     serverLocalStorage.setItem('dasong_local_max_updated_at', String(maxTime));
   }
   
-  if (shouldSkipSync()) {
+  if (!canMutateCloud()) {
     return;
   }
 
@@ -402,7 +407,7 @@ export async function saveSong(song: Song): Promise<void> {
   const now = song.updatedAt || song.createdAt || Date.now();
   serverLocalStorage.setItem('dasong_local_max_updated_at', String(now));
   
-  if (shouldSkipSync()) {
+  if (!canMutateCloud()) {
     return;
   }
 
@@ -424,7 +429,7 @@ export async function deleteSong(id: string): Promise<void> {
   // Remove last updated cache to force recalculation on next sync check
   serverLocalStorage.removeItem('dasong_local_max_updated_at');
   
-  if (shouldSkipSync()) {
+  if (!canMutateCloud()) {
     return;
   }
 
@@ -443,7 +448,7 @@ export async function clearAllSongs(): Promise<void> {
   serverLocalStorage.removeItem('dasong_local_max_updated_at');
   serverLocalStorage.removeItem('dasong_unsynced_song_ids');
   
-  if (shouldSkipSync()) {
+  if (!canMutateCloud()) {
     return;
   }
 
@@ -545,9 +550,6 @@ export function getWorshipEvents(): WorshipEvent[] {
 }
 
 export async function fetchWorshipEventsFromCloud(): Promise<WorshipEvent[]> {
-  if (shouldSkipSync()) {
-    return getWorshipEvents();
-  }
   try {
     const serverEvents: WorshipEvent[] = await apiRequest('/api/events');
     if (Array.isArray(serverEvents)) {
@@ -577,8 +579,8 @@ export function saveWorshipEvent(event: WorshipEvent): WorshipEvent[] {
   events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   localStorage.setItem(`dasong_events_${serverId}`, JSON.stringify(events));
 
-  // Sync to MongoDB Cloud ONLY if logged in as Admin on a server workspace
-  if (!shouldSkipSync()) {
+  // Sync to MongoDB Cloud ONLY if logged in as Admin
+  if (canMutateCloud()) {
     apiRequest('/api/events', {
       method: 'POST',
       body: JSON.stringify(updatedEvent)
@@ -595,8 +597,8 @@ export function deleteWorshipEvent(eventId: string): WorshipEvent[] {
   const events = getWorshipEvents().filter(e => e.id !== eventId);
   localStorage.setItem(`dasong_events_${serverId}`, JSON.stringify(events));
 
-  // Delete from MongoDB Cloud ONLY if logged in as Admin on a server workspace
-  if (!shouldSkipSync()) {
+  // Delete from MongoDB Cloud ONLY if logged in as Admin
+  if (canMutateCloud()) {
     apiRequest(`/api/events/${eventId}`, {
       method: 'DELETE'
     }).catch(err => {
