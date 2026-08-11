@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio } from 'lucide-react';
+import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio, Paintbrush } from 'lucide-react';
 import { Song, PresentationConfig } from '../types';
 import { stripChords } from '../utils/chordTransposer';
 import { getBroadcastState } from '../lib/db';
@@ -13,11 +13,20 @@ interface StageModeProps {
 
 export default React.memo(function StageMode({ song, onClose, broadcastSlideIndex, onSelectSong }: StageModeProps) {
   const [lyrics, setLyrics] = useState<string>('');
-  const [config, setConfig] = useState<PresentationConfig>({
-    fontSize: 28,
-    theme: 'dark',
-    twoColumns: false,
-    autoScrollSpeed: 0 // 0 means stopped
+  const [config, setConfig] = useState<PresentationConfig>(() => {
+    const saved = localStorage.getItem('dasong_stage_config');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return {
+      fontSize: 28,
+      theme: 'dark',
+      twoColumns: false,
+      autoScrollSpeed: 0,
+      customBg: '#0d0d0d',
+      customTextColor: '#f4f4f5',
+      fontFamily: 'serif',
+    };
   });
 
   const [scrolling, setScrolling] = useState<boolean>(false);
@@ -26,11 +35,16 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
   const [showHeader, setShowHeader] = useState<boolean>(true);
   const lastTapRef = useRef<number>(0);
 
+  // Persist stage config to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('dasong_stage_config', JSON.stringify(config));
+  }, [config]);
+
   // View mode, screen size, and slide presentation states
   const [viewMode, setViewMode] = useState<'scroll' | 'slides'>('scroll');
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
-  const [showMobileSettings, setShowMobileSettings] = useState<boolean>(false);
+  const [showDesktopCustomizer, setShowDesktopCustomizer] = useState<boolean>(false);
 
   const touchStartRef = useRef<number | null>(null);
 
@@ -278,9 +292,9 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
   }, [onClose, viewMode, lyrics]);
 
   // Format the lines beautifully - parse [brackets] into superscript lines or keep inline
-  const renderFormattedLyrics = () => {
+  const renderFormattedLyrics = (lyricsOverride?: string) => {
     // Normalize CRLF to LF and handle spaces/tabs on empty lines separating paragraphs
-    const normalizedLyrics = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const normalizedLyrics = (lyricsOverride ?? lyrics).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
 
     let globalLineCounter = 0;
@@ -316,20 +330,27 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
             // Normal line or raw header line
             const isLightTheme = config.theme === 'parchment' || config.theme === 'classic';
             const headingColor = isLightTheme ? 'text-amber-800' : 'text-amber-500 font-extrabold';
-            const normalColor = isSectionHighlighted
-              ? 'text-white font-extrabold tracking-wide'
-              : (isLightTheme ? 'text-stone-900 font-bold' : 'text-zinc-400 font-medium tracking-wide');
+            const textStyle: React.CSSProperties = {
+              fontSize: line.endsWith(':') ? '12px' : `${config.fontSize}px`,
+              color: line.endsWith(':')
+                ? undefined // let headingColor class handle it
+                : isSectionHighlighted
+                  ? '#ffffff'
+                  : config.theme === 'custom'
+                    ? config.customTextColor
+                    : undefined, // inherit from parent for preset themes
+            };
 
             return (
               <div
                 key={lIdx}
                 id={lineId}
-                className={`font-serif leading-relaxed p-1 ${highlightClass} ${
+                className={`leading-relaxed p-1 ${highlightClass} ${
                   line.endsWith(':')
                     ? `mt-3 text-xs uppercase tracking-widest ${headingColor}`
-                    : `${normalColor}`
+                    : isSectionHighlighted ? 'font-extrabold tracking-wide' : 'font-medium tracking-wide'
                 }`}
-                style={{ fontSize: `${line.endsWith(':') ? '12px' : `${config.fontSize}px`}` }}
+                style={textStyle}
               >
                 {line}
               </div>
@@ -388,17 +409,24 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
 
             const isLightTheme = config.theme === 'parchment' || config.theme === 'classic';
             const headingColor = isLightTheme ? 'text-amber-800 font-bold' : 'text-amber-500 font-black';
-            const normalColor = isLightTheme ? 'text-stone-900 font-black' : 'text-zinc-100 font-extrabold tracking-wide';
+            const slideTextStyle: React.CSSProperties = {
+              fontSize: line.endsWith(':') ? '14px' : `${config.fontSize * 1.3}px`,
+              color: line.endsWith(':')
+                ? undefined
+                : config.theme === 'custom'
+                  ? config.customTextColor
+                  : undefined,
+            };
 
             return (
               <div
                 key={lIdx}
-                className={`font-serif leading-relaxed p-1 ${highlightClass} ${
+                className={`leading-relaxed p-1 ${highlightClass} ${
                   line.endsWith(':')
                     ? `text-sm uppercase tracking-widest ${headingColor} mb-4`
-                    : `${normalColor}`
+                    : 'font-extrabold tracking-wide'
                 }`}
-                style={{ fontSize: `${line.endsWith(':') ? '14px' : `${config.fontSize * 1.3}px`}` }}
+                style={slideTextStyle}
               >
                 {line}
               </div>
@@ -411,16 +439,21 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
 
   const currentThemeClasses = () => {
     switch (config.theme) {
-      case 'parchment':
-        return 'bg-[#F9F6EE] text-[#1C1A17]';
-      case 'classic':
-        return 'bg-white text-black';
-      case 'retro-terminal':
-        return 'bg-black text-[#00FF66] font-mono border-emerald-950';
-      default: // Pitch black backstage pro teleprompter theme
-        return 'bg-black text-zinc-200';
+      case 'parchment': return 'bg-[#F9F6EE] text-[#1C1A17]';
+      case 'classic':   return 'bg-white text-black';
+      case 'retro-terminal': return 'bg-black text-[#00FF66] font-mono border-emerald-950';
+      case 'custom':    return ''; // handled via inline styles
+      default:          return 'bg-black text-zinc-200';
     }
   };
+
+  const customStyles = config.theme === 'custom'
+    ? { backgroundColor: config.customBg, color: config.customTextColor }
+    : {};
+
+  const fontClass = config.fontFamily === 'sans' ? 'font-sans'
+    : config.fontFamily === 'mono' ? 'font-mono'
+    : 'font-serif';
 
   const changeTheme = (theme: PresentationConfig['theme']) => {
     setConfig((prev) => ({ ...prev, theme }));
@@ -442,7 +475,17 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
 
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col transition-all duration-300 ${currentThemeClasses()}`}>
+    <div
+      className={`fixed inset-0 z-50 flex flex-col transition-all duration-300 ${fontClass} ${currentThemeClasses()}`}
+      style={{
+        ...customStyles,
+        fontFamily: config.fontFamily === 'mono'
+          ? '"Noto Sans Tamil", "JetBrains Mono", monospace'
+          : config.fontFamily === 'sans'
+            ? '"Noto Sans Tamil", "Inter", sans-serif'
+            : '"Noto Serif Tamil", "Playfair Display", Georgia, serif',
+      }}
+    >
 
       {/* Presentation Top bar Controls */}
       <div id="stage-bar" className={`flex items-center justify-between p-3 border-b border-[#1E202B] bg-[#12131A] z-10 font-sans transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full absolute w-full'}`}>
@@ -544,59 +587,180 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                 <Columns className="h-3.5 w-3.5" />
               </button>
 
-              {/* Auto Scroll Controller */}
-              <div className="flex items-center gap-2 bg-zinc-900/60 p-1 rounded border border-[#1E202B]">
+
+              {/* 🎨 Brush Customizer Button + Floating Popover */}
+              <div className="relative">
                 <button
-                  onClick={() => setScrolling((prev) => !prev)}
-                  className={`p-1.5 rounded cursor-pointer ${scrolling ? 'bg-amber-500 text-black' : 'text-slate-400'}`}
-                  title={scrolling ? 'Pause scroll' : 'Start auto-scroll'}
-                  aria-label={scrolling ? 'Pause scroll' : 'Start auto-scroll'}
+                  onClick={() => setShowDesktopCustomizer(p => !p)}
+                  className={`p-2 rounded cursor-pointer transition-all border ${
+                    showDesktopCustomizer
+                      ? 'bg-amber-500 border-amber-500 text-black'
+                      : 'bg-zinc-900/60 border-[#1E202B] text-slate-400 hover:text-amber-400 hover:border-amber-500/40'
+                  }`}
+                  title="Customize appearance"
+                  aria-label="Open theme customizer"
                 >
-                  {scrolling ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                  <Paintbrush className="h-3.5 w-3.5" />
                 </button>
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  value={config.autoScrollSpeed}
-                  onChange={(e) => {
-                    const speed = parseInt(e.target.value);
-                    setConfig((p) => ({ ...p, autoScrollSpeed: speed }));
-                    if (speed > 0) setScrolling(true);
-                    else setScrolling(false);
-                  }}
-                  className="w-16 h-1 bg-white/15 rounded accent-amber-500 appearance-none cursor-pointer"
-                  title="Auto scroll speed"
-                  aria-label="Auto scroll speed"
-                />
-                <span className="text-[10px] font-mono text-slate-400 pr-2">
-                  Spd {config.autoScrollSpeed}
-                </span>
+
+                {showDesktopCustomizer && (
+                  <div
+                    className="absolute right-0 sm:right-0 top-12 z-50 w-[calc(100vw-24px)] max-w-xs sm:w-80 bg-[#0E0F14] border border-white/8 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.9)] font-sans overflow-hidden"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-white/6">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center">
+                          <Paintbrush className="h-3 w-3 text-amber-400" />
+                        </div>
+                        <span className="text-xs font-bold text-white tracking-wide">Appearance</span>
+                      </div>
+                      <button
+                        onClick={() => setShowDesktopCustomizer(false)}
+                        className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-500 hover:text-white transition-all cursor-pointer text-xs"
+                      >✕</button>
+                    </div>
+
+                    <div className="p-5 space-y-5">
+
+                      {/* Theme Section */}
+                      <div className="space-y-2.5">
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Theme</p>
+                        <div className="grid grid-cols-5 gap-2">
+                          {([
+                            { id: 'dark',           label: 'Dark',     bg: '#000000', text: '#e4e4e7', ring: 'border-zinc-700' },
+                            { id: 'parchment',      label: 'Parch',    bg: '#F9F6EE', text: '#1C1A17', ring: 'border-stone-300' },
+                            { id: 'classic',        label: 'White',    bg: '#ffffff', text: '#111111', ring: 'border-slate-200' },
+                            { id: 'retro-terminal', label: 'Term',     bg: '#000000', text: '#00FF66', ring: 'border-emerald-700' },
+                            { id: 'custom',         label: 'Custom',   bg: config.customBg, text: config.customTextColor, ring: 'border-amber-500/40' },
+                          ] as const).map(({ id, label, bg, text, ring }) => (
+                            <button
+                              key={id}
+                              onClick={() => changeTheme(id)}
+                              className={`flex flex-col items-center gap-1.5 p-0 rounded-lg border-2 transition-all cursor-pointer overflow-hidden ${
+                                config.theme === id
+                                  ? 'border-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.3)]'
+                                  : `${ring} opacity-70 hover:opacity-100`
+                              }`}
+                              title={label}
+                            >
+                              {/* Color swatch */}
+                              <div
+                                className="w-full h-9 flex items-center justify-center text-[10px] font-black"
+                                style={{ backgroundColor: bg, color: text }}
+                              >
+                                Aa
+                              </div>
+                              <span className={`text-[8px] font-bold pb-1 uppercase tracking-wide ${config.theme === id ? 'text-amber-400' : 'text-zinc-500'}`}>
+                                {label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="h-px bg-white/5" />
+
+                      {/* Font Style Section */}
+                      <div className="space-y-2.5">
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Font Style</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {([
+                            { id: 'serif', label: 'Elegant', sample: 'Aa', cls: 'font-serif' },
+                            { id: 'sans',  label: 'Clean',   sample: 'Aa', cls: 'font-sans'  },
+                            { id: 'mono',  label: 'Mono',    sample: 'Aa', cls: 'font-mono'  },
+                          ] as const).map(({ id, label, sample, cls }) => (
+                            <button
+                              key={id}
+                              onClick={() => setConfig(p => ({ ...p, fontFamily: id }))}
+                              className={`flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-all cursor-pointer ${
+                                config.fontFamily === id
+                                  ? 'border-amber-500 bg-amber-500/8 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
+                                  : 'border-white/6 bg-white/2 hover:bg-white/5 hover:border-white/12'
+                              }`}
+                            >
+                              <span className={`text-xl font-bold ${cls} ${config.fontFamily === id ? 'text-white' : 'text-zinc-400'}`}>
+                                {sample}
+                              </span>
+                              <span className={`text-[9px] font-bold uppercase tracking-wide ${config.fontFamily === id ? 'text-amber-400' : 'text-zinc-600'}`}>
+                                {label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom Colors — only when Custom theme */}
+                      {config.theme === 'custom' && (
+                        <>
+                          <div className="h-px bg-white/5" />
+                          <div className="space-y-3">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Custom Colors</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              {/* Background picker */}
+                              <label className="block cursor-pointer group">
+                                <span className="text-[9px] text-zinc-600 uppercase tracking-wider block mb-1.5 font-semibold">Background</span>
+                                <div className="relative flex items-center gap-2.5 bg-white/4 border border-white/8 rounded-xl p-2.5 group-hover:border-white/15 transition-all">
+                                  <div
+                                    className="w-8 h-8 rounded-lg border border-white/10 shrink-0 shadow-inner"
+                                    style={{ backgroundColor: config.customBg }}
+                                  />
+                                  <div>
+                                    <p className="text-[10px] font-mono text-zinc-300 font-medium">{config.customBg}</p>
+                                    <p className="text-[9px] text-zinc-600">tap to change</p>
+                                  </div>
+                                  <input
+                                    type="color"
+                                    value={config.customBg}
+                                    onChange={(e) => setConfig(p => ({ ...p, customBg: e.target.value }))}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
+                                  />
+                                </div>
+                              </label>
+                              {/* Text color picker */}
+                              <label className="block cursor-pointer group">
+                                <span className="text-[9px] text-zinc-600 uppercase tracking-wider block mb-1.5 font-semibold">Text Color</span>
+                                <div className="relative flex items-center gap-2.5 bg-white/4 border border-white/8 rounded-xl p-2.5 group-hover:border-white/15 transition-all">
+                                  <div
+                                    className="w-8 h-8 rounded-lg border border-white/10 shrink-0 shadow-inner"
+                                    style={{ backgroundColor: config.customTextColor }}
+                                  />
+                                  <div>
+                                    <p className="text-[10px] font-mono text-zinc-300 font-medium">{config.customTextColor}</p>
+                                    <p className="text-[9px] text-zinc-600">tap to change</p>
+                                  </div>
+                                  <input
+                                    type="color"
+                                    value={config.customTextColor}
+                                    onChange={(e) => setConfig(p => ({ ...p, customTextColor: e.target.value }))}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
+                                  />
+                                </div>
+                              </label>
+                            </div>
+                            {/* Live preview */}
+                            <div
+                              className="w-full rounded-xl px-4 py-3 flex items-center justify-between border border-white/6"
+                              style={{ backgroundColor: config.customBg }}
+                            >
+                              <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Preview</span>
+                              <span
+                                className="text-sm font-bold"
+                                style={{ color: config.customTextColor }}
+                              >
+                                உம்மை போல யாருண்டு
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Theme selection dropdown/buttons */}
-              <div className="flex gap-1 bg-zinc-900/60 p-1 rounded border border-[#1E202B]">
-                {(['dark', 'parchment', 'classic', 'retro-terminal'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => changeTheme(t)}
-                    className={`w-11 h-11 rounded border flex items-center justify-center capitalize text-[8px] transition-all cursor-pointer ${
-                      t === 'dark'
-                        ? 'bg-stone-900 border-[#1E202B]'
-                        : t === 'parchment'
-                          ? 'bg-[#F9F6EE] border-stone-400'
-                          : t === 'classic'
-                            ? 'bg-white border-slate-355'
-                            : 'bg-black border-emerald-500/80 text-[#00FF55]'
-                    }`}
-                    aria-label={`${t} theme`}
-                  >
-                    {config.theme === t && (
-                      <Check className={`h-2.5 w-2.5 ${t === 'classic' || t === 'parchment' ? 'text-black' : 'text-amber-500'}`} />
-                    )}
-                   </button>
-                ))}
-              </div>
 
               {/* Exit Presentation */}
               <button
@@ -643,52 +807,178 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
               >
                 <Radio className="h-4 w-4" />
               </button>
-              <button
-                onClick={() => setShowMobileSettings(true)}
-                className="p-2 bg-zinc-900/60 border border-[#1E202B] text-zinc-400 hover:text-white rounded active-touch"
-                title="Settings"
-                aria-label="Open settings"
-              >
-                <Type className="h-4 w-4" />
-              </button>
+              {/* 🎨 Brush Customizer Button (Same as Desktop) */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowDesktopCustomizer(p => !p)}
+                  className={`p-2 rounded cursor-pointer transition-all border ${
+                    showDesktopCustomizer
+                      ? 'bg-amber-500 border-amber-500 text-black'
+                      : 'bg-zinc-900/60 border-[#1E202B] text-slate-400 hover:text-amber-400 hover:border-amber-500/40'
+                  }`}
+                  title="Customize appearance"
+                  aria-label="Open theme customizer"
+                >
+                  <Paintbrush className="h-4 w-4" />
+                </button>
+
+                {showDesktopCustomizer && (
+                  <div
+                    className="absolute right-0 top-12 z-50 w-[calc(100vw-24px)] max-w-xs sm:w-80 bg-[#0E0F14] border border-white/8 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.9)] font-sans overflow-hidden"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-white/6">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center">
+                          <Paintbrush className="h-3 w-3 text-amber-400" />
+                        </div>
+                        <span className="text-xs font-bold text-white tracking-wide">Appearance</span>
+                      </div>
+                      <button
+                        onClick={() => setShowDesktopCustomizer(false)}
+                        className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-500 hover:text-white transition-all cursor-pointer text-xs"
+                      >✕</button>
+                    </div>
+
+                    <div className="p-5 space-y-5">
+                      {/* Theme Section */}
+                      <div className="space-y-2.5">
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Theme</p>
+                        <div className="grid grid-cols-5 gap-2">
+                          {([
+                            { id: 'dark',           label: 'Dark',     bg: '#000000', text: '#e4e4e7', ring: 'border-zinc-700' },
+                            { id: 'parchment',      label: 'Parch',    bg: '#F9F6EE', text: '#1C1A17', ring: 'border-stone-300' },
+                            { id: 'classic',        label: 'White',    bg: '#ffffff', text: '#111111', ring: 'border-slate-200' },
+                            { id: 'retro-terminal', label: 'Term',     bg: '#000000', text: '#00FF66', ring: 'border-emerald-700' },
+                            { id: 'custom',         label: 'Custom',   bg: config.customBg, text: config.customTextColor, ring: 'border-amber-500/40' },
+                          ] as const).map(({ id, label, bg, text, ring }) => (
+                            <button
+                              key={id}
+                              onClick={() => changeTheme(id)}
+                              className={`flex flex-col items-center gap-1.5 p-0 rounded-lg border-2 transition-all cursor-pointer overflow-hidden ${
+                                config.theme === id
+                                  ? 'border-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.3)]'
+                                  : `${ring} opacity-70 hover:opacity-100`
+                              }`}
+                              title={label}
+                            >
+                              <div
+                                className="w-full h-9 flex items-center justify-center text-[10px] font-black"
+                                style={{ backgroundColor: bg, color: text }}
+                              >
+                                Aa
+                              </div>
+                              <span className={`text-[8px] font-bold pb-1 uppercase tracking-wide ${config.theme === id ? 'text-amber-400' : 'text-zinc-500'}`}>
+                                {label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="h-px bg-white/5" />
+
+                      {/* Font Style Section */}
+                      <div className="space-y-2.5">
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Font Style</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {([
+                            { id: 'serif', label: 'Elegant', sample: 'Aa', cls: 'font-serif' },
+                            { id: 'sans',  label: 'Clean',   sample: 'Aa', cls: 'font-sans'  },
+                            { id: 'mono',  label: 'Mono',    sample: 'Aa', cls: 'font-mono'  },
+                          ] as const).map(({ id, label, sample, cls }) => (
+                            <button
+                              key={id}
+                              onClick={() => setConfig(p => ({ ...p, fontFamily: id }))}
+                              className={`flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-all cursor-pointer ${
+                                config.fontFamily === id
+                                  ? 'border-amber-500 bg-amber-500/8 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
+                                  : 'border-white/6 bg-white/2 hover:bg-white/5 hover:border-white/12'
+                              }`}
+                            >
+                              <span className={`text-xl font-bold ${cls} ${config.fontFamily === id ? 'text-white' : 'text-zinc-400'}`}>
+                                {sample}
+                              </span>
+                              <span className={`text-[9px] font-bold uppercase tracking-wide ${config.fontFamily === id ? 'text-amber-400' : 'text-zinc-600'}`}>
+                                {label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom Colors — only when Custom theme */}
+                      {config.theme === 'custom' && (
+                        <>
+                          <div className="h-px bg-white/5" />
+                          <div className="space-y-3">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Custom Colors</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <label className="block cursor-pointer group">
+                                <span className="text-[9px] text-zinc-600 uppercase tracking-wider block mb-1.5 font-semibold">Background</span>
+                                <div className="relative flex items-center gap-2.5 bg-white/4 border border-white/8 rounded-xl p-2.5 group-hover:border-white/15 transition-all">
+                                  <div
+                                    className="w-8 h-8 rounded-lg border border-white/10 shrink-0 shadow-inner"
+                                    style={{ backgroundColor: config.customBg }}
+                                  />
+                                  <div>
+                                    <p className="text-[10px] font-mono text-zinc-300 font-medium">{config.customBg}</p>
+                                    <p className="text-[9px] text-zinc-600">tap to change</p>
+                                  </div>
+                                  <input
+                                    type="color"
+                                    value={config.customBg}
+                                    onChange={(e) => setConfig(p => ({ ...p, customBg: e.target.value }))}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
+                                  />
+                                </div>
+                              </label>
+                              <label className="block cursor-pointer group">
+                                <span className="text-[9px] text-zinc-600 uppercase tracking-wider block mb-1.5 font-semibold font-mono font-bold">Text Color</span>
+                                <div className="relative flex items-center gap-2.5 bg-white/4 border border-white/8 rounded-xl p-2.5 group-hover:border-white/15 transition-all">
+                                  <div
+                                    className="w-8 h-8 rounded-lg border border-white/10 shrink-0 shadow-inner"
+                                    style={{ backgroundColor: config.customTextColor }}
+                                  />
+                                  <div>
+                                    <p className="text-[10px] font-mono text-zinc-300 font-medium">{config.customTextColor}</p>
+                                    <p className="text-[9px] text-zinc-600">tap to change</p>
+                                  </div>
+                                  <input
+                                    type="color"
+                                    value={config.customTextColor}
+                                    onChange={(e) => setConfig(p => ({ ...p, customTextColor: e.target.value }))}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
+                                  />
+                                </div>
+                              </label>
+                            </div>
+                            <div
+                              className="w-full rounded-xl px-4 py-3 flex items-center justify-between border border-white/6"
+                              style={{ backgroundColor: config.customBg }}
+                            >
+                              <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Preview</span>
+                              <span
+                                className="text-sm font-bold"
+                                style={{ color: config.customTextColor }}
+                              >
+                                உம்மை போல யாருண்டு
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Hint bar — keyboard shortcuts on desktop, touch gestures on mobile */}
-      {isLargeScreen ? (
-        <div className="absolute bottom-4 left-4 z-20 px-3 py-1.5 rounded-lg bg-black/60 border border-white/5 text-[10px] text-stone-400 flex items-center gap-3 backdrop-blur-xs select-none pointer-events-none">
-          {viewMode === 'scroll' ? (
-            <>
-              <span><kbd className="bg-white/10 px-1 rounded">Space</kbd> Play/Pause Scroll</span>
-              <span>•</span>
-              <span><kbd className="bg-white/10 px-1 rounded">↑/↓</kbd> Scroll</span>
-            </>
-          ) : (
-            <>
-              <span><kbd className="bg-white/10 px-1 rounded">Space</kbd> / <kbd className="bg-white/10 px-1 rounded">Enter</kbd> / <kbd className="bg-white/10 px-1 rounded">→</kbd> Next Slide</span>
-              <span>•</span>
-              <span><kbd className="bg-white/10 px-1 rounded">←</kbd> / <kbd className="bg-white/10 px-1 rounded">Backspace</kbd> Prev Slide</span>
-            </>
-          )}
-          <span>•</span>
-          <span><kbd className="bg-white/10 px-1 rounded">ESC</kbd> Close</span>
-        </div>
-      ) : (
-        /* Mobile: touch gesture hints instead of keyboard shortcuts */
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-md bg-black/60 border border-[#1E202B] text-[10px] text-stone-400 flex items-center gap-2.5 select-none pointer-events-none whitespace-nowrap">
-          <span>👆 Tap – controls</span>
-          <span className="text-white/20">·</span>
-          <span>👆👆 Double-tap – scroll</span>
-          {viewMode === 'slides' && (
-            <>
-              <span className="text-white/20">·</span>
-              <span>◀ ▶ Swipe slides</span>
-            </>
-          )}
-        </div>
-      )}
 
       {viewMode === 'scroll' ? (
         /* Immersive Scroll container */
@@ -698,15 +988,28 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
           onClick={handleLyricsTouch}
           className="flex-1 overflow-y-auto px-6 py-12 md:px-16 cursor-pointer relative"
         >
-          <div
-            className={`mx-auto transition-all ${
-              config.twoColumns
-                ? 'max-w-7xl columns-1 lg:columns-2 gap-x-12'
-                : 'max-w-3xl'
-            }`}
-          >
-            {renderFormattedLyrics()}
-            
+          <div className={`mx-auto transition-all ${config.twoColumns ? 'max-w-7xl' : 'max-w-3xl'}`}>
+            {config.twoColumns ? (
+              (() => {
+                const sections = lyrics
+                  .replace(/\r\n/g, '\n')
+                  .replace(/\r/g, '\n')
+                  .split(/\n\s*\n+/)
+                  .filter(Boolean);
+                const mid = Math.ceil(sections.length / 2);
+                const leftSections = sections.slice(0, mid).join('\n\n');
+                const rightSections = sections.slice(mid).join('\n\n');
+                return (
+                  <div className="grid grid-cols-2 gap-x-12 items-start">
+                    <div>{renderFormattedLyrics(leftSections)}</div>
+                    <div>{renderFormattedLyrics(rightSections)}</div>
+                  </div>
+                );
+              })()
+            ) : (
+              renderFormattedLyrics()
+            )}
+
             {/* Scroll bottom spacer padding */}
             <div className="h-[40vh]" />
           </div>
@@ -805,167 +1108,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
 
         </div>
       )}
-      {/* Mobile Settings Drawer for Stage Mode */}
-      {showMobileSettings && (
-        <div 
-          className="fixed inset-0 bg-black/85 backdrop-blur-xs z-50 flex items-end justify-center md:hidden"
-          onClick={() => setShowMobileSettings(false)}
-        >
-          <div 
-            className="bg-[#12131A] border-t border-[#1E202B] rounded-t-md w-full max-w-md p-5 pb-safe space-y-5 select-none"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header handle */}
-            <div className="flex flex-col items-center gap-1.5 cursor-pointer pb-1" onClick={() => setShowMobileSettings(false)}>
-              <div className="w-12 h-1 bg-zinc-800 rounded-full"></div>
-              <span className="text-[9px] font-mono font-bold tracking-widest text-zinc-500 uppercase mt-1">Stage Settings</span>
-            </div>
 
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 text-left">
-              {/* View Mode Selection */}
-              <div className="space-y-2 border-b border-[#1E202B] pb-3">
-                <span className="text-xs font-bold text-white block font-sans">View Format</span>
-                <div className="flex gap-2 p-0.5 bg-zinc-950 rounded border border-[#1E202B]">
-                  <button
-                    onClick={() => {
-                      setViewMode('scroll');
-                      setScrolling(false);
-                    }}
-                    className={`flex-1 py-2 rounded text-[10px] font-bold font-mono uppercase transition-all cursor-pointer ${
-                      viewMode === 'scroll'
-                        ? 'bg-amber-500 text-black font-extrabold'
-                        : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    Scroll
-                  </button>
-                  <button
-                    onClick={() => {
-                      setViewMode('slides');
-                      setScrolling(false);
-                    }}
-                    className={`flex-1 py-2 rounded text-[10px] font-bold font-mono uppercase transition-all cursor-pointer ${
-                      viewMode === 'slides'
-                        ? 'bg-amber-500 text-black font-extrabold'
-                        : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    Slides
-                  </button>
-                </div>
-              </div>
-
-              {/* Font controls */}
-              <div className="space-y-2 border-b border-[#1E202B] pb-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white block font-sans">Font Scale</span>
-                  <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{config.fontSize}px</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setConfig((p) => ({ ...p, fontSize: Math.max(16, p.fontSize - 3) }))}
-                    className="flex-1 h-10 premium-btn-secondary text-zinc-200 rounded active-touch font-bold cursor-pointer font-sans"
-                  >
-                    Smaller
-                  </button>
-                  <button
-                    onClick={() => setConfig((p) => ({ ...p, fontSize: Math.min(50, p.fontSize + 3) }))}
-                    className="flex-1 h-10 premium-btn-secondary text-zinc-200 rounded active-touch font-bold cursor-pointer font-sans"
-                  >
-                    Larger
-                  </button>
-                </div>
-              </div>
-
-              {/* Auto Scroll controls */}
-              {viewMode === 'scroll' && (
-                <div className="space-y-2 border-b border-[#1E202B] pb-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white block font-sans">Auto Scroll Speed</span>
-                    <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                      {scrolling && config.autoScrollSpeed > 0 ? `Speed ${config.autoScrollSpeed}` : 'Stopped'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setScrolling(!scrolling)}
-                      className={`flex-1 h-10 border rounded active-touch text-xs font-bold transition-all cursor-pointer font-sans ${
-                        scrolling
-                          ? 'bg-amber-500 border-amber-500 text-black font-extrabold'
-                          : 'bg-zinc-900 border-[#1E202B] text-zinc-305'
-                      }`}
-                    >
-                      {scrolling ? 'Pause Scroll' : 'Start Scroll'}
-                    </button>
-                    <select
-                      value={config.autoScrollSpeed}
-                      onChange={(e) => {
-                        const speed = Number(e.target.value);
-                        setConfig(p => ({ ...p, autoScrollSpeed: speed }));
-                        if (speed > 0) setScrolling(true);
-                      }}
-                      className="bg-zinc-900 text-xs font-bold h-10 px-3 rounded text-amber-550 border border-[#1E202B]"
-                    >
-                      <option value={0}>0 (Stop)</option>
-                      <option value={1}>1x Speed</option>
-                      <option value={2}>2x Speed</option>
-                      <option value={3}>3x Speed</option>
-                      <option value={4}>4x Speed</option>
-                      <option value={5}>5x Speed</option>
-                      <option value={8}>8x Speed</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* Column toggle */}
-              {viewMode === 'scroll' && (
-                <div className="flex items-center justify-between border-b border-[#1E202B] pb-3">
-                  <div>
-                    <span className="text-xs font-bold text-white block font-sans">Split Columns</span>
-                    <span className="text-[10px] text-zinc-550">Show side-by-side pages on landscape</span>
-                  </div>
-                  <button
-                    onClick={() => setConfig(p => ({ ...p, twoColumns: !p.twoColumns }))}
-                    className={`px-4 py-2 rounded border text-xs font-mono font-bold transition-all cursor-pointer ${
-                      config.twoColumns ? 'bg-amber-500 border-amber-500 text-black' : 'bg-zinc-900 border-[#1E202B] text-zinc-400'
-                    }`}
-                  >
-                    {config.twoColumns ? 'Double' : 'Single'}
-                  </button>
-                </div>
-              )}
-
-              {/* Theme Selector */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-white block font-sans">Theme Mode</span>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['dark', 'parchment', 'classic', 'retro-terminal'] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => changeTheme(t)}
-                      className={`py-2 px-1 rounded border text-[9px] font-bold uppercase transition-all truncate text-center cursor-pointer ${
-                        config.theme === t
-                          ? 'border-amber-500 text-amber-400 bg-amber-500/5'
-                          : 'border-[#1E202B] bg-zinc-955 text-zinc-500'
-                      }`}
-                    >
-                      {t === 'retro-terminal' ? 'Terminal' : t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowMobileSettings(false)}
-              className="w-full py-3 premium-btn-primary text-xs font-extrabold rounded active-touch transition-all cursor-pointer"
-            >
-              DONE / BACK TO STAND
-            </button>
-          </div>
-        </div>
-      )}
 
     </div>
   );

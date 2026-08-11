@@ -1,7 +1,7 @@
-import { FilterableSong, getCachedSongData } from './search';
+import { SongMetadata } from './db';
 
 export interface RecommendedSongItem {
-  song: FilterableSong;
+  song: SongMetadata;
   score: number;
   reasons: string[];
 }
@@ -47,40 +47,28 @@ function extractKeywords(text: string): Set<string> {
 }
 
 /**
- * Calculates smart song recommendations based on key match, theme, author, and lyric keyword similarity.
+ * Calculates smart song recommendations based on key match, author, and lyric keyword similarity.
  */
 export function getRecommendedSongs(
-  target: FilterableSong | string,
-  catalog: FilterableSong[],
+  targetSong: SongMetadata,
+  catalog: SongMetadata[],
   limit: number = 6
 ): RecommendedSongItem[] {
-  if (!catalog || catalog.length === 0) return [];
-
-  let targetSong: FilterableSong | null = null;
-  let queryText: string = '';
-
-  if (typeof target === 'string') {
-    queryText = target.trim();
-    if (!queryText) return [];
-  } else {
-    targetSong = target;
-  }
+  if (!targetSong || !catalog || catalog.length === 0) return [];
 
   const results: RecommendedSongItem[] = [];
 
-  const targetKey = (targetSong as any)?.key ? String((targetSong as any).key).trim() : '';
-  const targetCategory = targetSong?.category ? targetSong.category.trim().toLowerCase() : '';
-  const targetAuthor = targetSong?.author ? targetSong.author.trim().toLowerCase() : '';
-  const targetKeywords = targetSong ? extractKeywords(`${targetSong.title} ${targetSong.lyricsSnippet || ''}`) : extractKeywords(queryText);
+  const targetKey = targetSong.key ? String(targetSong.key).trim() : '';
+  const targetAuthor = targetSong.author ? targetSong.author.trim().toLowerCase() : '';
+  const targetKeywords = extractKeywords(`${targetSong.title} ${targetSong.lyricsSnippet || ''}`);
 
   for (const candidate of catalog) {
-    if (targetSong && candidate.id === targetSong.id) continue;
+    if (candidate.id === targetSong.id) continue;
 
     let score = 0;
     const reasons: string[] = [];
 
-    const candidateKey = (candidate as any)?.key ? String((candidate as any).key).trim() : '';
-    const candidateCategory = candidate.category ? candidate.category.trim().toLowerCase() : '';
+    const candidateKey = candidate.key ? String(candidate.key).trim() : '';
     const candidateAuthor = candidate.author ? candidate.author.trim().toLowerCase() : '';
 
     if (targetKey && candidateKey) {
@@ -90,21 +78,6 @@ export function getRecommendedSongs(
       } else if (RELATIVE_KEYS[targetKey] && RELATIVE_KEYS[targetKey].toLowerCase() === candidateKey.toLowerCase()) {
         score += 80;
         reasons.push(`Harmonic Key (${candidateKey})`);
-      }
-    }
-
-    if (targetCategory && candidateCategory) {
-      if (targetCategory === candidateCategory) {
-        score += 100;
-        reasons.push(`Theme: ${candidate.category}`);
-      } else if (candidateCategory.includes(targetCategory) || targetCategory.includes(candidateCategory)) {
-        score += 60;
-        reasons.push(`Related Theme`);
-      }
-    } else if (candidateCategory && queryText) {
-      if (candidateCategory.includes(queryText.toLowerCase())) {
-        score += 70;
-        reasons.push(`Theme: ${candidate.category}`);
       }
     }
 
@@ -126,15 +99,6 @@ export function getRecommendedSongs(
         if (overlap >= 2) {
           reasons.push(`Shared Lyrics`);
         }
-      }
-    }
-
-    if (!targetSong && queryText) {
-      const cached = getCachedSongData(candidate);
-      const cleanQ = queryText.toLowerCase();
-      if (cached.cleanTitle.includes(cleanQ) || cached.transliteratedTitle.includes(cleanQ)) {
-        score += 150;
-        reasons.push(`Title Match`);
       }
     }
 

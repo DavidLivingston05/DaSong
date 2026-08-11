@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer } from 'lucide-react';
+import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer, X } from 'lucide-react';
 import { Song, UserRole } from '../types';
-import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, saveSuggestion, getLocalSuggestions, broadcastState, getBroadcastState } from '../lib/db';
+import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, broadcastState, getBroadcastState } from '../lib/db';
 import { stripChords } from '../utils/chordTransposer';
 import { parseTwoLineChords } from '../utils/lyricsParser';
-import Metronome from './Metronome';
 import FocusTrap from './FocusTrap';
 import { getRecommendedSongs } from '../lib/recommendations';
 
 
-import { ScheduleButton } from './ScheduleButton';
 
 interface SongDetailProps {
   songId: string;
@@ -25,8 +23,6 @@ interface SongDetailProps {
   songsMetadata?: SongMetadata[];
   isFavorite?: boolean;
   onExportSong?: (song: Song) => void;
-  onScheduleSong?: (data: any) => void;
-  isScheduled?: boolean;
 }
 
 export default function SongDetail({
@@ -43,11 +39,10 @@ export default function SongDetail({
   songsMetadata,
   isFavorite = false,
   onExportSong,
-  onScheduleSong,
-  isScheduled = false,
 }: SongDetailProps) {
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [showFontControl, setShowFontControl] = useState<boolean>(false);
   const [allMetadataState, setAllMetadataState] = useState<SongMetadata[]>([]);
   const allMetadata = songsMetadata || allMetadataState;
 
@@ -204,57 +199,6 @@ export default function SongDetail({
     return match ? match.title : 'Previous Song';
   }, [prevSongId, allMetadata]);
 
-  // Suggestion modal states
-  const [showSuggestModal, setShowSuggestModal] = useState<boolean>(false);
-  const [sugName, setSugName] = useState<string>(() => {
-    const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
-    return localStorage.getItem(`lyrasync_user_name_${serverId}`) || 
-           localStorage.getItem('lyrasync_user_name') || 
-           'Choir Member';
-  });
-  const [sugEventId, setSugEventId] = useState<string>('');
-  const [sugNote, setSugNote] = useState<string>('');
-
-  const handleOpenSuggestModal = () => {
-    if (!song) return;
-    setSugNote('');
-    setSugEventId('');
-    setShowSuggestModal(true);
-  };
-
-  const handleSubmitSuggestion = async () => {
-    if (!song) return;
-    const suggestions = getLocalSuggestions();
-    
-    if (suggestions.some((s: any) => s.songId === song.id)) {
-      alert(`"${song.title}" has already been suggested.`);
-      return;
-    }
-
-    const nameToSave = sugName.trim() || 'Choir Member';
-    const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
-    localStorage.setItem(`lyrasync_user_name_${serverId}`, nameToSave);
-    localStorage.setItem('lyrasync_user_name', nameToSave);
-
-    const newSuggestion = {
-      id: `sug-${Date.now()}`,
-      songId: song.id,
-      songTitle: song.title,
-      suggestedBy: nameToSave,
-      timestamp: Date.now(),
-      note: sugNote.trim() || undefined
-    };
-
-    try {
-      await saveSuggestion(newSuggestion);
-      alert(`"${song.title}" has been successfully suggested!`);
-      setShowSuggestModal(false);
-      onLyricsUpdated(); // notify parent
-    } catch (err) {
-      alert('Failed to save suggestion: ' + err);
-    }
-  };
-  
   const [fontSize, setFontSize] = useState<number>(16);
   const [showMobileDrawer, setShowMobileDrawer] = useState<boolean>(false);
 
@@ -390,7 +334,7 @@ export default function SongDetail({
 
   
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [editForm, setEditForm] = useState({ title: '', author: '', key: '', bpm: 75, category: '', lyrics: '' });
+  const [editForm, setEditForm] = useState({ title: '', author: '', key: '', lyrics: '' });
   const [saveToast, setSaveToast] = useState<boolean>(false);
   const [formatMsg, setFormatMsg] = useState<string>('');
   
@@ -502,8 +446,6 @@ export default function SongDetail({
             title: tempBroadcastSong.title,
             author: tempBroadcastSong.author || 'DaLyric Broadcast',
             key: tempBroadcastSong.key || 'G',
-            bpm: tempBroadcastSong.bpm || 75,
-            category: tempBroadcastSong.category || 'Worship',
             lyrics: tempBroadcastSong.lyrics
           });
         } else {
@@ -514,8 +456,6 @@ export default function SongDetail({
               title: fullSong.title,
               author: fullSong.author || 'Unknown Author',
               key: fullSong.key || 'G',
-              bpm: fullSong.bpm || 75,
-              category: fullSong.category || 'Worship',
               lyrics: fullSong.lyrics
             });
           }
@@ -580,8 +520,6 @@ export default function SongDetail({
       title: editForm.title,
       author: editForm.author,
       key: editForm.key,
-      bpm: Number(editForm.bpm) || 75,
-      category: editForm.category,
       lyrics: editForm.lyrics,
       updatedAt: Date.now()
     };
@@ -668,8 +606,8 @@ export default function SongDetail({
         </div>
       )}
       
-      {/* Detail Header Strip - Masterfully designed for both Desktop (Windows) and Mobile (iOS/Android) */}
-      <div className="p-4 border-b border-[#1E202B] bg-[#12131A] flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+      {/* Detail Header Strip - Masterfully designed for both Desktop and Mobile */}
+      <div className="px-3 sm:px-5 py-2.5 sm:py-3.5 border-b border-[#1E202B] bg-[#12131A] flex items-center justify-between gap-2">
         
         {/* Left Side: Back Trigger */}
         <button
@@ -679,56 +617,52 @@ export default function SongDetail({
             }
             onClose();
           }}
-          className="h-10 px-4 premium-btn-secondary text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer rounded active-touch shrink-0"
-          title={backLabel || "Back to Search"}
+          className="h-9 px-3 bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active-touch shrink-0"
+          title={backLabel || "Back"}
         >
-          ← <span className="hidden xs:inline">{backLabel || "Back to Search"}</span>
+          <ChevronLeft className="w-4 h-4 text-amber-500" />
+          <span className="text-xs font-bold font-sans">{backLabel || "Back"}</span>
         </button>
 
         {/* Right Side: Primary Responsive Actions Control Panel */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 ml-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Follow Live Service (For all users) */}
-          <button
-            onClick={() => handleToggleFollow(!isFollowing)}
-            className={`h-10 px-2.5 sm:px-4 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold ${
-              isFollowing
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 animate-pulse'
-                : 'premium-btn-secondary'
-            }`}
-            title={isFollowing ? "Following active live service broadcast" : "Follow active live service broadcast"}
-          >
-            <Radio className="h-4 w-4" />
-            <span className="hidden sm:inline">{isFollowing ? '🔴 Live Syncing' : '📡 Follow Live'}</span>
-          </button>
+          {isFollowing && (
+            <button
+              onClick={() => handleToggleFollow(!isFollowing)}
+              className="h-9 px-2.5 rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all shrink-0 text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 animate-pulse"
+              title="Following active live service broadcast"
+            >
+              <Radio className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Live</span>
+            </button>
+          )}
 
           {/* Broadcast Live Service (For admin role only) */}
           {currentRole === 'admin' && (
             <button
               onClick={() => handleToggleBroadcast(!isBroadcasting)}
-              className={`h-10 px-2.5 sm:px-4 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold relative ${
+              className={`h-9 px-2.5 rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all shrink-0 text-xs font-bold ${
                 isBroadcasting
                   ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
-                  : 'premium-btn-secondary'
+                  : 'bg-zinc-900/80 border border-[#1E202B] text-zinc-400'
               }`}
-              title={isBroadcasting ? "Broadcasting live screen state" : "Broadcast live screen state"}
+              title="Broadcast live screen state"
             >
-              {isBroadcasting && (
-                <Radio className="h-4 w-4 animate-ping duration-1000 absolute opacity-30" />
-              )}
-              <Radio className="h-4 w-4" />
-              <span className="hidden sm:inline">{isBroadcasting ? '📡 Live Broadcast' : '📻 Broadcast'}</span>
+              <Radio className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Broadcast</span>
             </button>
           )}
 
-          {/* Favorite Indicator Action Button */}
+          {/* Favorite Action Button */}
           <button
             onClick={() => onToggleFavorite(song.id, isFavorite)}
-            className={`h-10 w-10 rounded flex items-center justify-center cursor-pointer transition-all shrink-0 ${
+            className={`h-9 w-9 rounded-xl flex items-center justify-center cursor-pointer transition-all shrink-0 ${
               isFavorite
                 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                : 'premium-btn-secondary'
+                : 'bg-zinc-900/80 border border-[#1E202B] text-zinc-400 hover:text-white'
             }`}
-            title="Toggle Favorite"
+            title="Favorite"
           >
             <Heart className={`h-4 w-4 ${isFavorite ? 'fill-amber-500 text-amber-500' : ''}`} />
           </button>
@@ -737,17 +671,17 @@ export default function SongDetail({
           <div className="relative shrink-0">
             <button
               onClick={() => setShowShareDropdown(!showShareDropdown)}
-              className={`h-10 w-10 rounded flex items-center justify-center cursor-pointer transition-all shrink-0 ${
+              className={`h-9 w-9 rounded-xl flex items-center justify-center cursor-pointer transition-all shrink-0 ${
                 showShareDropdown
                   ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                  : 'premium-btn-secondary'
+                  : 'bg-zinc-900/80 border border-[#1E202B] text-zinc-400 hover:text-white'
               }`}
               title="Share / Copy Options"
             >
               <Share2 className="h-4 w-4" />
             </button>
             {showShareDropdown && (
-              <div className="absolute right-0 top-12 w-48 bg-[#12131A] border border-[#1E202B] rounded z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 top-11 w-48 bg-[#12131A] border border-[#1E202B] rounded-xl z-50 p-2 space-y-1 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150">
                 <p className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 font-bold px-2.5 py-1.5 border-b border-[#1E202B]">Share / Copy Options</p>
                 {typeof navigator.share !== 'undefined' && (
                   <button
@@ -773,52 +707,81 @@ export default function SongDetail({
             )}
           </div>
 
-          {/* Admin Editorial Trigger Switch */}
+          {/* Admin / Guest Edit Trigger */}
           {(currentRole === 'admin' || currentRole === 'guest') && (
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="h-10 px-4 premium-btn-secondary rounded text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              className={`h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                isEditing
+                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                  : 'bg-zinc-900/80 border border-[#1E202B] text-zinc-400 hover:text-white'
+              }`}
               title="Edit Lyrics"
             >
-              <Edit3 className="h-4 w-4 shrink-0" /> 
-              <span className="hidden sm:inline">Edit Lyrics</span>
+              <Edit3 className="h-3.5 w-3.5" />
             </button>
           )}
 
+          {/* Font Scale Control Toggle */}
+          <button
+            onClick={() => setShowFontControl(!showFontControl)}
+            className={`h-9 w-9 rounded-xl flex items-center justify-center cursor-pointer transition-all shrink-0 ${
+              showFontControl
+                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                : 'bg-zinc-900/80 border border-[#1E202B] text-zinc-400 hover:text-white'
+            }`}
+            title="Adjust Font Size"
+          >
+            <ZoomIn className="h-4 w-4" />
+          </button>
 
 
-          {/* Schedule Button */}
-          {onScheduleSong && song && (
-            <ScheduleButton
-              song={song}
-              onSchedule={onScheduleSong}
-              isAlreadyScheduled={isScheduled}
-            />
-          )}
 
-          {/* Fullscreen Presentation Trigger Selection */}
-          {onExportSong && song && (
-            <button
-              onClick={() => onExportSong(song)}
-              className="h-10 px-4 premium-btn-secondary rounded text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
-              title="Print or Export Lead Sheet"
-            >
-              <Printer className="h-4 w-4 text-amber-400 shrink-0" />
-              <span className="hidden md:inline">Print / Export Sheet</span>
-            </button>
-          )}
-
+          {/* Present Fullscreen */}
           <button
             id="stage-presentation-trigger"
             onClick={() => onEnterStageMode()}
-            className="h-10 px-5 premium-btn-primary rounded text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+            className="h-9 px-3 sm:px-4 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0 shadow-md"
             title="Present Fullscreen"
           >
-            <ArrowUpRight className="h-4 w-4 stroke-[3] shrink-0" />
-            <span className="hidden sm:inline">Present Fullscreen</span> 
+            <ArrowUpRight className="h-4 w-4 stroke-[3]" />
+            <span className="hidden sm:inline">Stage</span>
           </button>
         </div>
       </div>
+
+      {/* Inline Live Font Scale Control Bar */}
+      {showFontControl && (
+        <div className="px-4 py-2.5 bg-[#171821] border-b border-[#1E202B] flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1 select-none shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-bold text-amber-500 uppercase tracking-widest">SIZE:</span>
+            <span className="text-xs font-mono font-bold text-zinc-200 bg-white/5 px-2 py-0.5 rounded border border-white/10">{fontSize}pt</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFontSize(p => Math.max(12, p - 1))}
+              className="w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-[#1E202B] active:scale-90 transition-all cursor-pointer"
+              title="Smaller Text"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setFontSize(p => Math.min(32, p + 1))}
+              className="w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-[#1E202B] active:scale-90 transition-all cursor-pointer"
+              title="Larger Text"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setShowFontControl(false)}
+              className="p-1 text-zinc-500 hover:text-white transition-colors ml-1 cursor-pointer"
+              title="Close Size Bar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Editing panel state */}
       {isEditing ? (
@@ -855,31 +818,6 @@ export default function SongDetail({
                 className="mt-1 w-full text-xs p-2.5 rounded font-mono premium-input focus:outline-none"
                 placeholder="e.g. G"
               />
-            </div>
-            <div>
-              <label className="text-xs font-mono text-zinc-400">Tempo BPM</label>
-              <input
-                id="edit-bpm"
-                type="number"
-                value={editForm.bpm}
-                onChange={(e) => setEditForm(p => ({ ...p, bpm: parseInt(e.target.value) || 75 }))}
-                className="mt-1 w-full text-xs p-2.5 rounded font-mono premium-input focus:outline-none"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-xs font-mono text-zinc-400">Song Category</label>
-              <select
-                id="edit-category"
-                value={editForm.category}
-                onChange={(e) => setEditForm(p => ({ ...p, category: e.target.value }))}
-                className="mt-1 w-full text-xs p-2.5 rounded cursor-pointer font-sans premium-input focus:outline-none"
-              >
-                <option value="Worship">Contemporary Worship</option>
-                <option value="Classic">Classic Lyric</option>
-                <option value="Praise & Thanksgiving">Praise & Thanksgiving</option>
-                <option value="Christmas">Christmas Carol</option>
-                <option value="Gospel">Gospel Music</option>
-              </select>
             </div>
           </div>
           <div>
@@ -942,41 +880,8 @@ export default function SongDetail({
                 </div>
               </div>
 
-              {/* 2. AUTO SCROLL CONTROLLER */}
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold font-mono text-zinc-500 uppercase tracking-widest">Scroll:</span>
-                <div className="flex items-center gap-1.5 p-1 rounded bg-[#12131A] border border-[#1E202B]">
-                  <button
-                    onClick={() => {
-                      if (autoScrollSpeed === 0) setAutoScrollSpeed(2);
-                      setScrolling(!scrolling);
-                    }}
-                    className={`w-10 h-10 flex items-center justify-center rounded border transition-all active:scale-90 cursor-pointer ${
-                      scrolling && autoScrollSpeed > 0
-                        ? 'bg-amber-500 border-amber-500 text-black font-black'
-                        : 'bg-zinc-950 border-[#1E202B] text-zinc-400 hover:text-white'
-                    }`}
-                    title={scrolling && autoScrollSpeed > 0 ? 'Pause scroll' : 'Start auto-scroll'}
-                  >
-                    {scrolling && autoScrollSpeed > 0 ? <Pause className="h-4 w-4 stroke-[2.5]" /> : <Play className="h-4 w-4 stroke-[2.5]" />}
-                  </button>
-                  
-                  {scrolling && (
-                    <select
-                      value={autoScrollSpeed}
-                      onChange={(e) => setAutoScrollSpeed(Number(e.target.value))}
-                      className="bg-zinc-950 text-xs font-bold font-mono h-10 px-2 rounded text-amber-500 border border-[#1E202B] focus:outline-none cursor-pointer"
-                    >
-                      <option value={1}>1x Speed</option>
-                      <option value={2}>2x Speed</option>
-                      <option value={3}>3x Speed</option>
-                      <option value={4}>4x Speed</option>
-                      <option value={5}>5x Speed</option>
-                    </select>
-                  )}
-                </div>
-              </div>
             </div>
+
 
             {/* Scrolling Lyric Sheet Canvas */}
             <div
@@ -987,18 +892,11 @@ export default function SongDetail({
             >
               {/* Dynamic Metadata Block with custom visual separator */}
               <div className="mb-6 select-none font-sans text-left">
-                <span className="text-xs font-bold font-mono text-amber-500 tracking-wider uppercase block mb-1">
-                  {song.category || 'Uploaded General'}
-                </span>
                 <h3 className="text-2xl md:text-3xl font-serif font-black text-white tracking-tight leading-snug">{song.title}</h3>
                 <p className="text-xs text-slate-400 mt-1.5 font-medium">
                   Author/Credits: <span className="text-slate-300 font-semibold">{song.author || 'Traditional'}</span>
                 </p>
-                <div className="border-t border-[#1E202B] my-4 pt-4 flex flex-wrap items-center justify-between select-none pointer-events-none gap-2">
-                  <span className="text-[10px] font-mono tracking-wider text-zinc-550 uppercase flex items-center gap-1.5">
-                    Tempo: <span className="text-amber-550 font-bold">{song.bpm || 72} BPM</span>
-                  </span>
-                </div>
+
               </div>
 
               {sections.length > 0 ? (
@@ -1059,19 +957,6 @@ export default function SongDetail({
                 <p className="text-slate-500 py-10 text-center italic">Lyrics Empty</p>
               )}
               
-              {/* Suggest Song button at the end of the song sheet */}
-              {(currentRole === 'choir' || currentRole === 'guest') && (
-                <div className="mt-8 mb-4 px-4 flex justify-center">
-                  <button
-                    onClick={handleOpenSuggestModal}
-                    className="w-full max-w-sm py-3.5 px-5 bg-gradient-to-r from-amber-500/10 to-amber-600/10 hover:from-amber-500/20 hover:to-amber-600/20 border border-amber-500/25 hover:border-amber-500/45 text-amber-450 text-xs font-mono uppercase tracking-widest font-black rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_4px_12px_rgba(245,158,11,0.05)] hover:shadow-[0_4px_16px_rgba(245,158,11,0.15)]"
-                  >
-                    <Heart className="h-4 w-4 text-amber-500 fill-amber-500/10" />
-                    Suggest this Song to Leader
-                  </button>
-                </div>
-              )}
-
               {/* Bottom scroll padding spacer */}
               <div className="h-24" />
             </div>
@@ -1113,16 +998,6 @@ export default function SongDetail({
                       <span>LAST SONG IN SETLIST</span>
                     </div>
                   )}
-
-                  {currentRole === 'choir' && (
-                    <button
-                      onClick={handleOpenSuggestModal}
-                      className="w-full sm:w-auto bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 text-xs font-mono uppercase tracking-wider font-bold px-4 h-10 rounded cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95"
-                    >
-                      <Heart className="h-4 w-4 text-amber-500" />
-                      <span>Suggest Song</span>
-                    </button>
-                  )}
                 </div>
               </div>
             ) : (
@@ -1131,18 +1006,6 @@ export default function SongDetail({
                 <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-zinc-500">
                   <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
                   <span>Library Song View</span>
-                </div>
-                
-                <div className="flex items-center gap-3 w-full sm:w-auto sm:justify-end">
-                  {currentRole === 'choir' && (
-                    <button
-                      onClick={handleOpenSuggestModal}
-                      className="w-full sm:w-auto px-5 py-2 premium-btn-primary text-xs font-mono uppercase tracking-wider font-bold rounded cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95"
-                    >
-                      <Heart className="h-4 w-4 text-black" />
-                      <span>Suggest Song</span>
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -1171,9 +1034,6 @@ export default function SongDetail({
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-slate-500">
                       <span>{meta.author || 'Traditional'}</span>
-                      {meta.bpm && (
-                        <span className="font-mono text-slate-400">{meta.bpm} BPM</span>
-                      )}
                     </div>
                   </button>
                 ))}
@@ -1183,234 +1043,10 @@ export default function SongDetail({
 
         </div>
       )}
-      {/* Mobile Floating Sliders Deck Button */}
-      {!isEditing && (
-        <button
-          onClick={() => setShowMobileDrawer(true)}
-          className="fixed bottom-20 right-4 z-40 bg-amber-505 hover:bg-amber-500 active:scale-95 text-black p-3.5 rounded-full md:hidden active-touch flex items-center justify-center border border-[#1E202B]"
-          title="Open Musician controls"
-        >
-          <Sliders className="h-5 w-5 stroke-[2.5]" />
-        </button>
-      )}
 
-      {/* Slide-up Musician Control Drawer */}
-      <div className={showMobileDrawer ? 'fixed inset-0 bg-black/85 backdrop-blur-xs z-50 flex items-end justify-center md:hidden' : 'hidden'} onClick={() => setShowMobileDrawer(false)}>
-          <div 
-            className="bg-[#12131A] border-t border-[#1E202B] rounded-t-md w-full max-w-md p-5 pb-safe space-y-6 animate-slideUp select-none"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header Handle */}
-            <div className="flex flex-col items-center gap-1.5 cursor-pointer pb-2" onClick={() => setShowMobileDrawer(false)}>
-              <div className="w-12 h-1 bg-zinc-800 rounded-full"></div>
-              <span className="text-[10px] font-mono font-bold tracking-widest text-zinc-550 uppercase mt-1">Reader Settings</span>
-            </div>
 
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-              {/* Font scaling */}
-              <div className="space-y-2.5 border-b border-[#1E202B] pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-left">
-                    <span className="text-xs font-bold text-white block">Font Scale</span>
-                    <span className="text-[10px] text-zinc-550">Adjust text size in window</span>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{fontSize}pt</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setFontSize(p => Math.max(12, p - 2))}
-                    className="flex-1 h-10 premium-btn-secondary text-zinc-200 rounded active-touch font-bold cursor-pointer"
-                  >
-                    Smaller Text
-                  </button>
-                  <button
-                    onClick={() => setFontSize(p => Math.min(28, p + 2))}
-                    className="flex-1 h-10 premium-btn-secondary text-zinc-200 rounded active-touch font-bold cursor-pointer"
-                  >
-                    Larger Text
-                  </button>
-                </div>
-              </div>
 
-              {/* Auto Scroll Controls */}
-              <div className="space-y-2.5 border-b border-[#1E202B] pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-left">
-                    <span className="text-xs font-bold text-white block">Auto Scroll Sheet</span>
-                    <span className="text-[10px] text-zinc-550">Hands-free scrolling speed</span>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                    {scrolling && autoScrollSpeed > 0 ? `Speed ${autoScrollSpeed}` : 'Stopped'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      if (autoScrollSpeed === 0) setAutoScrollSpeed(2); // default speed
-                      setScrolling(!scrolling);
-                    }}
-                    className={`flex-1 h-11 border rounded active-touch text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                      scrolling && autoScrollSpeed > 0
-                        ? 'bg-amber-500 border-amber-500 text-black font-extrabold'
-                        : 'bg-zinc-900 border-[#1E202B] text-zinc-300'
-                    }`}
-                  >
-                    {scrolling && autoScrollSpeed > 0 ? (
-                      <>
-                        <Pause className="h-3.5 w-3.5 stroke-[2.5]" /> Pause Scroll
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-3.5 w-3.5 stroke-[2.5]" /> Start Scroll
-                      </>
-                    )}
-                  </button>
-                  
-                  {scrolling && (
-                    <select
-                      value={autoScrollSpeed}
-                      onChange={(e) => setAutoScrollSpeed(Number(e.target.value))}
-                      className="bg-zinc-900 text-xs font-bold h-11 px-3.5 rounded text-amber-500 border border-[#1E202B] active-touch"
-                    >
-                      <option value={1}>1x Speed</option>
-                      <option value={2}>2x Speed</option>
-                      <option value={3}>3x Speed</option>
-                      <option value={4}>4x Speed</option>
-                      <option value={5}>5x Speed</option>
-                    </select>
-                  )}
-                </div>
-              </div>
 
-              {/* Present Fullscreen Shortcut */}
-              <div className="border-b border-[#1E202B] pb-4">
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="text-left">
-                    <span className="text-xs font-bold text-white block">Present on Stage</span>
-                    <span className="text-[10px] text-zinc-500">Launch fullscreen presentation</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowMobileDrawer(false);
-                    onEnterStageMode();
-                  }}
-                  className="w-full h-11 premium-btn-primary font-extrabold text-xs rounded active-touch transition-all cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <ArrowUpRight className="h-4 w-4 stroke-[3]" /> Present Fullscreen
-                </button>
-              </div>
-
-              {/* Share & Copy (For all roles on mobile) */}
-              <div className="space-y-2.5 border-b border-[#1E202B] pb-4">
-                <span className="text-xs font-bold text-white block">Share & Copy Options</span>
-                <div className="flex flex-col gap-2">
-                  {typeof navigator.share !== 'undefined' && (
-                    <button
-                      onClick={handleNativeShare}
-                      className="w-full h-11 premium-btn-primary font-bold text-xs rounded active-touch flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Share2 className="h-4 w-4 text-black" /> Share Song...
-                    </button>
-                  )}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleCopyLyrics}
-                      className="flex-1 h-11 premium-btn-secondary text-zinc-200 rounded active-touch text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 border border-[#1E202B]"
-                    >
-                      <FileText className="h-3.5 w-3.5 text-zinc-550" /> Copy Lyrics
-                    </button>
-                    <button
-                      onClick={handleCopyWebLink}
-                      className="flex-1 h-11 premium-btn-secondary text-zinc-200 rounded active-touch text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 border border-[#1E202B]"
-                    >
-                      <Link className="h-3.5 w-3.5 text-zinc-555" /> Copy Link
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Integrated Visual Metronome Module */}
-              <div className="pt-2">
-                <Metronome initialBpm={song.bpm || 72} compact={true} />
-              </div>
-            </div>
-
-            {/* Confirm button */}
-            <button
-              onClick={() => setShowMobileDrawer(false)}
-              className="w-full py-3.5 premium-btn-primary font-black text-xs rounded active-touch transition-all cursor-pointer"
-            >
-              DONE / BACK TO SHEET
-            </button>
-          </div>
-        </div>
-
-      {/* Suggest for Service Modal Dialog */}
-      {showSuggestModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={() => setShowSuggestModal(false)}>
-          <div 
-            className="bg-[#12131A] border border-[#1E202B] rounded-md w-full max-w-md p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200 select-none text-left"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-[#1E202B] pb-3">
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                <Heart className="h-4.5 w-4.5 text-amber-500 fill-amber-500/10" /> Suggest for Service
-              </h3>
-              <button 
-                onClick={() => setShowSuggestModal(false)}
-                className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-sm"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="bg-amber-500/5 border border-amber-500/15 p-3.5 rounded-md">
-              <span className="text-[10px] text-amber-500 font-mono tracking-widest uppercase block font-semibold">SUGGESTING SONG</span>
-              <span className="text-sm font-bold text-white block mt-0.5">{song?.title}</span>
-              {song?.author && <span className="text-[11px] text-zinc-400 block mt-0.5">by {song.author}</span>}
-            </div>
-
-            <div className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Your Name</label>
-                <input 
-                  type="text"
-                  value={sugName}
-                  onChange={(e) => setSugName(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded premium-input focus:outline-none"
-                  placeholder="e.g. Choir Member, Guest"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Optional Note (e.g. key, order, memo)</label>
-                <textarea
-                  value={sugNote}
-                  onChange={(e) => setSugNote(e.target.value)}
-                  className="w-full text-xs p-2.5 h-16 rounded premium-input focus:outline-none resize-none"
-                  placeholder="e.g. Suggesting this as the opening praise song"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={() => setShowSuggestModal(false)}
-                className="flex-1 py-2.5 text-xs font-bold premium-btn-secondary cursor-pointer transition-all active:scale-95 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitSuggestion}
-                className="flex-1 py-2.5 text-xs font-bold premium-btn-primary cursor-pointer transition-all active:scale-95 rounded"
-              >
-                Submit Suggestion
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

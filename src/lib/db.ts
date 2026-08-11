@@ -1,4 +1,4 @@
-import { Song, SuggestedSong, ServerInfo } from '../types';
+import { Song, ServerInfo, WorshipEvent, SetlistSongItem } from '../types';
 
 const DB_NAME = 'ChristianLyricsDB';
 const STORE_NAME = 'songs';
@@ -181,55 +181,6 @@ function removeUnsyncedSongIds(ids: string[]): void {
   serverLocalStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
 }
 
-function getUnsyncedSuggestionIds(): string[] {
-  const saved = serverLocalStorage.getItem('dasong_unsynced_suggestion_ids');
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-function addUnsyncedSuggestionIds(ids: string[]): void {
-  const current = new Set(getUnsyncedSuggestionIds());
-  ids.forEach(id => current.add(id));
-  serverLocalStorage.setItem('dasong_unsynced_suggestion_ids', JSON.stringify(Array.from(current)));
-}
-
-function removeUnsyncedSuggestionIds(ids: string[]): void {
-  const current = new Set(getUnsyncedSuggestionIds());
-  ids.forEach(id => current.delete(id));
-  serverLocalStorage.setItem('dasong_unsynced_suggestion_ids', JSON.stringify(Array.from(current)));
-}
-
-function getUnsyncedDeletedSuggestionIds(): string[] {
-  const saved = serverLocalStorage.getItem('dasong_unsynced_deleted_suggestion_ids');
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-function addUnsyncedDeletedSuggestionIds(ids: string[]): void {
-  const current = new Set(getUnsyncedDeletedSuggestionIds());
-  ids.forEach(id => current.add(id));
-  serverLocalStorage.setItem('dasong_unsynced_deleted_suggestion_ids', JSON.stringify(Array.from(current)));
-}
-
-function removeUnsyncedDeletedSuggestionIds(ids: string[]): void {
-  const current = new Set(getUnsyncedDeletedSuggestionIds());
-  ids.forEach(id => current.delete(id));
-  serverLocalStorage.setItem('dasong_unsynced_deleted_suggestion_ids', JSON.stringify(Array.from(current)));
-}
 
 function stripMongoId<T extends { _id?: string }>(obj: T): Omit<T, '_id'> {
   const { _id, ...rest } = obj;
@@ -313,43 +264,6 @@ export async function syncWithMongoDB(): Promise<void> {
         }
       }
     }
-
-
-
-    // C. Flush pending suggestion deletions
-    const unsyncedDeletedSuggestionIds = getUnsyncedDeletedSuggestionIds();
-    if (unsyncedDeletedSuggestionIds.length > 0) {
-      for (const id of unsyncedDeletedSuggestionIds) {
-        try {
-          await apiRequest(`/api/suggestions/${id}`, { method: 'DELETE' });
-          removeUnsyncedDeletedSuggestionIds([id]);
-        } catch (err) {
-          console.error(`Failed to background sync suggestion deletion for ${id}:`, err);
-        }
-      }
-    }
-
-    // D. Flush pending suggestion saves
-    const unsyncedSuggestionIds = getUnsyncedSuggestionIds();
-    if (unsyncedSuggestionIds.length > 0) {
-      const localSuggestions = getLocalSuggestions();
-      for (const id of unsyncedSuggestionIds) {
-        const suggestion = localSuggestions.find(s => s.id === id);
-        if (suggestion) {
-          try {
-            await apiRequest('/api/suggestions', {
-              method: 'POST',
-              body: JSON.stringify(suggestion)
-            });
-            removeUnsyncedSuggestionIds([id]);
-          } catch (err) {
-            console.error(`Failed to background sync suggestion save for ${id}:`, err);
-          }
-        } else {
-          removeUnsyncedSuggestionIds([id]);
-        }
-      }
-    }
   }
 
   // Check if we are already in sync by using a lightweight check endpoint
@@ -358,13 +272,6 @@ export async function syncWithMongoDB(): Promise<void> {
     const localCheck = await getLocalSongsCountAndMaxTimestamp();
 
     if (localCheck.count === syncCheck.count && localCheck.lastUpdated === syncCheck.lastUpdated) {
-      // Local is in sync, only sync calendar events and choir suggestions to keep things light (for non-guest profiles)
-      if (!shouldSkipSync()) {
-        const cloudSuggestions: SuggestedSong[] = await apiRequest('/api/suggestions');
-        const deletedSuggIds = new Set(getUnsyncedDeletedSuggestionIds());
-        const filteredSuggestions = cloudSuggestions.filter(s => !deletedSuggIds.has(s.id));
-        saveLocalSuggestions(filteredSuggestions);
-      }
       return;
     }
   } catch (err) {
@@ -454,14 +361,6 @@ export async function syncWithMongoDB(): Promise<void> {
 
   // Save the new max timestamp to localStorage so future checks can hit the cache!
   serverLocalStorage.setItem('dasong_local_max_updated_at', String(maxCloudTime));
-
-  // 2. Sync Choir Guidelines Suggestions
-  if (!shouldSkipSync()) {
-    const cloudSuggestions: SuggestedSong[] = await apiRequest('/api/suggestions');
-    const deletedSuggIds = new Set(getUnsyncedDeletedSuggestionIds());
-    const filteredSuggestions = cloudSuggestions.filter(s => !deletedSuggIds.has(s.id));
-    saveLocalSuggestions(filteredSuggestions);
-  }
 }
 
 // -------------------------------------------------------------------------
@@ -588,8 +487,6 @@ export interface SongMetadata {
   title: string;
   author?: string;
   key?: string;
-  bpm?: number;
-  category?: string;
   favorite?: boolean;
   createdAt?: number;
   updatedAt?: number;
@@ -615,8 +512,6 @@ export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
           title: val.title,
           author: val.author,
           key: val.key,
-          bpm: val.bpm,
-          category: val.category,
           favorite: !!val.favorite,
           createdAt: val.createdAt,
           updatedAt: val.updatedAt,
@@ -636,71 +531,83 @@ export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
 // WORSHIP EVENTS LOCAL SYSTEM + MONGO CLOUD
 // -------------------------------------------------------------------------
 
-
-
-// -------------------------------------------------------------------------
-// CHOIR SUGGESTIONS LOCAL SYSTEM + MONGO CLOUD
-// -------------------------------------------------------------------------
-
-export function getLocalSuggestions(): SuggestedSong[] {
-  const saved = serverLocalStorage.getItem('lyrasync_guideline_suggestions');
+export function getWorshipEvents(): WorshipEvent[] {
+  const serverId = getActiveServerId();
+  const saved = localStorage.getItem(`dasong_events_${serverId}`);
   if (saved) {
     try {
       return JSON.parse(saved);
-    } catch {
-      return [];
+    } catch (err) {
+      console.error('Failed to parse worship events:', err);
     }
   }
   return [];
 }
 
-function saveLocalSuggestions(suggestions: SuggestedSong[]) {
-  serverLocalStorage.setItem('lyrasync_guideline_suggestions', JSON.stringify(suggestions));
-}
-
-export async function saveSuggestion(suggestion: SuggestedSong): Promise<void> {
-  const localSuggestions = getLocalSuggestions();
-  if (!localSuggestions.some(s => s.songId === suggestion.songId && s.eventId === suggestion.eventId)) {
-    localSuggestions.push(suggestion);
-    saveLocalSuggestions(localSuggestions);
-  }
-
+export async function fetchWorshipEventsFromCloud(): Promise<WorshipEvent[]> {
   if (shouldSkipSync()) {
-    return;
+    return getWorshipEvents();
   }
-
-  removeUnsyncedDeletedSuggestionIds([suggestion.id]);
-  addUnsyncedSuggestionIds([suggestion.id]);
-
-  apiRequest('/api/suggestions', {
-    method: 'POST',
-    body: JSON.stringify(suggestion)
-  }).then(() => {
-    removeUnsyncedSuggestionIds([suggestion.id]);
-  }).catch(err => {
-    console.warn('Failed to sync suggestion to MongoDB, queued for background sync:', err);
-  });
+  try {
+    const serverEvents: WorshipEvent[] = await apiRequest('/api/events');
+    if (Array.isArray(serverEvents)) {
+      const serverId = getActiveServerId();
+      serverEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      localStorage.setItem(`dasong_events_${serverId}`, JSON.stringify(serverEvents));
+      return serverEvents;
+    }
+  } catch (err) {
+    console.error('Failed to fetch worship events from cloud:', err);
+  }
+  return getWorshipEvents();
 }
 
-export async function deleteSuggestion(id: string): Promise<void> {
-  const localSuggestions = getLocalSuggestions().filter(s => s.id !== id);
-  saveLocalSuggestions(localSuggestions);
-
-  if (shouldSkipSync()) {
-    return;
+export function saveWorshipEvent(event: WorshipEvent): WorshipEvent[] {
+  const serverId = getActiveServerId();
+  const events = getWorshipEvents();
+  const index = events.findIndex(e => e.id === event.id);
+  
+  const updatedEvent = { ...event, updatedAt: Date.now() };
+  if (index >= 0) {
+    events[index] = updatedEvent;
+  } else {
+    events.push(updatedEvent);
   }
 
-  removeUnsyncedSuggestionIds([id]);
-  addUnsyncedDeletedSuggestionIds([id]);
+  events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  localStorage.setItem(`dasong_events_${serverId}`, JSON.stringify(events));
 
-  apiRequest(`/api/suggestions/${id}`, {
-    method: 'DELETE'
-  }).then(() => {
-    removeUnsyncedDeletedSuggestionIds([id]);
-  }).catch(err => {
-    console.warn('Failed to sync suggestion deletion to MongoDB, queued for background sync:', err);
-  });
+  // Sync to MongoDB Cloud ONLY if logged in as Admin on a server workspace
+  if (!shouldSkipSync()) {
+    apiRequest('/api/events', {
+      method: 'POST',
+      body: JSON.stringify(updatedEvent)
+    }).catch(err => {
+      console.error('Failed to sync worship event to cloud:', err);
+    });
+  }
+
+  return events;
 }
+
+export function deleteWorshipEvent(eventId: string): WorshipEvent[] {
+  const serverId = getActiveServerId();
+  const events = getWorshipEvents().filter(e => e.id !== eventId);
+  localStorage.setItem(`dasong_events_${serverId}`, JSON.stringify(events));
+
+  // Delete from MongoDB Cloud ONLY if logged in as Admin on a server workspace
+  if (!shouldSkipSync()) {
+    apiRequest(`/api/events/${eventId}`, {
+      method: 'DELETE'
+    }).catch(err => {
+      console.error('Failed to delete worship event from cloud:', err);
+    });
+  }
+
+  return events;
+}
+
+
 
 // -------------------------------------------------------------------------
 // SERVER/TENANT API ACTIONS

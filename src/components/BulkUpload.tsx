@@ -23,15 +23,13 @@ export default React.memo(function BulkUpload({ onSuccess }: BulkUploadProps) {
   // URL lyrics scraping states
   const [scrapeUrl, setScrapeUrl] = useState<string>('');
   const [scrapeLoading, setScrapeLoading] = useState<boolean>(false);
-  const [scrapePreview, setScrapePreview] = useState<{ title: string; author: string; category: string; bpm: number; lyrics: string } | null>(null);
+  const [scrapePreview, setScrapePreview] = useState<{ title: string; author: string; lyrics: string } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sampleTemplate = `Title: Cornerstone
 Author: Hillsong Worship
 Key: C
-BPM: 72
-Category: Contemporary Worship
 
 Lyrics:
 My hope is built on nothing less
@@ -44,8 +42,6 @@ But wholly lean on Jesus' name
 Title: Victory in Jesus
 Author: E.M. Bartlett
 Key: G
-BPM: 92
-Category: Classic Hymn
 
 Lyrics:
 I heard an old, old story,
@@ -75,11 +71,9 @@ To save a wretch like me`;
 
   const parseSongContent = (fileName: string, content: string): Song => {
     const lines = content.split('\n');
-    let title = fileName;
-    let author = 'Unknown Author';
+    let title = '';
+    let author = 'Unknown Artist';
     let key = 'G';
-    let bpm = 75;
-    let category = 'Uploaded General';
     let lyricsLines: string[] = [];
     let isReadingLyrics = false;
 
@@ -90,8 +84,6 @@ To save a wretch like me`;
       const titleMatch = line.match(/^(?:Title|Name)\s*:\s*(.+)$/i);
       const authorMatch = line.match(/^(?:Author|Artist|Composer|Writer)\s*:\s*(.+)$/i);
       const keyMatch = line.match(/^(?:Key|Chord Key)\s*:\s*([A-G][b#]?)$/i);
-      const bpmMatch = line.match(/^(?:Bpm|Tempo)\s*:\s*(\d+)$/i);
-      const catMatch = line.match(/^(?:Category|Genre|Theme)\s*:\s*(.+)$/i);
 
       if (titleMatch) {
         title = titleMatch[1].trim();
@@ -99,10 +91,6 @@ To save a wretch like me`;
         author = authorMatch[1].trim();
       } else if (keyMatch) {
         key = keyMatch[1].trim();
-      } else if (bpmMatch) {
-        bpm = parseInt(bpmMatch[1], 10) || 75;
-      } else if (catMatch) {
-        category = catMatch[1].trim();
       } else if (line.toLowerCase().startsWith('lyrics:')) {
         isReadingLyrics = true;
       } else if (!line.includes(':') || isReadingLyrics) {
@@ -122,8 +110,6 @@ To save a wretch like me`;
       title: title || fileName,
       author,
       key,
-      bpm,
-      category,
       lyrics,
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -268,8 +254,6 @@ To save a wretch like me`;
       setScrapePreview({
         title: data.title || 'Scraped Song',
         author: 'Unknown Artist',
-        category: 'Worship',
-        bpm: 75,
         lyrics: formattedLyrics
       });
     } catch (err: any) {
@@ -290,8 +274,6 @@ To save a wretch like me`;
       title: scrapePreview.title,
       author: scrapePreview.author,
       key: 'G',
-      bpm: scrapePreview.bpm,
-      category: scrapePreview.category,
       lyrics: scrapePreview.lyrics,
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -533,31 +515,6 @@ My hope is built on nothing less`}
                       className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 font-sans"
                       aria-label="Author or artist"
                     />
-                </div>
-                <div>
-                  <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Category</label>
-                  <select
-                    value={scrapePreview.category}
-                    onChange={(e) => setScrapePreview(p => p ? { ...p, category: e.target.value } : null)}
-                    className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 cursor-pointer"
-                    aria-label="Song category"
-                  >
-                    <option value="Worship">Contemporary Worship</option>
-                    <option value="Classic">Classic Lyric</option>
-                    <option value="Praise & Thanksgiving">Praise & Thanksgiving</option>
-                    <option value="Christmas">Christmas Carol</option>
-                    <option value="Gospel">Gospel Music</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">Tempo BPM</label>
-                  <input
-                    type="number"
-                    value={scrapePreview.bpm}
-                    onChange={(e) => setScrapePreview(p => p ? { ...p, bpm: parseInt(e.target.value) || 72 } : null)}
-                    className="w-full text-xs p-2.5 rounded-xl bg-[#09090B] text-white outline-none focus:border-amber-500 font-mono"
-                    aria-label="Tempo BPM"
-                  />
                 </div>
               </div>
 

@@ -48,29 +48,23 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
+// Register active Service Worker for PWA offline support & auto-updates
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      const reg = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
-
-      const checkForUpdate = () => { reg.update().catch(() => {}); };
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') checkForUpdate();
-      });
-      setInterval(checkForUpdate, 60 * 60 * 1000);
-
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js?v=6').then(reg => {
+      reg.update();
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
-        if (!newWorker) return;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            localStorage.setItem('dasong_sw_update', 'true');
-            window.dispatchEvent(new CustomEvent('sw-update-available'));
-          }
-        });
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              window.location.reload();
+            }
+          });
+        }
       });
-    } catch (err) {
-      console.warn('Service Worker registration failed:', err);
-    }
+    }).catch(err => {
+      console.log('PWA ServiceWorker registration error:', err);
+    });
   });
 }

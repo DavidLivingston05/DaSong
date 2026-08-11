@@ -6,8 +6,6 @@ interface AddSongForm {
   title: string;
   author: string;
   key: string;
-  bpm: number;
-  category: string;
   lyrics: string;
 }
 
@@ -96,37 +94,6 @@ export default function AddSongModal({
                     className="mt-1 w-full text-xs p-2.5 rounded border border-[#1E202B] bg-[#090A0F] text-white outline-none focus:border-amber-500/35 transition-all font-mono"
                     placeholder="e.g. G"
                   />
-                </div>
-
-                <div>
-                  <label htmlFor="add-bpm" className="text-xs font-semibold text-slate-400">Tempo Speed (BPM)</label>
-                  <input
-                    id="add-bpm"
-                    type="number"
-                    value={addForm.bpm}
-                    onChange={(e) => setAddForm(p => ({ ...p, bpm: parseInt(e.target.value) || 72 }))}
-                    className="mt-1 w-full text-xs p-2.5 rounded border border-[#1E202B] bg-[#090A0F] text-white outline-none focus:border-amber-500/35 transition-all font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="add-category" className="text-xs font-semibold text-slate-400">Song Category</label>
-                  <select
-                    id="add-category"
-                    value={addForm.category}
-                    onChange={(e) => setAddForm(p => ({ ...p, category: e.target.value }))}
-                    className="mt-1 w-full text-xs p-2.5 rounded border border-[#1E202B] bg-[#090A0F] text-white outline-none focus:border-amber-500/35 transition-all cursor-pointer"
-                  >
-                    <option value="Worship">Worship & Adoration (ஆராதனை)</option>
-                    <option value="Praise & Thanksgiving">Praise & Thanksgiving (துதி பாடல்கள்)</option>
-                    <option value="Holy Spirit">Holy Spirit & Anointing (பரிசுத்த ஆவி)</option>
-                    <option value="Communion">Cross & Communion (நற்கருணை)</option>
-                    <option value="Grace & Mercy">Grace & Mercy (கிருபை)</option>
-                    <option value="Youth">Youth & Celebration (இளைஞர்)</option>
-                    <option value="Tamil Worship">Tamil Worship (தமிழ் கீதங்கள்)</option>
-                    <option value="Christmas">Christmas & Advent (கிறிஸ்துமஸ்)</option>
-                    <option value="Classic Hymn">Classic Hymn (பாரம்பரிய கீதனை)</option>
-                  </select>
                 </div>
               </div>
 

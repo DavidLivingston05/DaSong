@@ -6,8 +6,6 @@ export const SEED_SONGS: Song[] = [
     title: 'Amazing Grace (How Sweet the Sound)',
     author: 'John Newton',
     key: 'G',
-    bpm: 72,
-    category: 'Classic Hymn',
     favorite: true,
     lyrics: `[G] Amazing grace! How [C] sweet the [G] sound
 That [G] saved a wretch like [D] me!
@@ -44,8 +42,6 @@ Than [G] when we [D] first be[G]gun.`,
     title: 'How Great Thou Art',
     author: 'Carl Boberg',
     key: 'A',
-    bpm: 68,
-    category: 'Classic Hymn',
     lyrics: `Verse 1:
 O [A] Lord my God, when I in [D] awesome wonder
 Con[A]sider all the [E7] worlds Thy hands have [A] made,
@@ -82,8 +78,6 @@ And [A] there proclaim, my [E7] God, how great Thou [A] art!`,
     title: '10,000 Reasons (Bless the Lord)',
     author: 'Matt Redman',
     key: 'G',
-    bpm: 73,
-    category: 'Contemporary Worship',
     favorite: true,
     lyrics: `Chorus:
 [C] Bless the Lord, O my [G] soul, [D/F#] O my [Em] soul
@@ -115,8 +109,6 @@ Ten [C2] thousand [G] years and then for[D]ever[G]more!`,
     title: 'It Is Well With My Soul',
     author: 'Horatio Spafford',
     key: 'C',
-    bpm: 65,
-    category: 'Classic Hymn',
     lyrics: `Verse 1:
 When [C] peace like a [F] river at[D]tendeth my [G] way,
 When [Am] sorrows like [D] sea billows [G] roll;
@@ -151,8 +143,6 @@ Even [C] so, it is [F] well [G] with my [C] soul.`,
     title: 'What a Beautiful Name',
     author: 'Hillsong Worship',
     key: 'D',
-    bpm: 68,
-    category: 'Contemporary Worship',
     lyrics: `Verse 1:
 [D] You were the Word at the beginning
 One with [G] God the Lord [Bm] Most [A] High
@@ -195,8 +185,6 @@ Yours is the [Bm] Name above all [A] names`,
     title: 'Be Thou My Vision',
     author: 'Traditional Irish Hymn',
     key: 'D',
-    bpm: 80,
-    category: 'Classic Hymn',
     lyrics: `Verse 1:
 Be Thou my [D] Vision, O [Bm] Lord of my [G] heart; [A]
 Naught be [A] all else to me, [G] save that Thou [A] art;
@@ -227,8 +215,6 @@ Still be my [Bm] Vision, O [G] Ruler [A] of [D] all.`,
     title: 'Great Is Thy Faithfulness',
     author: 'Thomas Chisholm',
     key: 'C',
-    bpm: 72,
-    category: 'Classic Hymn',
     lyrics: `Verse 1:
 [C] Great is Thy [F] faithfulness, [G] O God my [C] Father,
 [F] There is no [C] shadow of [D] turning with [G] Thee;
@@ -259,8 +245,6 @@ Verse 3:
     title: 'In Christ Alone',
     author: 'Keith Getty & Stuart Townend',
     key: 'G',
-    bpm: 64,
-    category: 'Contemporary Worship',
     lyrics: `Verse 1:
 In Christ a[G]lone my [D] hope is [G] found,
 [A] He is my [G] light, my [D] strength, my [Em] song; [D]
@@ -307,8 +291,6 @@ Till He re[G]turns or [D] calls me [G] home,
     title: 'Neere En Balan (நீரே என் பெலன்)',
     author: 'Worship Hymn',
     key: 'G',
-    bpm: 74,
-    category: 'Tamil Worship',
     favorite: true,
     lyrics: `Verse 1:
 [G] நீரே என் பெலன் [C] நீரே என் கோட்டை

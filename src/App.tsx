@@ -16,26 +16,27 @@ import {
   clearAllSongs, 
   SongMetadata,
   syncWithMongoDB,
-  deleteSuggestion,
   getActiveServerId,
   switchActiveServer,
   getPublicServers,
   createServer,
   authServerAdmin,
-  getBroadcastState
+  getBroadcastState,
+  getWorshipEvents,
+  fetchWorshipEventsFromCloud
 } from './lib/db';
+import { WorshipEvent } from './types';
 import BulkUpload from './components/BulkUpload';
 import StageMode from './components/StageMode';
 import SongList from './components/SongList';
 import SongDetail from './components/SongDetail';
-import { useSchedule } from './lib/useSchedule';
-import { ScheduleView } from './views/AppViews';
+import { SetlistManagerView } from './views/AppViews';
 import { motion, AnimatePresence } from 'motion/react';
 import { parseTwoLineChords } from './utils/lyricsParser';
 
 interface AppHistoryState {
   id: string;
-  tab: 'dashboard' | 'search' | 'schedule';
+  tab: 'dashboard' | 'search' | 'setlists';
   songId: string | null;
   stageMode: boolean;
   modal: 'add' | 'upload' | 'events' | 'join' | 'create' | null;
@@ -65,13 +66,16 @@ export default function App() {
     const serverId = getActiveServerId();
     const savedRole = localStorage.getItem(`lyrasync_user_role_${serverId}`);
     const savedName = localStorage.getItem(`lyrasync_user_name_${serverId}`);
-    if (savedRole === 'admin' || savedRole === 'choir' || (serverId === 'default' && savedRole === 'guest')) {
+    if (savedRole === 'admin' || savedRole === 'choir' || savedRole === 'guest') {
       return {
         role: savedRole as UserRole,
-        name: savedName || (savedRole === 'admin' ? 'Administrator' : savedRole === 'guest' ? 'Guest Browser' : '')
+        name: savedName || (savedRole === 'admin' ? 'Administrator' : 'Guest User')
       };
     }
-    return null; // Force login/role selection / Portal
+    if (serverId === 'default') {
+      return { role: 'guest', name: 'Guest User' };
+    }
+    return null;
   });
 
   const [portalView, setPortalView] = useState<'menu' | 'join' | 'create'>('menu');
@@ -139,74 +143,19 @@ export default function App() {
 
 
 
-  // Choir Suggestions Review State & Helpers
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-
-  const loadSuggestions = useCallback(() => {
-    const saved = localStorage.getItem(`lyrasync_guideline_suggestions_${activeServerId}`);
-    if (saved) {
-      try {
-        setSuggestions(JSON.parse(saved));
-      } catch {
-        setSuggestions([]);
-      }
-    } else {
-      setSuggestions([]);
-    }
-  }, [activeServerId]);
-
-  const handleDismissSuggestion = useCallback(async (id: string) => {
-    try {
-      await deleteSuggestion(id);
-    } catch (err) {
-      console.error('Failed to sync suggestion deletion to MongoDB:', err);
-    }
-    const saved = localStorage.getItem(`lyrasync_guideline_suggestions_${activeServerId}`);
-    setSuggestions(saved ? JSON.parse(saved) : []);
-  }, [activeServerId]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'search' | 'schedule'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'search' | 'setlists'>('dashboard');
   const [songSourceTab, setSongSourceTab] = useState<'search' | 'dashboard'>('search');
+  const [worshipEvents, setWorshipEvents] = useState<WorshipEvent[]>(() => getWorshipEvents());
 
-  // Practice Schedule Hook
-  const {
-    scheduledSongs,
-    scheduleSong,
-    removeSong,
-    markCompleted,
-    rescheduleSong,
-    getSongsSortedByDate,
-    isScheduledOnDate,
-  } = useSchedule(activeServerId);
-
-  // Quick Search Dashboard State
-  const [quickSearchInput, setQuickSearchInput] = useState<string>('');
-  const [quickSearchQuery, setQuickSearchQuery] = useState<string>('');
-
-  // Debounce dashboard quick search input by 150ms
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setQuickSearchQuery(quickSearchInput);
-    }, 150);
-    return () => clearTimeout(handler);
-  }, [quickSearchInput]);
-
-  // Compute matched songs for quick search
-  const quickSearchMatches = useMemo(() => {
-    const query = quickSearchQuery.trim().toLowerCase();
-    if (!query) return [];
-    
-    const filtered = songs.filter(s => 
-      (s.title || '').toLowerCase().includes(query) || 
-      (s.author && s.author.toLowerCase().includes(query)) ||
-      (s.lyricsSnippet && s.lyricsSnippet.toLowerCase().includes(query))
-    );
-    return [...filtered].sort((a, b) => (a.title || '').localeCompare(b.title || '')).slice(0, 6);
-  }, [songs, quickSearchQuery]);
+  const refreshWorshipEvents = useCallback(() => {
+    setWorshipEvents(getWorshipEvents());
+    fetchWorshipEventsFromCloud().then(setWorshipEvents);
+  }, []);
 
   // ── Android Back Button / History API ──────────────────────────────────────
   // Push a history entry on every meaningful navigation so Android's back button
   // steps back through in-app screens instead of closing the PWA.
-  const navigateTo = useCallback((tab: 'dashboard' | 'search' | 'schedule') => {
+  const navigateTo = useCallback((tab: 'dashboard' | 'search' | 'setlists') => {
     setActiveTab(tab);
   }, []);
   // ───────────────────────────────────────────────────────────────────────────
@@ -232,8 +181,6 @@ export default function App() {
     title: '',
     author: '',
     key: 'G',
-    bpm: 72,
-    category: 'Worship',
     lyrics: ''
   });
 
@@ -256,7 +203,7 @@ export default function App() {
              showCreateModal ? 'create' : null
     };
 
-    history.replaceState(initialState, '', window.location.pathname);
+    history.replaceState(initialState, '', window.location.pathname + window.location.search);
     historyStackRef.current = [initialState];
     currentStackIndexRef.current = 0;
 
@@ -391,7 +338,7 @@ export default function App() {
         historyStackRef.current = newStack;
         currentStackIndexRef.current = newStack.length - 1;
 
-        history.pushState(newState, '', window.location.pathname);
+        history.pushState(newState, '', window.location.pathname + window.location.search);
       }
     }
   }, [
@@ -434,8 +381,7 @@ export default function App() {
 
   const handleSongUpdateOrReview = useCallback(async () => {
     await syncSongsList();
-    loadSuggestions();
-  }, [syncSongsList, loadSuggestions]);
+  }, [syncSongsList]);
 
   // MongoDB sync background worker
   const triggerMongoSync = useCallback(async () => {
@@ -443,13 +389,14 @@ export default function App() {
     try {
       await syncWithMongoDB();
       await syncSongsList();
-      loadSuggestions();
+      const cloudEvents = await fetchWorshipEventsFromCloud();
+      setWorshipEvents(cloudEvents);
       setMongoStatus('connected');
     } catch (err) {
       console.error('Failed to synchronize with MongoDB Cloud:', err);
       setMongoStatus('error');
     }
-  }, [syncSongsList, loadSuggestions]);
+  }, [syncSongsList]);
 
   const handleSwitchServer = useCallback(async (newServerId: string) => {
     switchActiveServer(newServerId);
@@ -472,18 +419,16 @@ export default function App() {
 
     // Clear/reload states
     setSongs([]);
-    setSuggestions([]);
     
     // Trigger database re-initialization and background sync
     try {
       await initDB();
       await syncSongsList();
-      loadSuggestions();
       triggerMongoSync();
     } catch (err) {
       console.error('Error switching server DB:', err);
     }
-  }, [syncSongsList, loadSuggestions, triggerMongoSync]);
+  }, [syncSongsList, triggerMongoSync]);
 
   // Handle shared link query parameters on mount
   useEffect(() => {
@@ -617,7 +562,6 @@ export default function App() {
       
       // Clear states
       setSongs([]);
-      setSuggestions([]);
       
       try {
         await initDB();
@@ -701,7 +645,6 @@ export default function App() {
         }
         
         await syncSongsList();
-        loadSuggestions();
       } catch (err) {
         console.error('Database setup error:', err);
       } finally {
@@ -709,7 +652,7 @@ export default function App() {
       }
     }
     bootApp();
-  }, [activeServerId, syncSongsList, loadSuggestions]);
+  }, [activeServerId, syncSongsList]);
 
   // Auto-reload the page when a new Service Worker (Vercel deploy) takes control
   useEffect(() => {
@@ -907,8 +850,6 @@ export default function App() {
       title: addForm.title,
       author: addForm.author || 'Traditional',
       key: addForm.key || 'G',
-      bpm: Number(addForm.bpm) || 72,
-      category: addForm.category,
       lyrics: addForm.lyrics,
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -924,8 +865,6 @@ export default function App() {
         title: '',
         author: '',
         key: 'G',
-        bpm: 72,
-        category: 'Worship',
         lyrics: ''
       });
     } catch (err) {
@@ -980,16 +919,14 @@ export default function App() {
   // Total calculated statistics for dashboard boxes
   const stats = React.useMemo(() => {
     let favs = 0;
-    const catsSet = new Set<string>();
     songs.forEach(s => {
       if (s.favorite) favs++;
-      if (s.category) catsSet.add(s.category);
     });
 
     return {
       total: songs.length,
       favorites: favs,
-      categories: catsSet.size
+      categories: 0
     };
   }, [songs]);
 
@@ -1676,21 +1613,17 @@ export default function App() {
               <span>Library</span>
             </button>
             <button
-              onClick={() => navigateTo('schedule')}
+              onClick={() => navigateTo('setlists')}
               className={`px-4 py-2 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === 'schedule'
+                activeTab === 'setlists'
                   ? 'bg-[#1E202B] text-amber-500 border border-amber-500/25'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1E202B]/40'
               }`}
             >
               <Calendar className="h-3.5 w-3.5" />
-              <span>Schedule</span>
-              {scheduledSongs.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 bg-amber-500/20 text-amber-400 font-mono text-[9px] font-bold rounded-full border border-amber-500/30">
-                  {scheduledSongs.length}
-                </span>
-              )}
+              <span>Setlists</span>
             </button>
+
           </nav>
 
           {/* Right Action / Profile Controls */}
@@ -1811,7 +1744,7 @@ export default function App() {
       </header>
 
       {/* Main content body grid splits */}
-      <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 max-w-[1850px] mx-auto w-full flex flex-col overflow-visible">
+      <main className="flex-1 px-2.5 py-3 md:p-6 pb-20 md:pb-6 max-w-[1850px] mx-auto w-full flex flex-col overflow-visible">
         <AnimatePresence mode="wait">
           {/* VIEW 1: CLEAN LANDING DASHBOARD */}
           {activeTab === 'dashboard' && (
@@ -1823,9 +1756,7 @@ export default function App() {
               transition={{ duration: 0.18 }}
               className="w-full max-w-5xl mx-auto py-4 md:py-6 px-3 md:px-6 flex flex-col gap-6"
             >
-              {activeServerId === 'default' ? renderGuestWelcome() : (
-                <>
-                  {/* === CLEAN WORKSPACE GREETING BANNER === */}
+              {/* === CLEAN WORKSPACE GREETING BANNER === */}
                   <div className="w-full bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-955/15 p-6 md:p-8 rounded-3xl border border-zinc-800/80 shadow-lg relative overflow-hidden flex flex-col justify-between gap-4">
                     <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
                     
@@ -1848,13 +1779,51 @@ export default function App() {
                       </div>
 
                       <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight pt-1">
-                        Welcome back, <span className="text-amber-500">{session?.name || 'Administrator'}</span>
+                        {currentRole === 'guest' ? (
+                          <>Praise the Lord Guest, <span className="text-amber-500">Welcome to DaSong!</span></>
+                        ) : (
+                          <>Welcome back, <span className="text-amber-500">{session?.name || 'Administrator'}</span></>
+                        )}
                       </h1>
                       <p className="text-xs text-zinc-400 max-w-xl leading-relaxed">
-                        Worship studio dashboard & song library management for <strong className="text-zinc-200">{activeServerId}</strong>.
+                        {currentRole === 'guest' ? (
+                          <>Access every song from MongoDB with no limits! Create & save setlists locally on your device. <span className="text-zinc-500">(Cloud sync & choir publishing available on Server login).</span></>
+                        ) : (
+                          <>Worship studio dashboard & song library management for <strong className="text-zinc-200">{activeServerId}</strong>.</>
+                        )}
                       </p>
                     </div>
                   </div>
+
+                  {/* === GUEST MANUAL & APP GUIDE === */}
+                  {currentRole === 'guest' && (
+                    <div className="w-full bg-[#12131A] border border-[#1E202B] p-5 rounded-2xl space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-amber-500 flex items-center gap-2">
+                          <HelpCircle className="w-4 h-4 text-amber-500" /> App Manual & Features
+                        </h3>
+                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">100% Free</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 font-sans">
+                        <div className="p-3 bg-white/2 border border-white/6 rounded-xl space-y-1">
+                          <span className="text-[11px] font-bold text-white block">🎵 MongoDB Songs</span>
+                          <span className="text-[10px] text-zinc-400 leading-relaxed block">Browse & search all songs without limits from our online database.</span>
+                        </div>
+                        <div className="p-3 bg-white/2 border border-white/6 rounded-xl space-y-1">
+                          <span className="text-[11px] font-bold text-white block">🎨 Themes & Fonts</span>
+                          <span className="text-[10px] text-zinc-400 leading-relaxed block">Tap the Brush icon in Stage Mode for custom themes, colors & Tamil fonts.</span>
+                        </div>
+                        <div className="p-3 bg-white/2 border border-white/6 rounded-xl space-y-1">
+                          <span className="text-[11px] font-bold text-white block">📋 Device Setlists</span>
+                          <span className="text-[10px] text-zinc-400 leading-relaxed block">Build worship events & add songs. Saved directly to your phone/device memory.</span>
+                        </div>
+                        <div className="p-3 bg-white/2 border border-white/6 rounded-xl space-y-1">
+                          <span className="text-[11px] font-bold text-white block">🎤 Stage Mode</span>
+                          <span className="text-[10px] text-zinc-400 leading-relaxed block">Tap any song to open teleprompter scroll view or stanza slide presentation.</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Syncing library notice if connecting */}
                   {songs.length === 0 && mongoStatus === 'connecting' && (
@@ -1876,8 +1845,8 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* === QUICK METRICS CARDS (4 COLUMNS) === */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full">
+                  {/* === QUICK METRICS CARDS === */}
+                  <div className="grid grid-cols-1 gap-3 md:gap-4 w-full">
                     <div className="bg-[#12131A] border border-[#1E202B] p-4.5 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
                       <span className="text-[10px] font-mono tracking-wider uppercase text-zinc-500 font-semibold">Total Songs</span>
                       <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
@@ -1885,147 +1854,47 @@ export default function App() {
                       </span>
                       <span className="text-[10px] text-zinc-500 font-sans">In Library</span>
                     </div>
-
-                    <div className="bg-[#12131A] border border-[#1E202B] p-4.5 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
-                      <span className="text-[10px] font-mono tracking-wider uppercase text-zinc-500 font-semibold">Favorites</span>
-                      <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
-                        {stats.favorites}
-                      </span>
-                      <span className="text-[10px] text-zinc-500 font-sans">Starred Songs</span>
-                    </div>
-
-                    <div className="bg-[#12131A] border border-[#1E202B] p-4.5 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition-all">
-                      <span className="text-[10px] font-mono tracking-wider uppercase text-zinc-500 font-semibold">Categories</span>
-                      <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
-                        {stats.categories}
-                      </span>
-                      <span className="text-[10px] text-zinc-500 font-sans">Unique Genres</span>
-                    </div>
-
-                    <button
-                      onClick={() => navigateTo('schedule')}
-                      className="bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/40 p-4.5 rounded-2xl text-center relative overflow-hidden flex flex-col justify-between transition-all cursor-pointer group text-left"
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-[10px] font-mono tracking-wider uppercase text-amber-400 font-semibold flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-amber-500" />
-                          Schedule
-                        </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-amber-400 transition-colors" />
-                      </div>
-                      <span className="font-mono text-2xl md:text-3xl text-amber-500 font-bold my-1">
-                        {scheduledSongs.length}
-                      </span>
-                      <span className="text-[10px] text-zinc-400 font-sans group-hover:text-zinc-200 transition-colors">
-                        Scheduled for {activeServerId} &rarr;
-                      </span>
-                    </button>
                   </div>
 
-                  {/* === LIVE BROADCAST SYNC PANEL === */}
-                  <div className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                    isFollowing 
-                      ? 'bg-amber-500/5 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.05)]' 
-                      : 'bg-[#12131A] border-[#1E202B] hover:border-zinc-700'
-                  }`}>
-                    <div className="flex items-start gap-3.5">
-                      <div className="pt-0.5 shrink-0">
-                        <span className="relative flex h-3 w-3">
-                          {isFollowing && (
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                          )}
-                          <span className={`relative inline-flex rounded-full h-3 w-3 ${isFollowing ? 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' : 'bg-zinc-650'}`}></span>
-                        </span>
+                  {/* === LIVE BROADCAST SYNC PANEL (Non-Guests only) === */}
+                  {currentRole !== 'guest' && (
+                    <div className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                      isFollowing 
+                        ? 'bg-amber-500/5 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.05)]' 
+                        : 'bg-[#12131A] border-[#1E202B] hover:border-zinc-700'
+                    }`}>
+                      <div className="flex items-start gap-3.5">
+                        <div className="pt-0.5 shrink-0">
+                          <span className="relative flex h-3 w-3">
+                            {isFollowing && (
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            )}
+                            <span className={`relative inline-flex rounded-full h-3 w-3 ${isFollowing ? 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' : 'bg-zinc-650'}`}></span>
+                          </span>
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Live Broadcast Follow Mode</h3>
+                          <p className="text-[11px] text-zinc-400 mt-0.5 select-none font-medium leading-relaxed">
+                            {isFollowing 
+                              ? 'Connected to live broadcast. Your screen will automatically navigate when songs are projected.' 
+                              : 'Enable to automatically sync screen with projected worship lyrics.'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Live Broadcast Follow Mode</h3>
-                        <p className="text-[11px] text-zinc-400 mt-0.5 select-none font-medium leading-relaxed">
-                          {isFollowing 
-                            ? 'Connected to live broadcast. Your screen will automatically navigate when songs are projected.' 
-                            : 'Enable to automatically sync screen with projected worship lyrics.'}
-                        </p>
-                      </div>
+                      <button
+                        onClick={() => handleToggleFollow(!isFollowing)}
+                        className={`px-5 py-2.5 rounded-xl text-xs font-bold font-mono tracking-wider uppercase transition-all cursor-pointer active-touch shrink-0 ${
+                          isFollowing 
+                            ? 'bg-amber-500 text-black shadow-md hover:bg-amber-400 shadow-amber-500/25' 
+                            : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700'
+                        }`}
+                      >
+                        {isFollowing ? 'Connected & Syncing' : 'Enable Follow Mode'}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleToggleFollow(!isFollowing)}
-                      className={`px-5 py-2.5 rounded-xl text-xs font-bold font-mono tracking-wider uppercase transition-all cursor-pointer active-touch shrink-0 ${
-                        isFollowing 
-                          ? 'bg-amber-500 text-black shadow-md hover:bg-amber-400 shadow-amber-500/25' 
-                          : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700'
-                      }`}
-                    >
-                      {isFollowing ? 'Connected & Syncing' : 'Enable Follow Mode'}
-                    </button>
-                  </div>
+                  )}
 
-                  {/* === QUICK SONG SEARCH BAR === */}
-                  <div className="w-full relative">
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Search className="h-4 w-4 text-zinc-400" />
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Quick song access... (Type title, author, or lyrics)"
-                        value={quickSearchInput}
-                        onChange={(e) => setQuickSearchInput(e.target.value)}
-                        className="block w-full pl-11 pr-10 py-3.5 border border-[#1E202B] bg-[#12131A] text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/40 text-xs font-sans transition-all rounded-2xl"
-                        aria-label="Quick search songs"
-                      />
-                      {quickSearchInput && (
-                        <button
-                          onClick={() => setQuickSearchInput('')}
-                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 cursor-pointer"
-                          aria-label="Clear search"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
 
-                    {/* Autocomplete Popup List */}
-                    {quickSearchInput.trim() && (
-                      <div className="absolute left-0 right-0 mt-1.5 bg-[#12131A] border border-[#1E202B] rounded-2xl shadow-2xl z-30 overflow-hidden max-h-[350px] overflow-y-auto divide-y divide-[#1E202B]">
-                        {quickSearchMatches.length === 0 ? (
-                          <div className="p-4 text-center text-zinc-500 text-xs italic">
-                            No matching songs found in {activeServerId} library
-                          </div>
-                        ) : (
-                          quickSearchMatches.map((song) => (
-                            <button
-                              key={song.id}
-                              onClick={() => {
-                                setQuickSearchInput('');
-                                setSongSourceTab('search');
-                                navigateTo('search');
-                                handleSelectSong(song.id);
-                              }}
-                              className="w-full p-3.5 hover:bg-[#1A1C26] transition-colors flex items-center justify-between text-left cursor-pointer group"
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="h-8 w-8 rounded-xl bg-[#1A1C26] border border-[#272A37] flex items-center justify-center text-zinc-400 group-hover:text-amber-500 transition-colors shrink-0">
-                                  <Music className="h-4 w-4" />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="text-xs font-semibold text-zinc-200 group-hover:text-amber-400 transition-colors truncate">
-                                    {song.title}
-                                  </div>
-                                  <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
-                                    {song.author || 'Traditional'}
-                                  </div>
-                                </div>
-                              </div>
-                              {song.category && (
-                                <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded shrink-0">
-                                  {song.category}
-                                </span>
-                              )}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
 
                   {/* === JUMP BACK IN / RECENT SONGS === */}
                   {recentSongs.length > 0 && (
@@ -2055,11 +1924,6 @@ export default function App() {
                                 <div className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">{song.author || 'Traditional'}</div>
                               </div>
                             </div>
-                            {song.category && (
-                              <span className="text-[9px] font-bold uppercase font-mono bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded shrink-0">
-                                {song.category}
-                              </span>
-                            )}
                           </button>
                         ))}
                       </div>
@@ -2078,16 +1942,11 @@ export default function App() {
                           >
                             <div className="text-[13px] font-bold text-white truncate leading-tight">{song.title}</div>
                             <div className="text-[10px] text-zinc-400 font-mono mt-1 truncate">{song.author || 'Traditional'}</div>
-                            {song.category && (
-                              <div className="text-[9px] font-bold uppercase text-amber-500/90 mt-1">{song.category}</div>
-                            )}
                           </button>
                         ))}
                       </div>
                     </div>
                   )}
-                </>
-              )}
             </motion.div>
           )}
 
@@ -2117,14 +1976,12 @@ export default function App() {
                   backLabel="Back to Search"
                   songsMetadata={songs}
                   isFavorite={selectedSongId ? favoriteSongIds.has(selectedSongId) : false}
-                  onScheduleSong={scheduleSong}
-                  isScheduled={selectedSongId ? isScheduledOnDate(selectedSongId, new Date().toISOString().split('T')[0]) : false}
                 />
 
               </div>
             ) : (
               /* Full-page Core Directory Grid Index List */
-              <div className="flex flex-col space-y-5 min-h-[400px]">
+              <div className="flex flex-col space-y-3.5 w-full flex-1 min-h-0">
                 {songs.length === 0 && mongoStatus === 'connecting' && (
                   <div className="w-full text-left bg-gradient-to-r from-zinc-900 via-zinc-950 to-amber-955/20 p-5 md:p-6 rounded-3xl border border-amber-500/20 shadow-lg relative overflow-hidden group animate-in slide-in-from-top duration-300">
                     <div className="absolute top-1/2 -right-4 -translate-y-1/2 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-all duration-500"></div>
@@ -2163,18 +2020,23 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* VIEW 3: PRACTICE SCHEDULE VIEW */}
-          {activeTab === 'schedule' && (
-            <ScheduleView
-              songs={getSongsSortedByDate()}
-              onRemove={removeSong}
-              onMarkCompleted={markCompleted}
-              onReschedule={rescheduleSong}
+          {/* VIEW 3: SETLISTS & WORSHIP EVENTS MANAGER VIEW */}
+          {activeTab === 'setlists' && (
+            <SetlistManagerView
+              currentRole={currentRole}
+              events={worshipEvents}
+              songsCatalog={songs}
+              onRefreshEvents={refreshWorshipEvents}
               onSelectSong={(id) => {
                 setSongSourceTab('search');
                 handleSelectSong(id);
-                setActiveTab('search');
               }}
+              onEnterStageMode={handleEnterStageMode}
+              selectedSongId={selectedSongId}
+              handleSelectSong={handleSelectSong}
+              handleToggleFavorite={handleToggleFavorite}
+              handleSongUpdateOrReview={handleSongUpdateOrReview}
+              favoriteSongIds={favoriteSongIds}
             />
           )}
 
@@ -2646,32 +2508,6 @@ export default function App() {
                   />
                 </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-slate-400">Tempo Speed (BPM)</label>
-                  <input
-                    id="add-bpm"
-                    type="number"
-                    value={addForm.bpm}
-                    onChange={(e) => setAddForm(p => ({ ...p, bpm: parseInt(e.target.value) || 72 }))}
-                    className="mt-1 w-full text-xs p-2.5 rounded border border-[#1E202B] bg-[#090A0F] text-white outline-none focus:border-amber-500/35 transition-all font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-400">Song Category</label>
-                  <select
-                    id="add-category"
-                    value={addForm.category}
-                    onChange={(e) => setAddForm(p => ({ ...p, category: e.target.value }))}
-                    className="mt-1 w-full text-xs p-2.5 rounded border border-[#1E202B] bg-[#090A0F] text-white outline-none focus:border-amber-500/35 transition-all cursor-pointer"
-                  >
-                    <option value="Worship">Contemporary Worship</option>
-                    <option value="Classic">Classic Lyric</option>
-                    <option value="Praise & Thanksgiving">Praise & Thanksgiving</option>
-                    <option value="Christmas">Christmas Carol</option>
-                    <option value="Gospel">Gospel Music</option>
-                  </select>
-                </div>
               </div>
 
               <div>
@@ -2800,7 +2636,7 @@ That saved a wretch like me!`}
               setSelectedSongId(null);
               navigateTo('search');
             }}
-            className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
+            className={`flex flex-col items-center gap-1 px-3 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[44px] ${
               activeTab === 'search' ? 'text-amber-500' : 'text-zinc-500'
             }`}
           >
@@ -2809,20 +2645,22 @@ That saved a wretch like me!`}
             <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'search' ? 'font-black' : ''}`}>Library</span>
           </button>
 
-          {/* SCHEDULE */}
+          {/* SETLISTS */}
           <button
             onClick={() => {
               setSelectedSongId(null);
-              navigateTo('schedule');
+              navigateTo('setlists');
             }}
-            className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
-              activeTab === 'schedule' ? 'text-amber-500' : 'text-zinc-500'
+            className={`flex flex-col items-center gap-1 px-3 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[44px] ${
+              activeTab === 'setlists' ? 'text-amber-500' : 'text-zinc-500'
             }`}
           >
-            {activeTab === 'schedule' && <span className="nav-tab-active-bar" />}
-            <Calendar className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'schedule' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'schedule' ? 'font-black' : ''}`}>Schedule</span>
+            {activeTab === 'setlists' && <span className="nav-tab-active-bar" />}
+            <Calendar className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'setlists' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'setlists' ? 'font-black' : ''}`}>Setlist</span>
           </button>
+
+
 
           {/* ADMIN/GUEST FAB — center elevated button for quick actions */}
           {(session.role === 'admin' || session.role === 'guest') && (

@@ -50,16 +50,15 @@ function validateSongBody(body) {
 function validateEventBody(body) {
   if (!body || typeof body !== 'object') return 'Request body must be an object';
   if (!body.id || typeof body.id !== 'string') return 'Event must have a string id';
-  if (!body.title || typeof body.title !== 'string') return 'Event must have a string title';
+  const nameOrTitle = body.name || body.title;
+  if (!nameOrTitle || typeof nameOrTitle !== 'string') return 'Event must have a string name or title';
   body.id = sanitizeString(body.id, 200);
-  body.title = sanitizeString(body.title, 500);
-  if (body.description) body.description = sanitizeString(body.description, 2000);
-  if (body.date) body.date = sanitizeString(body.date, 20);
-  if (body.time) body.time = sanitizeString(body.time, 20);
-  if (body.songIds != null) {
-    if (!Array.isArray(body.songIds)) return 'songIds must be an array';
-    body.songIds = body.songIds.map(id => (typeof id === 'string' ? sanitizeString(id, 200) : String(id)));
-  }
+  if (body.name) body.name = sanitizeString(body.name, 500);
+  if (body.title) body.title = sanitizeString(body.title, 500);
+  if (body.date) body.date = sanitizeString(body.date, 50);
+  if (body.time) body.time = sanitizeString(body.time, 50);
+  if (body.venue) body.venue = sanitizeString(body.venue, 200);
+  if (body.notes) body.notes = sanitizeString(body.notes, 2000);
   return null;
 }
 

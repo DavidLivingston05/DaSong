@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@400;500;600;700;800&family=Cinzel:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@400;500;600;700;800&family=Cinzel:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Tamil:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-serif: "Playfair Display", Georgia, serif;
-  --font-sans: "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-serif: "Noto Serif Tamil", "Playfair Display", Georgia, serif;
+  --font-sans: "Noto Sans Tamil", "Inter", sans-serif;
+  --font-mono: "Noto Sans Tamil", "JetBrains Mono", monospace;
   --color-amber-450: #F8B012;
   --color-amber-550: #E08B09;
   --color-amber-555: #D77F08;

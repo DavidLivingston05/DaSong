@@ -4,9 +4,9 @@ import { UserRole } from '../../types';
 
 interface MobileBottomNavProps {
   session: { role: UserRole; name?: string } | null;
-  activeTab: 'dashboard' | 'search' | 'schedule';
-  setActiveTab: (tab: 'dashboard' | 'search' | 'schedule') => void;
-  navigateTo: (tab: 'dashboard' | 'search' | 'schedule') => void;
+  activeTab: 'dashboard' | 'search' | 'setlists';
+  setActiveTab: (tab: 'dashboard' | 'search' | 'setlists') => void;
+  navigateTo: (tab: 'dashboard' | 'search' | 'setlists') => void;
   showInstallBanner: boolean;
   isInstalled: boolean;
   handleInstallApp: () => void;
@@ -59,16 +59,16 @@ export default function MobileBottomNav({
       <button
         onClick={() => {
           setSelectedSongId(null);
-          navigateTo('schedule');
+          navigateTo('setlists');
         }}
         className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
-          activeTab === 'schedule' ? 'text-amber-500' : 'text-zinc-500'
+          activeTab === 'setlists' ? 'text-amber-500' : 'text-zinc-500'
         }`}
-        aria-current={activeTab === 'schedule' ? 'page' : undefined}
+        aria-current={activeTab === 'setlists' ? 'page' : undefined}
       >
-        {activeTab === 'schedule' && <span className="nav-tab-active-bar" />}
-        <Calendar className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'schedule' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
-        <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'schedule' ? 'font-black' : ''}`}>Schedule</span>
+        {activeTab === 'setlists' && <span className="nav-tab-active-bar" />}
+        <Calendar className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'setlists' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'setlists' ? 'font-black' : ''}`}>Setlists</span>
       </button>
 
       {(session?.role === 'admin' || session?.role === 'guest') && (
