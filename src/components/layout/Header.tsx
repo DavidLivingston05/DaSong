@@ -116,14 +116,14 @@ export default function Header({
         <div className="flex items-center gap-3">
           {activeServerId === 'default' ? (
             <div className="flex items-center gap-2">
-              {showInstallBanner && !isInstalled && (
+              {!isInstalled && (
                 <button
                   onClick={handleInstallApp}
-                  className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-450 border border-amber-500/20 px-3.5 py-1.5 rounded text-[10px] font-mono uppercase tracking-wider transition-all cursor-pointer active-touch shrink-0"
+                  className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-450 border border-amber-500/20 px-2.5 sm:px-3.5 py-1.5 rounded text-xs font-medium transition-all cursor-pointer active-touch shrink-0"
                   title="Install DaSong Songbook App"
                 >
-                  <Download className="h-3.5 w-3.5 text-amber-500" />
-                  <span>Install App</span>
+                  <Download className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                  <span className="hidden xs:inline">Install</span>
                 </button>
               )}
               <button
