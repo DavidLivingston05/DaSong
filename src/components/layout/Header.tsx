@@ -18,6 +18,7 @@ interface HeaderProps {
   fetchServers: () => Promise<void>;
   setShowCreateModal: (show: boolean) => void;
   handleForceSync: () => void;
+  handleForceUpdateApp?: () => void;
   mongoStatus: 'connecting' | 'connected' | 'error' | 'offline';
   handleLeaveServer: () => void;
   setShowAddModal: (show: boolean) => void;
@@ -37,6 +38,7 @@ export default function Header({
   fetchServers,
   setShowCreateModal,
   handleForceSync,
+  handleForceUpdateApp,
   mongoStatus,
   handleLeaveServer,
   setShowAddModal,
@@ -169,7 +171,17 @@ export default function Header({
           )}
 
           {/* Visual Theme Selector Menu */}
-          <div className="relative">
+          <div className="relative flex items-center gap-1.5">
+            {handleForceUpdateApp && (
+              <button
+                onClick={handleForceUpdateApp}
+                className="p-2 bg-[#12131A] hover:bg-[#1A1C26] border border-[#272A37] hover:border-amber-500/30 text-amber-500 rounded transition-all cursor-pointer active-touch"
+                title="Purge Cache & Reload Newest Version"
+                aria-label="Purge Cache & Reload Newest Version"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            )}
             <button
               onClick={() => setShowThemePicker(!showThemePicker)}
               className="p-2 bg-[#12131A] hover:bg-[#1A1C26] border border-[#272A37] hover:border-amber-500/30 text-amber-500 rounded transition-all cursor-pointer active-touch"

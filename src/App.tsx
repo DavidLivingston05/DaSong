@@ -588,6 +588,29 @@ export default function App() {
     triggerMongoSync();
   };
 
+  const handleForceUpdateApp = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      }
+      if (typeof caches !== 'undefined') {
+        const keys = await caches.keys();
+        for (const key of keys) {
+          await caches.delete(key);
+        }
+      }
+    } catch (err) {
+      console.warn('Cache purge failed:', err);
+    }
+    localStorage.removeItem('dasong_local_max_updated_at');
+    const url = new URL(window.location.href);
+    url.searchParams.set('v', String(Date.now()));
+    window.location.href = url.toString();
+  };
+
   // Perform full database sync on load, focus, and every 60 seconds
   useEffect(() => {
     triggerMongoSync();
@@ -1728,6 +1751,15 @@ export default function App() {
                     </span>
                   </div>
 
+                  {/* Force Update App / Purge Cache */}
+                  <button
+                    onClick={handleForceUpdateApp}
+                    className="flex items-center justify-center p-2 text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 rounded transition-all border border-amber-500/25 cursor-pointer shrink-0"
+                    title="Force Update App & Purge Mobile Cache"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+
                   {/* Exit Workspace */}
                   <button 
                     onClick={handleLeaveServer}
@@ -1776,6 +1808,14 @@ export default function App() {
                         }`}>
                           {mongoStatus === 'connected' ? 'Cloud Synced' : mongoStatus === 'connecting' ? 'Syncing...' : 'Local Cache'}
                         </span>
+                        <button
+                          onClick={handleForceUpdateApp}
+                          className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-md border uppercase bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 transition-all flex items-center gap-1 cursor-pointer active-touch ml-auto"
+                          title="Purge Browser Cache & Force Reload Newest Code"
+                        >
+                          <RefreshCw className="w-3 h-3 text-amber-500" />
+                          <span>Update App</span>
+                        </button>
                       </div>
 
                       <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight pt-1">
