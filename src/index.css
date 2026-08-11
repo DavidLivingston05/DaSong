@@ -27,15 +27,10 @@
 }
 
 /* Force clean flat dark style defaults globally */
-html, body {
-  overflow-x: hidden;
-  max-width: 100vw;
-}
 body {
   background: #090A0F;
   color: #F1F5F9;
   min-height: 100dvh;
-  overscroll-behavior-y: contain;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 

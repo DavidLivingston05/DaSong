@@ -30,7 +30,10 @@ export default function MobileBottomNav({
       style={{ paddingTop: '8px', paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))' }}
     >
       <button
-        onClick={() => setActiveTab('dashboard')}
+        onClick={() => {
+          setSelectedSongId(null);
+          navigateTo('dashboard');
+        }}
         className={`flex flex-col items-center gap-1 py-1 text-xs transition-all active-touch cursor-pointer relative ${
           activeTab === 'dashboard' ? 'text-amber-500' : 'text-zinc-500'
         }`}
