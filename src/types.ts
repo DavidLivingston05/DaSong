@@ -18,7 +18,7 @@ export interface PresentationConfig {
   autoScrollSpeed: number; // 0 to 10 scale
   customBg: string;        // hex color for custom background
   customTextColor: string; // hex color for custom text
-  fontFamily: 'serif' | 'sans' | 'mono';
+  fontFamily?: 'serif' | 'sans' | 'mono' | 'baloo' | 'bold';
 }
 
 export type UserRole = 'admin' | 'guest' | 'choir';

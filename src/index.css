@@ -1,10 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@400;500;600;700;800&family=Cinzel:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Tamil:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@400;500;600;700;800&family=Cinzel:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Tamil:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-serif: "Noto Serif Tamil", "Playfair Display", Georgia, serif;
   --font-sans: "Noto Sans Tamil", "Inter", sans-serif;
   --font-mono: "Noto Sans Tamil", "JetBrains Mono", monospace;
+  --font-baloo: "Baloo Thambi 2", "Noto Sans Tamil", sans-serif;
   --color-amber-450: #F8B012;
   --color-amber-550: #E08B09;
   --color-amber-555: #D77F08;
@@ -431,6 +432,201 @@ input:focus:not(:focus-visible),
   /* Smart page breaks - prevent breaking songs across pages */
   .page-break-inside-avoid,
   .print-song-block {
+a, button, [role="button"], input, select, textarea, label {
+  touch-action: manipulation;
+}
+
+/* Prevent iOS Safari auto-zoom on input focus (must be >= 16px) */
+input, select, textarea {
+  font-size: max(16px, 1em);
+}
+
+/* Remove the blue/grey tap flash highlight on Android Chrome */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Visible focus indicators for keyboard navigation */
+:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+[tabindex]:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Mobile row utility: tall enough for easy finger tapping (min 56px) */
+.mobile-row {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+}
+
+/* Active bottom-nav tab bar indicator */
+.nav-tab-active-bar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 3px;
+  border-radius: 0 0 2px 2px;
+  background: #f59e0b;
+  box-shadow: none;
+}
+
+/* Jump Back In — recent song strip on mobile dashboard */
+.recent-song-pill {
+  flex-shrink: 0;
+  min-width: 140px;
+  max-width: 180px;
+  height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: 4px;
+  background: #12131A;
+  border: 1px solid #1E202B;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.recent-song-pill:active {
+  background: #1A1C26;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+/* Premium Flat Dark Card */
+.premium-glass-card {
+  background: #12131A !important;
+  border: 1px solid #1E202B !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Clean Flat Inputs */
+.premium-input {
+  background-color: #12131A !important;
+  border: 1px solid #272A37 !important;
+  box-shadow: none !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  color: #FFFFFF !important;
+}
+.premium-input:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15) !important;
+  background-color: #161722 !important;
+}
+
+/* Clean Flat Buttons without Gradients or heavy shadows */
+.premium-btn-primary {
+  background: #f59e0b !important;
+  color: #090A0F !important;
+  box-shadow: none !important;
+  font-weight: 700 !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.premium-btn-primary:hover {
+  background: #d97706 !important;
+  transform: translateY(-0.5px) !important;
+}
+.premium-btn-primary:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+.premium-btn-secondary {
+  background: #1A1C26 !important;
+  border: 1px solid #272A37 !important;
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.premium-btn-secondary:hover {
+  background: #222533 !important;
+  border-color: #3F4357 !important;
+}
+
+/* iOS-style shake animation for reorder mode */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 50%, 90% { transform: translateX(-1px); }
+  30%, 70% { transform: translateX(1px); }
+}
+.animate-shake {
+  animation: shake 0.4s ease-in-out infinite;
+}
+
+/* ===== MULTI-DEVICE RESPONSIVE OPTIMIZATIONS ===== */
+
+/* Phone Screen (320px to 480px) */
+@media (max-width: 480px) {
+  .app-container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  /* Touch target safety for mobile inputs */
+  input, select, button {
+    min-height: 44px;
+  }
+}
+
+/* Tablet & iPad Screens (768px to 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tablet-grid-split {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 1rem;
+  }
+}
+
+/* Desktop & Ultrawide Displays (1920px+) */
+@media (min-width: 1920px) {
+  .app-container {
+    max-width: 1800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* ===== HIGH-RESOLUTION PRINT & PDF STYLES ===== */
+@media print {
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  }
+
+  /* Hide app chrome, navigation, headers, sidebars when printing */
+  body > *:not(#root),
+  nav,
+  header,
+  footer,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Force printable area to occupy full page width */
+  #print-setlist-content {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Smart page breaks - prevent breaking songs across pages */
+  .page-break-inside-avoid,
+  .print-song-block {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
@@ -442,4 +638,9 @@ input:focus:not(:focus-visible),
     font-family: "JetBrains Mono", Consolas, monospace !important;
     color: #000000 !important;
   }
+}
+
+.font-baloo {
+  font-family: "Baloo Thambi 2", "Noto Sans Tamil", sans-serif !important;
+  font-weight: 700;
 }

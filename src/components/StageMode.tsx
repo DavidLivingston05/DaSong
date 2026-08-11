@@ -452,7 +452,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
     : {};
 
   const fontClass = config.fontFamily === 'sans' ? 'font-sans'
-    : config.fontFamily === 'mono' ? 'font-mono'
+    : (config.fontFamily === 'baloo' || config.fontFamily === 'bold' || config.fontFamily === 'mono') ? 'font-baloo'
     : 'font-serif';
 
   const changeTheme = (theme: PresentationConfig['theme']) => {
@@ -479,8 +479,8 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
       className={`fixed inset-0 z-50 flex flex-col transition-all duration-300 ${fontClass} ${currentThemeClasses()}`}
       style={{
         ...customStyles,
-        fontFamily: config.fontFamily === 'mono'
-          ? '"Noto Sans Tamil", "JetBrains Mono", monospace'
+        fontFamily: (config.fontFamily === 'baloo' || config.fontFamily === 'bold' || config.fontFamily === 'mono')
+          ? '"Baloo Thambi 2", "Noto Sans Tamil", sans-serif'
           : config.fontFamily === 'sans'
             ? '"Noto Sans Tamil", "Inter", sans-serif'
             : '"Noto Serif Tamil", "Playfair Display", Georgia, serif',
@@ -670,25 +670,60 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                           {([
                             { id: 'serif', label: 'Elegant', sample: 'Aa', cls: 'font-serif' },
                             { id: 'sans',  label: 'Clean',   sample: 'Aa', cls: 'font-sans'  },
-                            { id: 'mono',  label: 'Mono',    sample: 'Aa', cls: 'font-mono'  },
-                          ] as const).map(({ id, label, sample, cls }) => (
-                            <button
-                              key={id}
-                              onClick={() => setConfig(p => ({ ...p, fontFamily: id }))}
-                              className={`flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-all cursor-pointer ${
-                                config.fontFamily === id
-                                  ? 'border-amber-500 bg-amber-500/8 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
-                                  : 'border-white/6 bg-white/2 hover:bg-white/5 hover:border-white/12'
-                              }`}
-                            >
-                              <span className={`text-xl font-bold ${cls} ${config.fontFamily === id ? 'text-white' : 'text-zinc-400'}`}>
-                                {sample}
-                              </span>
-                              <span className={`text-[9px] font-bold uppercase tracking-wide ${config.fontFamily === id ? 'text-amber-400' : 'text-zinc-600'}`}>
-                                {label}
-                              </span>
-                            </button>
-                          ))}
+                            { id: 'baloo', label: 'Bold',    sample: 'Aa', cls: 'font-baloo' },
+                          ] as const).map(({ id, label, sample, cls }) => {
+                            const isSelected = config.fontFamily === id || (id === 'baloo' && (config.fontFamily === 'bold' || config.fontFamily === 'mono'));
+                            return (
+                              <button
+                                key={id}
+                                onClick={() => setConfig(p => ({ ...p, fontFamily: id }))}
+                                className={`flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'border-amber-500 bg-amber-500/8 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
+                                    : 'border-white/6 bg-white/2 hover:bg-white/5 hover:border-white/12'
+                                }`}
+                              >
+                                <span className={`text-xl font-bold ${cls} ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
+                                  {sample}
+                                </span>
+                                <span className={`text-[9px] font-bold uppercase tracking-wide ${isSelected ? 'text-amber-400' : 'text-zinc-600'}`}>
+                                  {label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="h-px bg-white/5" />
+
+                      {/* Font Size Section */}
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Font Size</p>
+                          <span className="text-[11px] font-mono font-bold text-amber-400">{config.fontSize}px</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setConfig(p => ({ ...p, fontSize: Math.max(16, p.fontSize - 4) }))}
+                            className="flex-1 py-2 rounded-lg border border-white/8 bg-white/4 hover:bg-white/10 active:scale-95 transition-all text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                            title="Decrease font size"
+                            aria-label="Decrease font size"
+                          >
+                            <ZoomOut className="h-3.5 w-3.5 text-zinc-400" /> A-
+                          </button>
+                          <div className="px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono font-bold text-xs text-center min-w-[56px]">
+                            {config.fontSize}px
+                          </div>
+                          <button
+                            onClick={() => setConfig(p => ({ ...p, fontSize: Math.min(80, p.fontSize + 4) }))}
+                            className="flex-1 py-2 rounded-lg border border-white/8 bg-white/4 hover:bg-white/10 active:scale-95 transition-all text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                            title="Increase font size"
+                            aria-label="Increase font size"
+                          >
+                            <ZoomIn className="h-3.5 w-3.5 text-amber-400" /> A+
+                          </button>
                         </div>
                       </div>
 
@@ -887,25 +922,60 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                           {([
                             { id: 'serif', label: 'Elegant', sample: 'Aa', cls: 'font-serif' },
                             { id: 'sans',  label: 'Clean',   sample: 'Aa', cls: 'font-sans'  },
-                            { id: 'mono',  label: 'Mono',    sample: 'Aa', cls: 'font-mono'  },
-                          ] as const).map(({ id, label, sample, cls }) => (
-                            <button
-                              key={id}
-                              onClick={() => setConfig(p => ({ ...p, fontFamily: id }))}
-                              className={`flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-all cursor-pointer ${
-                                config.fontFamily === id
-                                  ? 'border-amber-500 bg-amber-500/8 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
-                                  : 'border-white/6 bg-white/2 hover:bg-white/5 hover:border-white/12'
-                              }`}
-                            >
-                              <span className={`text-xl font-bold ${cls} ${config.fontFamily === id ? 'text-white' : 'text-zinc-400'}`}>
-                                {sample}
-                              </span>
-                              <span className={`text-[9px] font-bold uppercase tracking-wide ${config.fontFamily === id ? 'text-amber-400' : 'text-zinc-600'}`}>
-                                {label}
-                              </span>
-                            </button>
-                          ))}
+                            { id: 'baloo', label: 'Bold',    sample: 'Aa', cls: 'font-baloo' },
+                          ] as const).map(({ id, label, sample, cls }) => {
+                            const isSelected = config.fontFamily === id || (id === 'baloo' && (config.fontFamily === 'bold' || config.fontFamily === 'mono'));
+                            return (
+                              <button
+                                key={id}
+                                onClick={() => setConfig(p => ({ ...p, fontFamily: id }))}
+                                className={`flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'border-amber-500 bg-amber-500/8 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
+                                    : 'border-white/6 bg-white/2 hover:bg-white/5 hover:border-white/12'
+                                }`}
+                              >
+                                <span className={`text-xl font-bold ${cls} ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
+                                  {sample}
+                                </span>
+                                <span className={`text-[9px] font-bold uppercase tracking-wide ${isSelected ? 'text-amber-400' : 'text-zinc-600'}`}>
+                                  {label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="h-px bg-white/5" />
+
+                      {/* Font Size Section */}
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Font Size</p>
+                          <span className="text-[11px] font-mono font-bold text-amber-400">{config.fontSize}px</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setConfig(p => ({ ...p, fontSize: Math.max(16, p.fontSize - 4) }))}
+                            className="flex-1 py-2 rounded-lg border border-white/8 bg-white/4 hover:bg-white/10 active:scale-95 transition-all text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                            title="Decrease font size"
+                            aria-label="Decrease font size"
+                          >
+                            <ZoomOut className="h-3.5 w-3.5 text-zinc-400" /> A-
+                          </button>
+                          <div className="px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono font-bold text-xs text-center min-w-[56px]">
+                            {config.fontSize}px
+                          </div>
+                          <button
+                            onClick={() => setConfig(p => ({ ...p, fontSize: Math.min(80, p.fontSize + 4) }))}
+                            className="flex-1 py-2 rounded-lg border border-white/8 bg-white/4 hover:bg-white/10 active:scale-95 transition-all text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                            title="Increase font size"
+                            aria-label="Increase font size"
+                          >
+                            <ZoomIn className="h-3.5 w-3.5 text-amber-400" /> A+
+                          </button>
                         </div>
                       </div>
 
