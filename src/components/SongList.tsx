@@ -223,22 +223,20 @@ function SongList({
           </button>
         </div>
 
-        {(currentRole === 'admin' || currentRole === 'guest') && (
-          <div className="flex items-center gap-2 ml-auto">
-            <button
-              onClick={onOpenAddModal}
-              className="premium-btn-primary font-bold px-3.5 py-2 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer active-touch"
-            >
-              <Plus className="h-4 w-4 text-black stroke-[3]" aria-hidden={true} /> Create Song
-            </button>
-            <button
-              onClick={onOpenUploadModal}
-              className="premium-btn-secondary font-bold px-3.5 py-2 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 active-touch"
-            >
-              <Database className="h-4 w-4 text-amber-500" aria-hidden={true} /> Import Files
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            onClick={onOpenAddModal}
+            className="premium-btn-primary font-bold px-3.5 py-2 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer active-touch"
+          >
+            <Plus className="h-4 w-4 text-black stroke-[3]" aria-hidden={true} /> Create Song
+          </button>
+          <button
+            onClick={onOpenUploadModal}
+            className="premium-btn-secondary font-bold px-3.5 py-2 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 active-touch"
+          >
+            <Database className="h-4 w-4 text-amber-500" aria-hidden={true} /> Import Files
+          </button>
+        </div>
       </div>
 
       {/* 🔍 Search Bar */}

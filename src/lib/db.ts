@@ -383,11 +383,8 @@ export async function saveSongsBatch(songs: Song[]): Promise<void> {
   if (maxTime > 0) {
     serverLocalStorage.setItem('dasong_local_max_updated_at', String(maxTime));
   }
-  
-  if (!canMutateCloud()) {
-    return;
-  }
 
+  // Everyone can upload/add songs to MongoDB Cloud
   const ids = songs.map(s => s.id);
   addUnsyncedSongIds(ids);
   
@@ -406,11 +403,8 @@ export async function saveSong(song: Song): Promise<void> {
   await saveSongIndexedDB(song);
   const now = song.updatedAt || song.createdAt || Date.now();
   serverLocalStorage.setItem('dasong_local_max_updated_at', String(now));
-  
-  if (!canMutateCloud()) {
-    return;
-  }
 
+  // Everyone can upload/add songs to MongoDB Cloud
   addUnsyncedSongIds([song.id]);
   
   // Background cloud sync

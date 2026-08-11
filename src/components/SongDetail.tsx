@@ -707,20 +707,18 @@ export default function SongDetail({
             )}
           </div>
 
-          {/* Admin / Guest Edit Trigger */}
-          {(currentRole === 'admin' || currentRole === 'guest') && (
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className={`h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
-                isEditing
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                  : 'bg-zinc-900/80 border border-[#1E202B] text-zinc-400 hover:text-white'
-              }`}
-              title="Edit Lyrics"
-            >
-              <Edit3 className="h-3.5 w-3.5" />
-            </button>
-          )}
+          {/* Edit Lyrics Trigger */}
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className={`h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              isEditing
+                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                : 'bg-zinc-900/80 border border-[#1E202B] text-zinc-400 hover:text-white'
+            }`}
+            title="Edit Lyrics"
+          >
+            <Edit3 className="h-3.5 w-3.5" />
+          </button>
 
           {/* Font Scale Control Toggle */}
           <button

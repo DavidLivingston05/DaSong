@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dasong-pwa-v7';
+const CACHE_NAME = 'dasong-pwa-v8';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
