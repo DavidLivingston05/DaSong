@@ -27,6 +27,10 @@
 }
 
 /* Force clean flat dark style defaults globally */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
 body {
   background: #090A0F;
   color: #F1F5F9;

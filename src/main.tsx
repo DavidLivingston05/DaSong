@@ -51,7 +51,7 @@ createRoot(document.getElementById('root')!).render(
 // Register active Service Worker for PWA offline support & auto-updates
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=8').then(reg => {
+    navigator.serviceWorker.register('/sw.js?v=9').then(reg => {
       reg.update();
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;

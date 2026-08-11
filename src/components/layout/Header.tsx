@@ -128,16 +128,20 @@ export default function Header({
               )}
               <button
                 onClick={() => setShowJoinModal(true)}
-                className="px-3.5 py-1.5 bg-[#12131A] hover:bg-[#1A1C26] text-zinc-300 hover:text-white border border-[#272A37] hover:border-amber-500/35 rounded text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active-touch font-medium"
+                className="px-2.5 sm:px-3.5 py-1.5 bg-[#12131A] hover:bg-[#1A1C26] text-zinc-300 hover:text-white border border-[#272A37] hover:border-amber-500/35 rounded text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active-touch font-medium"
+                title="Join Workspaces"
               >
-                <Database className="h-3.5 w-3.5 text-amber-500" /> Join Workspaces
+                <Database className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                <span className="hidden sm:inline">Join Server</span>
               </button>
               {(session?.role === 'admin' || session?.role === 'guest') && (
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="px-3.5 py-1.5 bg-[#12131A] hover:bg-[#1A1C26] text-amber-500 hover:text-amber-400 border border-amber-500/25 hover:border-amber-500/50 rounded text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active-touch font-medium"
+                  className="px-2.5 sm:px-3.5 py-1.5 bg-[#12131A] hover:bg-[#1A1C26] text-amber-500 hover:text-amber-400 border border-amber-500/25 hover:border-amber-500/50 rounded text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active-touch font-medium"
+                  title="Create Workspace"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Create Workspace
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                  <span className="hidden sm:inline">Add Server</span>
                 </button>
               )}
             </div>

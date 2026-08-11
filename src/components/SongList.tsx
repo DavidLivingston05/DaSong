@@ -205,38 +205,35 @@ function SongList({
   return (
     <div id="song-list-module" className="flex flex-col space-y-3.5 text-zinc-300 w-full flex-1 min-h-0">
       
-      {/* Top Actions Bar (No title text, full-screen function focus) */}
-      <div className="flex items-center justify-between gap-2.5 flex-wrap select-none">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
-              showFavoritesOnly 
-                ? 'bg-amber-500/10 text-amber-500 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]' 
-                : 'premium-btn-secondary border-[#1E202B] text-zinc-400 hover:text-white'
-            }`}
-            title={showFavoritesOnly ? "Showing Favorites Only" : "Show Favorites Only"}
-            aria-label={showFavoritesOnly ? "Showing favorites only" : "Show favorites only"}
-          >
-            <Star className={`h-4 w-4 ${showFavoritesOnly ? 'fill-amber-500 text-amber-500' : ''}`} aria-hidden={true} />
-            <span>Favorites</span>
-          </button>
-        </div>
+      {/* Top Actions Bar (Clean 1-row responsive bar) */}
+      <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:items-center sm:justify-between select-none">
+        <button
+          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          className={`px-2 sm:px-3.5 py-2 rounded-lg text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+            showFavoritesOnly 
+              ? 'bg-amber-500/10 text-amber-500 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]' 
+              : 'premium-btn-secondary border-[#1E202B] text-zinc-400 hover:text-white'
+          }`}
+          title={showFavoritesOnly ? "Showing Favorites Only" : "Show Favorites Only"}
+          aria-label={showFavoritesOnly ? "Showing favorites only" : "Show favorites only"}
+        >
+          <Star className={`h-3.5 w-3.5 shrink-0 ${showFavoritesOnly ? 'fill-amber-500 text-amber-500' : ''}`} aria-hidden={true} />
+          <span className="truncate">Favorites</span>
+        </button>
 
-        <div className="flex items-center gap-2 ml-auto">
-          <button
-            onClick={onOpenAddModal}
-            className="premium-btn-primary font-bold px-3.5 py-2 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer active-touch"
-          >
-            <Plus className="h-4 w-4 text-black stroke-[3]" aria-hidden={true} /> Create Song
-          </button>
-          <button
-            onClick={onOpenUploadModal}
-            className="premium-btn-secondary font-bold px-3.5 py-2 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 active-touch"
-          >
-            <Database className="h-4 w-4 text-amber-500" aria-hidden={true} /> Import Files
-          </button>
-        </div>
+        <button
+          onClick={onOpenAddModal}
+          className="premium-btn-primary font-bold px-2 sm:px-3.5 py-2 rounded-lg text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active-touch"
+        >
+          <Plus className="h-3.5 w-3.5 text-black stroke-[3] shrink-0" aria-hidden={true} /> <span className="truncate">Create Song</span>
+        </button>
+
+        <button
+          onClick={onOpenUploadModal}
+          className="premium-btn-secondary font-bold px-2 sm:px-3.5 py-2 rounded-lg text-[11px] sm:text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active-touch"
+        >
+          <Database className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-hidden={true} /> <span className="truncate">Import Files</span>
+        </button>
       </div>
 
       {/* 🔍 Search Bar */}

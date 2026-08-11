@@ -26,12 +26,12 @@ export default function MobileBottomNav({
   setSelectedSongId,
 }: MobileBottomNavProps) {
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-zinc-950/90 border-t border-zinc-800/50 backdrop-blur-xl flex justify-around items-end shadow-[0_-8px_30px_rgba(0,0,0,0.7)] pb-safe animate-slideUp"
-      style={{ paddingTop: '10px', paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))' }}
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#090A0F]/95 border-t border-[#1E202B] backdrop-blur-xl grid grid-cols-3 items-center shadow-[0_-8px_30px_rgba(0,0,0,0.8)] pb-safe select-none"
+      style={{ paddingTop: '8px', paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))' }}
     >
       <button
         onClick={() => setActiveTab('dashboard')}
-        className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
+        className={`flex flex-col items-center gap-1 py-1 text-xs transition-all active-touch cursor-pointer relative ${
           activeTab === 'dashboard' ? 'text-amber-500' : 'text-zinc-500'
         }`}
         aria-current={activeTab === 'dashboard' ? 'page' : undefined}
@@ -46,7 +46,7 @@ export default function MobileBottomNav({
           setSelectedSongId(null);
           navigateTo('search');
         }}
-        className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
+        className={`flex flex-col items-center gap-1 py-1 text-xs transition-all active-touch cursor-pointer relative ${
           activeTab === 'search' ? 'text-amber-500' : 'text-zinc-500'
         }`}
         aria-current={activeTab === 'search' ? 'page' : undefined}
@@ -61,7 +61,7 @@ export default function MobileBottomNav({
           setSelectedSongId(null);
           navigateTo('setlists');
         }}
-        className={`flex flex-col items-center gap-1 px-4 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer relative min-w-[48px] ${
+        className={`flex flex-col items-center gap-1 py-1 text-xs transition-all active-touch cursor-pointer relative ${
           activeTab === 'setlists' ? 'text-amber-500' : 'text-zinc-500'
         }`}
         aria-current={activeTab === 'setlists' ? 'page' : undefined}
@@ -70,30 +70,6 @@ export default function MobileBottomNav({
         <Calendar className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'setlists' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
         <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'setlists' ? 'font-black' : ''}`}>Setlists</span>
       </button>
-
-      {(session?.role === 'admin' || session?.role === 'guest') && (
-        <div className="flex flex-col items-center -mt-5 relative min-w-[64px]">
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-[0_4px_20px_rgba(245,158,11,0.5),0_2px_8px_rgba(0,0,0,0.6)] active-touch border-2 border-amber-300/20 cursor-pointer"
-            title="Add New Song"
-          >
-            <Plus className="w-7 h-7 text-black stroke-[3]" />
-          </button>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 mt-1">Add</span>
-        </div>
-      )}
-
-      {showInstallBanner && !isInstalled && (
-        <button
-          onClick={handleInstallApp}
-          className="flex flex-col items-center gap-1 px-5 pt-1 pb-0 text-xs transition-all active-touch cursor-pointer text-amber-400 min-w-[56px] relative animate-in fade-in"
-          title="Install App"
-        >
-          <Smartphone className="w-6 h-6 text-amber-400" />
-          <span className="text-[11px] font-bold uppercase tracking-wider">Install</span>
-        </button>
-      )}
     </div>
   );
 }
