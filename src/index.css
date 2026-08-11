@@ -436,6 +436,11 @@ input:focus:not(:focus-visible),
   /* Smart page breaks - prevent breaking songs across pages */
   .page-break-inside-avoid,
   .print-song-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
 a, button, [role="button"], input, select, textarea, label {
   touch-action: manipulation;
 }
