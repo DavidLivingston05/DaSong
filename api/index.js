@@ -92,33 +92,9 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// Helper to partition queries. Matches exact serverId, or if serverId is 'default', matches default or missing serverId.
-// All workspaces can also access the global/common library (default or missing serverId).
+// Global open catalog: all songs are shared and accessible globally to all users across all workspaces.
 function getQueryWithServer(req, customQuery = {}) {
-  const serverFilter = req.serverId === 'default'
-    ? {
-        $or: [
-          { serverId: 'default' },
-          { serverId: { $exists: false } }
-        ]
-      }
-    : {
-        $or: [
-          { serverId: req.serverId },
-          { serverId: 'default' },
-          { serverId: { $exists: false } }
-        ]
-      };
-
-  if (Object.keys(customQuery).length > 0) {
-    return {
-      $and: [
-        serverFilter,
-        customQuery
-      ]
-    };
-  }
-  return serverFilter;
+  return customQuery;
 }
 
 const MONGODB_URI = process.env.MONGODB_URI;
