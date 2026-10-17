@@ -588,6 +588,11 @@ export default function SongDetail({
     return getRecommendedSongs(song as any, allMetadata as any, 6).map(item => item.song as SongMetadata);
   }, [song, allMetadata]);
 
+  // Pre-process and parse sheet lyrics into natural worship stanzas
+  const sections = useMemo(() => {
+    return parseSongSections(song?.lyrics || '');
+  }, [song?.lyrics]);
+
   if (loading) {
     return (
       <div className="bg-[#12131A] rounded-md border border-[#1E202B] p-12 text-center animate-pulse">
@@ -604,11 +609,6 @@ export default function SongDetail({
       </div>
     );
   }
-
-  // Pre-process and parse sheet lyrics into natural worship stanzas
-  const sections = useMemo(() => {
-    return parseSongSections(song.lyrics || '');
-  }, [song.lyrics]);
 
   return (
     <div id="lyric-presentation-panel" className="bg-[#12131A] rounded-md border border-[#1E202B] overflow-hidden flex flex-col h-full md:min-h-[550px]">
