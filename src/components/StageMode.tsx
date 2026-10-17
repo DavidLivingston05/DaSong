@@ -269,10 +269,12 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
         if (e.key === ' ') {
           e.preventDefault();
           setScrolling((prev) => !prev);
-        } else if (e.key === 'ArrowUp') {
-          if (scrollContainerRef.current) scrollContainerRef.current.scrollTop -= 50;
-        } else if (e.key === 'ArrowDown') {
-          if (scrollContainerRef.current) scrollContainerRef.current.scrollTop += 50;
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+          e.preventDefault();
+          if (scrollContainerRef.current) scrollContainerRef.current.scrollBy({ top: -160, behavior: 'smooth' });
+        } else if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+          e.preventDefault();
+          if (scrollContainerRef.current) scrollContainerRef.current.scrollBy({ top: 160, behavior: 'smooth' });
         }
       } else {
         // Slides presentation mode navigation

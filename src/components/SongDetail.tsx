@@ -425,25 +425,49 @@ export default function SongDetail({
           });
           setScrolling(prev => !prev);
           break;
-        case 'ArrowRight':
         case 'ArrowDown':
+          e.preventDefault();
+          if (lyricContainerRef.current) {
+            lyricContainerRef.current.scrollBy({ top: 160, behavior: 'smooth' });
+          } else {
+            window.scrollBy({ top: 160, behavior: 'smooth' });
+          }
+          break;
+        case 'PageDown':
+          e.preventDefault();
+          if (lyricContainerRef.current) {
+            lyricContainerRef.current.scrollBy({ top: lyricContainerRef.current.clientHeight * 0.75, behavior: 'smooth' });
+          } else {
+            window.scrollBy({ top: window.innerHeight * 0.75, behavior: 'smooth' });
+          }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (lyricContainerRef.current) {
+            lyricContainerRef.current.scrollBy({ top: -160, behavior: 'smooth' });
+          } else {
+            window.scrollBy({ top: -160, behavior: 'smooth' });
+          }
+          break;
+        case 'PageUp':
+          e.preventDefault();
+          if (lyricContainerRef.current) {
+            lyricContainerRef.current.scrollBy({ top: -lyricContainerRef.current.clientHeight * 0.75, behavior: 'smooth' });
+          } else {
+            window.scrollBy({ top: -window.innerHeight * 0.75, behavior: 'smooth' });
+          }
+          break;
+        case 'ArrowRight':
         case 'd':
         case 'D':
-        case 's':
-        case 'S':
-        case 'PageDown':
           if (nextSongId) {
             e.preventDefault();
             onSelectSong(nextSongId, setlistSongIds);
           }
           break;
         case 'ArrowLeft':
-        case 'ArrowUp':
         case 'a':
         case 'A':
-        case 'w':
-        case 'W':
-        case 'PageUp':
           if (prevSongId) {
             e.preventDefault();
             onSelectSong(prevSongId, setlistSongIds);
