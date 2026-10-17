@@ -976,9 +976,9 @@ export default function SongDetail({
                         onClick={handleSelectSection}
                         className={`mb-6 p-4 rounded-xl transition-all duration-300 cursor-pointer ${
                           isSectionHighlighted
-                            ? 'border-l-4 border-amber-400 bg-amber-500/10 pl-4'
+                            ? 'border-l-4 border-white bg-white/10 pl-4 shadow-lg ring-1 ring-white/15'
                             : isChorus
-                              ? 'border-l-4 border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 pl-4'
+                              ? 'border-l-4 border-zinc-600 bg-zinc-900/30 hover:bg-zinc-800/40 pl-4'
                               : 'bg-zinc-900/20 border border-[#1E202B]/60 hover:border-zinc-700 hover:bg-zinc-900/40'
                         }`}
                       >
@@ -991,7 +991,7 @@ export default function SongDetail({
                               <div
                                 key={lIdx}
                                 id={lineId}
-                                className="font-bold text-amber-500 mt-1 mb-2 text-xs uppercase tracking-widest font-mono select-none"
+                                className="font-bold text-zinc-400 mt-1 mb-2 text-xs uppercase tracking-widest font-mono select-none"
                               >
                                 {line}
                               </div>
@@ -1004,8 +1004,8 @@ export default function SongDetail({
                               id={lineId}
                               className={`leading-relaxed py-1.5 px-2 rounded transition-colors select-text ${
                                 isSectionHighlighted
-                                  ? 'text-amber-200 font-bold text-base md:text-lg'
-                                  : 'text-zinc-200 hover:text-white'
+                                  ? 'text-white font-black text-base md:text-lg'
+                                  : 'text-zinc-300 hover:text-white'
                               }`}
                             >
                               {line}

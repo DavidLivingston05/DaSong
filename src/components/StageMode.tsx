@@ -310,9 +310,9 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
           key={idx}
           className={`mb-6 p-5 rounded break-inside-avoid transition-all duration-300 ${
             isSectionHighlighted
-              ? 'bg-amber-500/10 border border-amber-500/35 text-white'
+              ? 'bg-white/10 border border-white/30 text-white font-extrabold'
               : (isChorus
-                  ? 'border-l-4 border-amber-600 bg-amber-500/5 dark:bg-amber-400/5'
+                  ? 'border-l-4 border-zinc-500 bg-white/5'
                   : 'border border-transparent')
           }`}
         >
@@ -389,7 +389,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
             const isHighlighted = currentLineIndex === highlightedLineIndex;
             
             const highlightClass = hasActiveLineOnSlide
-              ? 'scale-[1.01] opacity-100 transition-all duration-300 origin-center text-amber-300 font-extrabold'
+              ? 'scale-[1.01] opacity-100 transition-all duration-300 origin-center text-white font-black drop-shadow-md'
               : 'opacity-100 transition-all duration-300 origin-center';
 
             if (isChorus && line.toLowerCase().startsWith('chorus:')) {
