@@ -51,9 +51,18 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
   }, [config]);
 
   // View mode, screen size, and slide presentation states
+  const [isLargeScreen, setIsLargeScreen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth >= 768 && window.innerHeight >= 500;
+  });
+
   const [viewMode, setViewMode] = useState<'scroll' | 'slides'>(() => {
     return (localStorage.getItem('dasong_stage_view_mode') as 'scroll' | 'slides') || 'slides';
   });
+
+  // Mobile phones only get full-screen continuous scroll (no slides).
+  // Tablets and desktop displays get both slide presentation and full-screen continuous scroll.
+  const effectiveViewMode: 'scroll' | 'slides' = isLargeScreen ? viewMode : 'scroll';
 
   const handleSetViewMode = (mode: 'scroll' | 'slides') => {
     setViewMode(mode);
@@ -62,7 +71,6 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
   };
 
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
-  const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   const [showDesktopCustomizer, setShowDesktopCustomizer] = useState<boolean>(false);
   const [isNativeFullscreen, setIsNativeFullscreen] = useState<boolean>(() => !!document.fullscreenElement);
 
@@ -135,11 +143,12 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
   const touchStartRef = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (effectiveViewMode !== 'slides') return;
     touchStartRef.current = e.touches[0].clientX;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartRef.current === null) return;
+    if (effectiveViewMode !== 'slides' || touchStartRef.current === null) return;
     const diffX = touchStartRef.current - e.changedTouches[0].clientX;
     const swipeThreshold = 50; // pixels
     
@@ -202,7 +211,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
             setHighlightedLineIndex(state.activeLineIndex);
 
             // If in continuous scroll view, scroll the line into view only when it changes
-            if (viewMode === 'scroll') {
+            if (effectiveViewMode === 'scroll') {
               if (hasLineChanged) {
                 setTimeout(() => {
                   const el = document.getElementById(`stage-line-${state.activeLineIndex}`);
@@ -239,12 +248,12 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
       active = false;
       clearInterval(intervalId);
     };
-  }, [isFollowing, song.id, onSelectSong, viewMode, lyrics]);
+  }, [isFollowing, song.id, onSelectSong, effectiveViewMode, lyrics]);
 
-  // Listen for screen dimensions to detect mobile vs desktop
+  // Listen for screen dimensions to detect mobile vs tablet/desktop
   useEffect(() => {
     const checkScreenSize = () => {
-      const isLarge = window.innerWidth >= 768;
+      const isLarge = window.innerWidth >= 768 && window.innerHeight >= 500;
       setIsLargeScreen(isLarge);
     };
     checkScreenSize();
@@ -254,10 +263,10 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
 
   // Listen for real-time slide broadcast updates from DaLyric TV
   useEffect(() => {
-    if (typeof broadcastSlideIndex === 'number' && viewMode === 'slides') {
+    if (typeof broadcastSlideIndex === 'number' && effectiveViewMode === 'slides') {
       setCurrentSlideIndex(broadcastSlideIndex);
     }
-  }, [broadcastSlideIndex, viewMode]);
+  }, [broadcastSlideIndex, effectiveViewMode]);
 
   // Sync display lyrics
   useEffect(() => {
@@ -300,7 +309,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
 
   // Clean presentation control: In slides mode, keep screen completely clean and pure
   useEffect(() => {
-    if (viewMode === 'scroll') {
+    if (effectiveViewMode === 'scroll') {
       if (scrolling) {
         const timer = window.setTimeout(() => setShowHeader(false), 2500);
         return () => clearTimeout(timer);
@@ -334,7 +343,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
       clearTimeout(hideTimer);
       window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [scrolling, viewMode]);
+  }, [scrolling, effectiveViewMode]);
 
 
   // Key shortcuts
@@ -393,7 +402,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
         e.preventDefault();
         const cIdx = sections.findIndex((s) => /^(?:chorus|பல்லவி)/i.test(s.trim()));
         if (cIdx !== -1) {
-          if (viewMode === 'slides') {
+          if (effectiveViewMode === 'slides') {
             setCurrentSlideIndex(cIdx);
           } else {
             const el = document.getElementById(`stage-line-${cIdx}`);
@@ -406,7 +415,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
       // Verse 1 / Top of song
       if (e.key === 'Home' || e.key === '1') {
         e.preventDefault();
-        if (viewMode === 'slides') {
+        if (effectiveViewMode === 'slides') {
           setCurrentSlideIndex(0);
         } else if (scrollContainerRef.current) {
           scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
@@ -417,7 +426,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
       // Last slide / End of song
       if (e.key === 'End') {
         e.preventDefault();
-        if (viewMode === 'slides') {
+        if (effectiveViewMode === 'slides') {
           setCurrentSlideIndex(Math.max(0, sections.length - 1));
         } else if (scrollContainerRef.current) {
           scrollContainerRef.current.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
@@ -437,7 +446,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
         return;
       }
 
-      if (viewMode === 'scroll') {
+      if (effectiveViewMode === 'scroll') {
         if (e.key === ' ') {
           e.preventDefault();
           setScrolling((prev) => !prev);
@@ -462,7 +471,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [onClose, viewMode, sections, isBlackout, showKeyboardHelp]);
+  }, [onClose, effectiveViewMode, sections, isBlackout, showKeyboardHelp]);
 
   // Format the lines beautifully - parse [brackets] into superscript lines or keep inline
   const renderFormattedLyrics = (lyricsOverride?: string) => {
@@ -884,7 +893,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                 <button
                   onClick={() => handleSetViewMode('scroll')}
                   className={`flex items-center gap-1.5 px-3 py-1 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                    viewMode === 'scroll'
+                    effectiveViewMode === 'scroll'
                       ? 'bg-amber-500 text-black font-black'
                       : 'text-slate-400 hover:text-white'
                   }`}
@@ -895,7 +904,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                 <button
                   onClick={() => handleSetViewMode('slides')}
                   className={`flex items-center gap-1.5 px-3 py-1 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                    viewMode === 'slides'
+                    effectiveViewMode === 'slides'
                       ? 'bg-amber-500 text-black font-black'
                       : 'text-slate-400 hover:text-white'
                   }`}
@@ -1030,8 +1039,8 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
             </button>
             <div className="text-center select-none truncate flex-1 px-2">
               <div className="text-xs font-bold text-white truncate">{song.title}</div>
-              <div className="text-[9px] font-mono text-zinc-555 uppercase mt-0.5 tracking-wider">
-                {viewMode === 'scroll' ? 'Scroll View' : `Stanza ${currentSlideIndex + 1}`}
+              <div className="text-[9px] font-mono text-zinc-500 uppercase mt-0.5 tracking-wider">
+                {effectiveViewMode === 'scroll' ? 'Full Screen Scroll' : `Stanza ${currentSlideIndex + 1}`}
                 {isFollowing && <span className="text-emerald-500 ml-1.5 font-bold animate-pulse">• Live Sync</span>}
               </div>
             </div>
@@ -1109,7 +1118,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
       </div>
 
       {/* Discreet top-right pill to bring options back */}
-      {!showHeader && viewMode === 'slides' && (
+      {!showHeader && effectiveViewMode === 'slides' && (
         <button
           onClick={() => setShowHeader(true)}
           className="absolute top-3 right-3 z-30 px-3 py-1.5 rounded-full bg-black/50 hover:bg-black/80 border border-white/10 text-white/60 hover:text-white backdrop-blur-md text-[11px] font-mono flex items-center gap-1.5 opacity-30 hover:opacity-100 transition-all cursor-pointer shadow-lg"
@@ -1121,7 +1130,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
       )}
 
       {/* Invisible top edge hover trigger zone */}
-      {!showHeader && viewMode === 'slides' && (
+      {!showHeader && effectiveViewMode === 'slides' && (
         <div 
           onMouseEnter={() => setShowHeader(true)}
           className="absolute top-0 left-0 right-0 h-4 z-30 pointer-events-auto"
@@ -1129,7 +1138,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
       )}
 
 
-      {viewMode === 'scroll' ? (
+      {effectiveViewMode === 'scroll' ? (
         /* Immersive Scroll container */
         <div
           id="lyrics-scroll-container"
