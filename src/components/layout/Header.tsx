@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Music, Home, BookOpen, Calendar, Plus, Database, Download,
-  RefreshCw, LogOut, Palette, ShieldCheck
+  RefreshCw, LogOut, Palette, ShieldCheck, Keyboard
 } from 'lucide-react';
 import { UserRole } from '../../types';
 import ColorPickerModal from '../modals/ColorPickerModal';
+import KeyboardHelpModal from '../modals/KeyboardHelpModal';
 import { applyAccentThemeColor } from '../../utils/colorUtils';
 
 interface HeaderProps {
@@ -41,11 +42,27 @@ export default function Header({
   setShowUploadModal,
 }: HeaderProps) {
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false);
   const [currentColorHex, setCurrentColorHex] = useState<string>(() => {
     return localStorage.getItem('dasong_custom_accent_color') || '#F59E0B';
   });
 
   const isAdmin = session?.role === 'admin';
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setShowKeyboardHelp((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   useEffect(() => {
     const savedCustomColor = localStorage.getItem('dasong_custom_accent_color');
@@ -210,6 +227,16 @@ export default function Header({
                 <RefreshCw className="h-4 w-4" />
               </button>
             )}
+            {/* Keyboard Shortcuts Guide */}
+            <button
+              onClick={() => setShowKeyboardHelp(true)}
+              className="p-2 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/30 text-zinc-400 hover:text-amber-400 rounded-xl transition-all cursor-pointer active-touch"
+              title="Worship Leader Hotkeys (?)"
+              aria-label="Worship Leader Hotkeys"
+            >
+              <Keyboard className="h-4 w-4" />
+            </button>
+
             <button
               onClick={() => setShowColorPicker(true)}
               className="p-2 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/30 text-amber-500 rounded-xl transition-all cursor-pointer active-touch flex items-center gap-1.5 group"
@@ -234,6 +261,12 @@ export default function Header({
         onColorChange={(hex) => {
           setCurrentColorHex(hex);
         }}
+      />
+
+      {/* Worship Leader Keyboard Shortcuts Cheat Sheet */}
+      <KeyboardHelpModal
+        isOpen={showKeyboardHelp}
+        onClose={() => setShowKeyboardHelp(false)}
       />
     </header>
   );

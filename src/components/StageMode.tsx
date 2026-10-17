@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio, Paintbrush, Palette } from 'lucide-react';
+import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio, Paintbrush, Palette, EyeOff, Keyboard } from 'lucide-react';
 import { Song, PresentationConfig } from '../types';
 import { stripChords, parseSongSections } from '../utils/chordTransposer';
 import { getBroadcastState } from '../lib/db';
 import ColorPickerModal from './modals/ColorPickerModal';
+import KeyboardHelpModal from './modals/KeyboardHelpModal';
 
 interface StageModeProps {
   song: Song;
@@ -15,6 +16,8 @@ interface StageModeProps {
 export default React.memo(function StageMode({ song, onClose, broadcastSlideIndex, onSelectSong }: StageModeProps) {
   const [lyrics, setLyrics] = useState<string>('');
   const [activeColorPicker, setActiveColorPicker] = useState<'bg' | 'text' | null>(null);
+  const [isBlackout, setIsBlackout] = useState<boolean>(false);
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false);
 
   const sections = useMemo(() => {
     return parseSongSections(song.lyrics || lyrics || '');
@@ -260,8 +263,86 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
   // Key shortcuts
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in an input
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      // Blackout toggle (Standard presenter B or .)
+      if (e.key === 'b' || e.key === 'B' || e.key === '.') {
+        e.preventDefault();
+        setIsBlackout((prev) => !prev);
+        return;
+      }
+
+      // Any key press exits blackout if active
+      if (isBlackout) {
+        setIsBlackout(false);
+        return;
+      }
+
       if (e.key === 'Escape') {
+        if (showKeyboardHelp) {
+          setShowKeyboardHelp(false);
+          return;
+        }
         onClose();
+        return;
+      }
+
+      if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setShowKeyboardHelp((prev) => !prev);
+        return;
+      }
+
+      // Direct Chorus jump
+      if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        const cIdx = sections.findIndex((s) => /^(?:chorus|பல்லவி)/i.test(s.trim()));
+        if (cIdx !== -1) {
+          if (viewMode === 'slides') {
+            setCurrentSlideIndex(cIdx);
+          } else {
+            const el = document.getElementById(`stage-line-${cIdx}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+        return;
+      }
+
+      // Verse 1 / Top of song
+      if (e.key === 'Home' || e.key === '1') {
+        e.preventDefault();
+        if (viewMode === 'slides') {
+          setCurrentSlideIndex(0);
+        } else if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        return;
+      }
+
+      // Last slide / End of song
+      if (e.key === 'End') {
+        e.preventDefault();
+        if (viewMode === 'slides') {
+          setCurrentSlideIndex(Math.max(0, sections.length - 1));
+        } else if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
+        }
+        return;
+      }
+
+      // Fast font scaling
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        setConfig((prev) => ({ ...prev, fontSize: Math.min(80, prev.fontSize + 3) }));
+        return;
+      }
+      if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        setConfig((prev) => ({ ...prev, fontSize: Math.max(16, prev.fontSize - 3) }));
         return;
       }
 
@@ -269,19 +350,19 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
         if (e.key === ' ') {
           e.preventDefault();
           setScrolling((prev) => !prev);
-        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'k' || e.key === 'K') {
           e.preventDefault();
           if (scrollContainerRef.current) scrollContainerRef.current.scrollBy({ top: -160, behavior: 'smooth' });
-        } else if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+        } else if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === 'j' || e.key === 'J') {
           e.preventDefault();
           if (scrollContainerRef.current) scrollContainerRef.current.scrollBy({ top: 160, behavior: 'smooth' });
         }
       } else {
         // Slides presentation mode navigation
-        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'PageDown') {
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === 'j' || e.key === 'J' || e.key === 'n' || e.key === 'N') {
           e.preventDefault();
           setCurrentSlideIndex((prev) => Math.min(sections.length - 1, prev + 1));
-        } else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+        } else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'k' || e.key === 'K' || e.key === 'p' || e.key === 'P') {
           e.preventDefault();
           setCurrentSlideIndex((prev) => Math.max(0, prev - 1));
         }
@@ -290,7 +371,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [onClose, viewMode, sections]);
+  }, [onClose, viewMode, sections, isBlackout, showKeyboardHelp]);
 
   // Format the lines beautifully - parse [brackets] into superscript lines or keep inline
   const renderFormattedLyrics = (lyricsOverride?: string) => {
@@ -757,6 +838,30 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
               </button>
 
 
+              {/* Blackout Toggle Button */}
+              <button
+                onClick={() => setIsBlackout((p) => !p)}
+                className={`p-2 rounded cursor-pointer transition-all border ${
+                  isBlackout
+                    ? 'bg-rose-500 border-rose-500 text-white animate-pulse'
+                    : 'bg-zinc-900/60 border-[#1E202B] text-slate-400 hover:text-white'
+                }`}
+                title="Toggle Blackout Stage (B or .)"
+                aria-label="Toggle Blackout"
+              >
+                <EyeOff className="h-3.5 w-3.5" />
+              </button>
+
+              {/* Keyboard Shortcuts Guide */}
+              <button
+                onClick={() => setShowKeyboardHelp(true)}
+                className="p-2 rounded cursor-pointer transition-all border bg-zinc-900/60 border-[#1E202B] text-slate-400 hover:text-amber-400 hover:border-amber-500/40"
+                title="Worship Leader Hotkeys (?)"
+                aria-label="Worship Leader Hotkeys"
+              >
+                <Keyboard className="h-3.5 w-3.5" />
+              </button>
+
               {/* 🎨 Brush Customizer Button + Floating Popover */}
               <div className="relative">
                 <button
@@ -780,7 +885,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                 id="close-stage-btn"
                 onClick={onClose}
                 className="cursor-pointer p-2 hover:bg-rose-500/15 text-slate-400 hover:text-rose-455 rounded transition-all"
-                title="Exit Presentation"
+                title="Exit Presentation (Esc)"
                 aria-label="Exit presentation"
               >
                 <Minimize className="h-4 w-4" />
@@ -804,6 +909,26 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
               </div>
             </div>
             <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setIsBlackout((p) => !p)}
+                className={`p-2 rounded border active-touch transition-all ${
+                  isBlackout
+                    ? 'bg-rose-500 border-rose-500 text-white'
+                    : 'bg-zinc-900/60 border border-[#1E202B] text-zinc-400'
+                }`}
+                title="Blackout Stage (B)"
+                aria-label="Toggle Blackout"
+              >
+                <EyeOff className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setShowKeyboardHelp(true)}
+                className="p-2 bg-zinc-900/60 border border-[#1E202B] text-zinc-400 hover:text-amber-400 rounded active-touch"
+                title="Shortcuts (?)"
+                aria-label="Keyboard Shortcuts"
+              >
+                <Keyboard className="h-4 w-4" />
+              </button>
               <button
                 onClick={() => {
                   const val = !isFollowing;
@@ -983,6 +1108,25 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
             setConfig(p => ({ ...p, customTextColor: hex }));
           }
         }}
+      />
+
+      {/* Blackout Fullscreen Screen */}
+      {isBlackout && (
+        <div
+          onClick={() => setIsBlackout(false)}
+          className="fixed inset-0 z-[100] bg-black cursor-pointer flex flex-col items-center justify-center select-none group"
+        >
+          <div className="opacity-40 group-hover:opacity-100 transition-opacity bg-zinc-900/90 border border-zinc-700/60 px-5 py-2.5 rounded-2xl flex items-center gap-3 text-xs text-zinc-300 shadow-2xl backdrop-blur-md">
+            <EyeOff className="h-4 w-4 text-rose-400" />
+            <span>Blackout Active — Press <kbd className="font-mono font-bold text-amber-400 bg-black/60 px-2 py-0.5 rounded border border-zinc-700">B</kbd> or tap anywhere to resume</span>
+          </div>
+        </div>
+      )}
+
+      {/* Keyboard Help Modal */}
+      <KeyboardHelpModal
+        isOpen={showKeyboardHelp}
+        onClose={() => setShowKeyboardHelp(false)}
       />
 
     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer, X, Calendar, Search } from 'lucide-react';
+import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer, X, Calendar, Search, Keyboard } from 'lucide-react';
 import { Song, UserRole, Setlist } from '../types';
 import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, broadcastState, getBroadcastState, getSetlists, fetchSetlistsFromCloud } from '../lib/db';
 import { stripChords, parseSongSections } from '../utils/chordTransposer';
@@ -7,6 +7,7 @@ import { parseTwoLineChords } from '../utils/lyricsParser';
 import FocusTrap from './FocusTrap';
 import { getRecommendedSongs } from '../lib/recommendations';
 import AddToSetlistModal from './modals/AddToSetlistModal';
+import KeyboardHelpModal from './modals/KeyboardHelpModal';
 
 interface SongDetailProps {
   songId: string;
@@ -47,6 +48,7 @@ export default function SongDetail({
   const [loading, setLoading] = useState<boolean>(true);
   const [showFontControl, setShowFontControl] = useState<boolean>(false);
   const [showAddToSetlist, setShowAddToSetlist] = useState<boolean>(false);
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false);
   const [localSetlists, setLocalSetlists] = useState<Setlist[]>(() => getSetlists());
   const [allMetadataState, setAllMetadataState] = useState<SongMetadata[]>([]);
   const allMetadata = songsMetadata || allMetadataState;
@@ -417,21 +419,77 @@ export default function SongDetail({
       switch (e.key) {
         case 'Escape':
           e.preventDefault();
-          if (onBack) {
+          if (showKeyboardHelp) {
+            setShowKeyboardHelp(false);
+          } else if (onBack) {
             onBack();
           } else {
             onClose();
           }
           break;
+        case '?':
+          e.preventDefault();
+          setShowKeyboardHelp(p => !p);
+          break;
+        case 'c':
+        case 'C': {
+          e.preventDefault();
+          const chorusIdx = sections.findIndex(s => /^(?:chorus|பல்லவி)/i.test(s.trim()));
+          if (chorusIdx >= 0) {
+            const targetLine = sectionStartIndices[chorusIdx] ?? 0;
+            handleLineSelect(targetLine);
+            setTimeout(() => {
+              const el = document.getElementById(`lyric-section-${chorusIdx}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 30);
+          }
+          break;
+        }
+        case 'b':
+        case 'B': {
+          e.preventDefault();
+          const bridgeIdx = sections.findIndex(s => /^(?:bridge|சரணம்)/i.test(s.trim()));
+          if (bridgeIdx >= 0) {
+            const targetLine = sectionStartIndices[bridgeIdx] ?? 0;
+            handleLineSelect(targetLine);
+            setTimeout(() => {
+              const el = document.getElementById(`lyric-section-${bridgeIdx}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 30);
+          }
+          break;
+        }
+        case 'Home':
+        case '1': {
+          e.preventDefault();
+          if (sections.length > 0) {
+            handleLineSelect(0);
+            setTimeout(() => {
+              const el = document.getElementById(`lyric-section-0`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 30);
+          }
+          break;
+        }
+        case 'f':
+        case 'F': {
+          e.preventDefault();
+          onEnterStageMode();
+          break;
+        }
+        case '+':
+        case '=':
+        case ']':
+        case '}':
+          e.preventDefault();
+          setFontSize(p => Math.min(32, p + 1));
+          break;
+        case '-':
+        case '_':
         case '[':
         case '{':
           e.preventDefault();
           setFontSize(p => Math.max(12, p - 1));
-          break;
-        case ']':
-        case '}':
-          e.preventDefault();
-          setFontSize(p => Math.min(28, p + 1));
           break;
         case ' ':
           e.preventDefault();
@@ -442,6 +500,9 @@ export default function SongDetail({
           setScrolling(prev => !prev);
           break;
         case 'ArrowDown':
+        case 'j':
+        case 'J':
+        case 'Enter':
           e.preventDefault();
           if (sections.length > 0) {
             let activeSec = -1;
@@ -479,6 +540,8 @@ export default function SongDetail({
           }
           break;
         case 'ArrowUp':
+        case 'k':
+        case 'K':
           e.preventDefault();
           if (sections.length > 0) {
             let activeSec = -1;
@@ -518,6 +581,8 @@ export default function SongDetail({
         case 'ArrowRight':
         case 'd':
         case 'D':
+        case 'n':
+        case 'N':
           if (nextSongId) {
             e.preventDefault();
             onSelectSong(nextSongId, setlistSongIds);
@@ -526,6 +591,8 @@ export default function SongDetail({
         case 'ArrowLeft':
         case 'a':
         case 'A':
+        case 'p':
+        case 'P':
           if (prevSongId) {
             e.preventDefault();
             onSelectSong(prevSongId, setlistSongIds);
@@ -860,7 +927,14 @@ export default function SongDetail({
             <ZoomIn className="h-4 w-4" />
           </button>
 
-
+          {/* Keyboard Shortcuts Guide */}
+          <button
+            onClick={() => setShowKeyboardHelp(true)}
+            className="h-9 w-9 rounded-xl flex items-center justify-center cursor-pointer transition-all shrink-0 bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-400 hover:text-amber-400"
+            title="Worship Leader Hotkeys (?)"
+          >
+            <Keyboard className="h-4 w-4" />
+          </button>
 
           {/* Present Fullscreen */}
           <button
@@ -1177,6 +1251,12 @@ export default function SongDetail({
         song={song}
         setlists={localSetlists}
         onRefreshSetlists={() => setLocalSetlists(getSetlists())}
+      />
+
+      {/* Keyboard Shortcuts Help Modal */}
+      <KeyboardHelpModal
+        isOpen={showKeyboardHelp}
+        onClose={() => setShowKeyboardHelp(false)}
       />
     </div>
   );
