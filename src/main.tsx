@@ -61,19 +61,39 @@ createRoot(document.getElementById('root')!).render(
 // Register active Service Worker for PWA offline support & auto-updates
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=12').then(reg => {
-      reg.update();
+    navigator.serviceWorker.register('/sw.js?v=13').then((reg) => {
+      // If a waiting worker already exists (from earlier fetch), notify immediately
+      if (reg.waiting) {
+        window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { registration: reg } }));
+      }
+
+      // Check for updates on initial launch
+      reg.update().catch(() => {});
+
+      // Check for updates when user returns to app
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          reg.update().catch(() => {});
+        }
+      });
+
+      // Periodic update check every 10 minutes
+      setInterval(() => {
+        reg.update().catch(() => {});
+      }, 10 * 60 * 1000);
+
+      // Listen for newly installing worker becoming installed while app is open
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('New content available; please refresh when convenient.');
+              window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { registration: reg } }));
             }
           });
         }
       });
-    }).catch(err => {
+    }).catch((err) => {
       console.log('PWA ServiceWorker registration error:', err);
     });
   });

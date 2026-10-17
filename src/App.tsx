@@ -114,6 +114,39 @@ export default function App() {
     return localStorage.getItem('dasong_dismiss_install') === 'true';
   });
 
+  // PWA Update State
+  const [pwaUpdateAvailable, setPwaUpdateAvailable] = useState<boolean>(false);
+  const waitingWorkerRef = useRef<ServiceWorker | null>(null);
+
+  useEffect(() => {
+    const handleUpdate = (e: any) => {
+      const reg = e.detail?.registration;
+      if (reg?.waiting) {
+        waitingWorkerRef.current = reg.waiting;
+      }
+      setPwaUpdateAvailable(true);
+    };
+
+    window.addEventListener('pwa-update-available', handleUpdate);
+    return () => window.removeEventListener('pwa-update-available', handleUpdate);
+  }, []);
+
+  const applyPwaUpdate = async () => {
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      if (waitingWorkerRef.current) {
+        waitingWorkerRef.current.postMessage({ type: 'SKIP_WAITING' });
+      }
+    } catch (err) {
+      console.error('Error applying PWA update:', err);
+    }
+    localStorage.removeItem('dasong_local_max_updated_at');
+    window.location.reload();
+  };
+
   const [isFollowing, setIsFollowing] = useState<boolean>(() => {
     return localStorage.getItem('dasong_live_follow') === 'true';
   });
@@ -366,12 +399,18 @@ export default function App() {
     initApp();
   }, [syncSongsList, refreshSetlists, triggerMongoSync]);
 
-  // Handle shared link query parameters on mount
+  // Handle shared link and PWA shortcut query parameters on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const querySong = params.get('song');
+    const queryTab = params.get('tab');
     if (querySong) {
       setSelectedSongId(querySong);
+    }
+    if (queryTab === 'setlists' || queryTab === 'search' || queryTab === 'dashboard') {
+      setActiveTab(queryTab);
+    }
+    if (querySong || queryTab) {
       const cleanUrl = window.location.pathname;
       history.replaceState(history.state, '', cleanUrl);
     }
@@ -531,13 +570,20 @@ export default function App() {
     }
   };
 
-  const handleForceUpdateApp = () => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(registrations => {
+  const handleForceUpdateApp = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
         for (const reg of registrations) {
-          reg.unregister();
+          await reg.unregister();
         }
-      });
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch (err) {
+      console.error('Error clearing service worker & caches:', err);
     }
     localStorage.removeItem('dasong_local_max_updated_at');
     window.location.reload();
@@ -702,12 +748,51 @@ export default function App() {
         handleInstallApp={handleInstallApp}
         handleForceSync={handleForceSync}
         handleForceUpdateApp={handleForceUpdateApp}
+        pwaUpdateAvailable={pwaUpdateAvailable}
         mongoStatus={mongoStatus}
         setShowAdminLoginModal={setShowAdminLoginModal}
         handleLogoutAdmin={handleLogoutAdmin}
         setShowAddModal={setShowAddModal}
         setShowUploadModal={setShowUploadModal}
       />
+
+      {/* PWA Update Ready Toast / Banner */}
+      <AnimatePresence>
+        {pwaUpdateAvailable && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.96 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-16 md:top-20 left-1/2 -translate-x-1/2 z-[85] w-[calc(100vw-24px)] max-w-md bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-zinc-950 rounded-2xl p-3 shadow-[0_15px_40px_rgba(245,158,11,0.35)] flex items-center justify-between gap-3 border border-amber-300"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-black/15 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 text-black animate-spin" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-black leading-tight text-black">New DaSong Update Ready!</p>
+                <p className="text-[11px] font-semibold text-zinc-900 truncate">Tap update to get the latest features & fixes.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={applyPwaUpdate}
+                className="px-3 py-1.5 bg-black hover:bg-zinc-900 text-amber-400 font-black rounded-xl text-xs transition-all shadow active-touch cursor-pointer"
+              >
+                Update Now
+              </button>
+              <button
+                onClick={() => setPwaUpdateAvailable(false)}
+                className="p-1.5 text-zinc-800 hover:text-black hover:bg-black/10 rounded-lg transition-colors cursor-pointer"
+                title="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Live Admin Broadcast Invitation Toast / Banner */}
       <AnimatePresence>

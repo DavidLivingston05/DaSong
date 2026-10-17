@@ -19,6 +19,7 @@ interface HeaderProps {
   handleForceSync: () => void;
   handleForceUpdateApp?: () => void;
   mongoStatus: 'connecting' | 'connected' | 'error' | 'offline';
+  pwaUpdateAvailable?: boolean;
   setShowAdminLoginModal: (show: boolean) => void;
   handleLogoutAdmin: () => void;
   setShowAddModal: (show: boolean) => void;
@@ -35,6 +36,7 @@ export default function Header({
   handleInstallApp,
   handleForceSync,
   handleForceUpdateApp,
+  pwaUpdateAvailable = false,
   mongoStatus,
   setShowAdminLoginModal,
   handleLogoutAdmin,
@@ -252,11 +254,18 @@ export default function Header({
             {handleForceUpdateApp && (
               <button
                 onClick={handleForceUpdateApp}
-                className="p-2 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/30 text-amber-500 rounded-xl transition-all cursor-pointer active-touch"
-                title="Purge Cache & Reload Newest Version"
-                aria-label="Purge Cache & Reload Newest Version"
+                className={`p-2 bg-[#12131A] hover:bg-[#1A1C26] border ${
+                  pwaUpdateAvailable
+                    ? 'border-amber-400 text-amber-300 ring-2 ring-amber-400/50 shadow-lg shadow-amber-500/20 animate-pulse'
+                    : 'border-[#1E202B] hover:border-amber-500/30 text-amber-500'
+                } rounded-xl transition-all cursor-pointer active-touch relative`}
+                title={pwaUpdateAvailable ? "⚡ New Version Ready! Click to update now" : "Purge Cache & Reload Newest Version"}
+                aria-label="Update to Latest DaSong Version"
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className={`h-4 w-4 ${pwaUpdateAvailable ? 'animate-spin' : ''}`} />
+                {pwaUpdateAvailable && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full" />
+                )}
               </button>
             )}
             {/* Keyboard Shortcuts Guide - Desktop / Laptop Only */}
