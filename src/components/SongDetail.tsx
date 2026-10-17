@@ -970,25 +970,14 @@ export default function SongDetail({
                         key={idx}
                         id={`lyric-section-${idx}`}
                         onClick={handleSelectSection}
-                        className={`mb-6 p-4 rounded-xl transition-all duration-300 cursor-pointer relative ${
+                        className={`mb-6 p-4 rounded-xl transition-all duration-300 cursor-pointer ${
                           isSectionHighlighted
-                            ? isChorus
-                              ? 'border-l-4 border-amber-400 bg-amber-500/20 shadow-xl shadow-amber-500/10 ring-2 ring-amber-500/40 pl-4'
-                              : 'border-2 border-amber-400 bg-amber-500/15 shadow-xl shadow-amber-500/10 ring-2 ring-amber-500/30'
+                            ? 'border-l-4 border-amber-400 bg-amber-500/10 pl-4'
                             : isChorus
-                              ? 'border-l-4 border-amber-500 bg-amber-500/5 hover:bg-amber-500/10 border-t border-r border-b border-[#1E202B]/60 pl-4'
+                              ? 'border-l-4 border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 pl-4'
                               : 'bg-zinc-900/20 border border-[#1E202B]/60 hover:border-zinc-700 hover:bg-zinc-900/40'
                         }`}
                       >
-                        {isSectionHighlighted && !hasHeading && (
-                          <div className="flex justify-end mb-2 select-none">
-                            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/30 text-amber-200 border border-amber-400/50 text-[10px] font-bold tracking-widest font-mono">
-                              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                              SELECTED
-                            </span>
-                          </div>
-                        )}
-
                         {lines.map((line, lIdx) => {
                           const currentLineIndex = globalLineCounter++;
                           const lineId = `lyric-line-${currentLineIndex}`;
@@ -998,15 +987,9 @@ export default function SongDetail({
                               <div
                                 key={lIdx}
                                 id={lineId}
-                                className="font-bold text-amber-500 mt-1 mb-2 text-[11px] uppercase tracking-widest font-mono select-none flex items-center justify-between"
+                                className="font-bold text-amber-500 mt-1 mb-2 text-xs uppercase tracking-widest font-mono select-none"
                               >
-                                <span>{line}</span>
-                                {isSectionHighlighted && (
-                                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/30 text-amber-200 border border-amber-400/50 text-[10px] font-bold tracking-widest font-mono">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                                    SELECTED
-                                  </span>
-                                )}
+                                {line}
                               </div>
                             );
                           }
@@ -1015,10 +998,10 @@ export default function SongDetail({
                             <div
                               key={lIdx}
                               id={lineId}
-                              className={`leading-relaxed p-2 my-1 rounded-lg transition-all duration-200 select-text ${
+                              className={`leading-relaxed py-1.5 px-2 rounded transition-colors select-text ${
                                 isSectionHighlighted
-                                  ? 'bg-amber-500/25 text-amber-200 font-bold border-l-4 border-amber-400 pl-3 shadow-md'
-                                  : 'text-zinc-200 hover:bg-white/5 hover:text-white'
+                                  ? 'text-amber-200 font-bold text-base md:text-lg'
+                                  : 'text-zinc-200 hover:text-white'
                               }`}
                             >
                               {line}

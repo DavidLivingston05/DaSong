@@ -3,7 +3,7 @@ import {
   Music, Sparkles, Sliders, Play, Settings, Plus, Star, Heart, 
   Trash2, X, AlertCircle, RefreshCw, Check, BookOpen, Database,
   ChevronRight, HelpCircle, Download, Smartphone,
-  Home, Search, LogOut, ShieldCheck, User
+  Home, Search, LogOut, ShieldCheck, User, Radio
 } from 'lucide-react';
 import { Song, UserRole, Setlist } from './types';
 import { 
@@ -26,7 +26,7 @@ import AddSongModal from './components/modals/AddSongModal';
 import BulkUploadModal from './components/modals/BulkUploadModal';
 import AdminLoginModal from './components/modals/AdminLoginModal';
 import IOSInstallModal from './components/modals/IOSInstallModal';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 
 const StageMode = lazy(() => import('./components/StageMode'));
 
@@ -98,6 +98,8 @@ export default function App() {
   const [isFollowing, setIsFollowing] = useState<boolean>(() => {
     return localStorage.getItem('dasong_live_follow') === 'true';
   });
+  const [adminBroadcast, setAdminBroadcast] = useState<{ songId: string; songTitle?: string } | null>(null);
+  const [dismissedBroadcastSongId, setDismissedBroadcastSongId] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'search' | 'setlists'>('search');
   const [songSourceTab, setSongSourceTab] = useState<'search' | 'dashboard'>('search');
@@ -355,34 +357,84 @@ export default function App() {
     localStorage.setItem('dasong_dismiss_install', 'true');
   };
 
-  // Live Broadcast follower mode polling (active when outside a song view)
+  // Live Broadcast follower & invitation detection
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isFollowing && !selectedSongId && !stageModeSong) {
-      const checkFollow = async () => {
-        try {
-          const state = await getBroadcastState();
-          if (state && state.songId) {
-            setSelectedSongId(prev => {
-              if (prev !== state.songId) {
-                setActiveTab('search');
-                return state.songId;
-              }
-              return prev;
-            });
-          }
-        } catch (err) {
-          console.error('Follow mode sync error:', err);
-        }
-      };
+    let active = true;
 
-      checkFollow();
-      interval = setInterval(checkFollow, 2000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
+    const checkBroadcast = async () => {
+      try {
+        const isBroadcaster = localStorage.getItem('dasong_live_broadcast') === 'true';
+        if (isBroadcaster) {
+          if (adminBroadcast) setAdminBroadcast(null);
+          return;
+        }
+
+        const state = await getBroadcastState();
+        if (!active) return;
+
+        if (state && state.songId && typeof state.activeLineIndex === 'number' && state.activeLineIndex >= 0) {
+          // If already following, immediately synchronize/teleport to song
+          if (isFollowing) {
+            if (selectedSongId !== state.songId) {
+              setSelectedSongId(state.songId);
+              setActiveTab('search');
+            }
+            if (adminBroadcast) setAdminBroadcast(null);
+            return;
+          }
+
+          // If not following:
+          if (selectedSongId === state.songId) {
+            // Already viewing this exact song
+            if (adminBroadcast) setAdminBroadcast(null);
+            return;
+          }
+
+          // If dismissed for this song, do not prompt again for the same song
+          if (dismissedBroadcastSongId === state.songId) {
+            return;
+          }
+
+          const match = songs.find(s => s.id === state.songId);
+          setAdminBroadcast({
+            songId: state.songId,
+            songTitle: match ? match.title : 'Live Worship Song'
+          });
+        } else {
+          // Broadcast stopped by admin
+          if (adminBroadcast) setAdminBroadcast(null);
+          if (dismissedBroadcastSongId) setDismissedBroadcastSongId(null);
+        }
+      } catch (err) {
+        console.warn('Follow mode check error:', err);
+      }
     };
-  }, [isFollowing, selectedSongId, stageModeSong]);
+
+    checkBroadcast();
+    const interval = setInterval(checkBroadcast, 2200);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [isFollowing, selectedSongId, songs, dismissedBroadcastSongId, adminBroadcast]);
+
+  const handleAcceptFollow = () => {
+    if (!adminBroadcast) return;
+    const targetSongId = adminBroadcast.songId;
+    setIsFollowing(true);
+    localStorage.setItem('dasong_live_follow', 'true');
+    setAdminBroadcast(null);
+    setSelectedSongId(targetSongId);
+    setActiveTab('search');
+  };
+
+  const handleDismissFollow = () => {
+    if (adminBroadcast) {
+      setDismissedBroadcastSongId(adminBroadcast.songId);
+      setAdminBroadcast(null);
+    }
+  };
 
   const handleToggleFollow = async (val: boolean) => {
     setIsFollowing(val);
@@ -577,6 +629,53 @@ export default function App() {
         setShowAddModal={setShowAddModal}
         setShowUploadModal={setShowUploadModal}
       />
+
+      {/* Live Admin Broadcast Invitation Toast / Banner */}
+      <AnimatePresence>
+        {adminBroadcast && (
+          <motion.div
+            initial={{ opacity: 0, y: -25, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -25, scale: 0.96 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-16 md:top-20 left-1/2 -translate-x-1/2 z-[80] w-[calc(100vw-24px)] max-w-md bg-[#12131A] border-2 border-amber-500/80 rounded-2xl p-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.9)] flex items-center justify-between gap-3 text-white backdrop-blur-xl ring-1 ring-amber-500/30"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <Radio className="w-5 h-5 text-amber-400 animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
+                    Live Broadcast
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm font-bold text-white truncate mt-0.5">
+                  {adminBroadcast.songTitle}
+                </p>
+                <p className="text-[11px] text-zinc-400 font-medium">Do you want to follow admin?</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={handleAcceptFollow}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer"
+              >
+                Follow
+              </button>
+              <button
+                onClick={handleDismissFollow}
+                className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                title="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content View */}
       <main className="flex-1 px-3 sm:px-6 py-4 pb-24 md:pb-6 max-w-[1850px] mx-auto w-full flex flex-col overflow-visible">
