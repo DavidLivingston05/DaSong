@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio, Paintbrush, Palette, EyeOff, Keyboard, Maximize2, Minimize2 } from 'lucide-react';
+import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio, Paintbrush, Palette, Eye, EyeOff, Keyboard, Maximize2, Minimize2 } from 'lucide-react';
 import { Song, PresentationConfig } from '../types';
 import { stripChords, parseSongSections } from '../utils/chordTransposer';
 import { getBroadcastState } from '../lib/db';
@@ -283,40 +283,41 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
     };
   }, [scrolling, config.autoScrollSpeed]);
 
-  // Auto-hide control header when scrolling starts or when idle in slides mode
+  // Clean presentation control: In slides mode, keep screen completely clean and pure
   useEffect(() => {
-    let timer: number;
-    
-    const resetTimer = () => {
-      setShowHeader(true);
-      clearTimeout(timer);
-      // Auto hide after 3 seconds of inactivity
-      timer = window.setTimeout(() => {
-        setShowHeader(false);
-      }, 3000);
-    };
-
-    if (scrolling) {
-      timer = window.setTimeout(() => {
-        setShowHeader(false);
-      }, 2500);
-    } else if (viewMode === 'slides') {
-      resetTimer();
-
-      window.addEventListener('mousemove', resetTimer);
-      window.addEventListener('mousedown', resetTimer);
-      window.addEventListener('touchstart', resetTimer);
-      window.addEventListener('keydown', resetTimer);
-    } else {
-      setShowHeader(true);
+    if (viewMode === 'scroll') {
+      if (scrolling) {
+        const timer = window.setTimeout(() => setShowHeader(false), 2500);
+        return () => clearTimeout(timer);
+      } else {
+        setShowHeader(true);
+      }
+      return;
     }
 
+    // SLIDES MODE: Auto-hide after 2.5 seconds initially so stage is 100% clean lyrics
+    let hideTimer = window.setTimeout(() => {
+      setShowHeader(false);
+    }, 2200);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Only reveal header if user moves mouse to the very top edge (top 50px)
+      if (e.clientY <= 50) {
+        setShowHeader(true);
+        clearTimeout(hideTimer);
+      } else if (e.clientY > 110) {
+        // If mouse moves away down into slide, auto-hide smoothly after 1.2s
+        clearTimeout(hideTimer);
+        hideTimer = window.setTimeout(() => {
+          setShowHeader(false);
+        }, 1200);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener('mousemove', resetTimer);
-      window.removeEventListener('mousedown', resetTimer);
-      window.removeEventListener('touchstart', resetTimer);
-      window.removeEventListener('keydown', resetTimer);
+      clearTimeout(hideTimer);
+      window.removeEventListener('mousemove', handleMouseMove);
     };
   }, [scrolling, viewMode]);
 
@@ -362,6 +363,13 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();
         setShowKeyboardHelp((prev) => !prev);
+        return;
+      }
+
+      // Toggle Options / Clean Screen (H)
+      if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        setShowHeader((prev) => !prev);
         return;
       }
 
@@ -818,8 +826,13 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
       }}
     >
 
-      {/* Presentation Top bar Controls */}
-      <div id="stage-bar" className={`flex items-center justify-between p-3 border-b border-[#1E202B] bg-[#12131A] z-10 font-sans transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full absolute w-full'}`}>
+      {/* Presentation Top bar Controls — Floating overlay that can completely vanish */}
+      <div 
+        id="stage-bar" 
+        className={`absolute top-0 left-0 right-0 z-40 flex items-center justify-between p-3 border-b border-[#1E202B]/80 bg-[#12131A]/95 backdrop-blur-md font-sans transition-all duration-300 shadow-2xl ${
+          showHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
+        }`}
+      >
         {isLargeScreen ? (
           <>
             <div className="flex items-center gap-3">
@@ -926,6 +939,17 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                 {isNativeFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
               </button>
 
+              {/* Hide Options / Clean Screen Toggle Button */}
+              <button
+                onClick={() => setShowHeader(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer transition-all border bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-400 font-bold text-xs"
+                title="Hide All Options for Clean Stage Screen (H)"
+                aria-label="Hide All Options"
+              >
+                <EyeOff className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline">Hide Options (H)</span>
+              </button>
+
               {/* Blackout Toggle Button */}
               <button
                 onClick={() => setIsBlackout((p) => !p)}
@@ -1011,6 +1035,14 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                 {isNativeFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </button>
               <button
+                onClick={() => setShowHeader(false)}
+                className="p-2 rounded border active-touch transition-all bg-amber-500/10 border-amber-500/30 text-amber-400"
+                title="Hide Options (H)"
+                aria-label="Hide Options"
+              >
+                <EyeOff className="h-4 w-4" />
+              </button>
+              <button
                 onClick={() => setIsBlackout((p) => !p)}
                 className={`p-2 rounded border active-touch transition-all ${
                   isBlackout
@@ -1067,6 +1099,26 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
           </div>
         )}
       </div>
+
+      {/* Discreet top-right pill to bring options back */}
+      {!showHeader && viewMode === 'slides' && (
+        <button
+          onClick={() => setShowHeader(true)}
+          className="absolute top-3 right-3 z-30 px-3 py-1.5 rounded-full bg-black/50 hover:bg-black/80 border border-white/10 text-white/60 hover:text-white backdrop-blur-md text-[11px] font-mono flex items-center gap-1.5 opacity-30 hover:opacity-100 transition-all cursor-pointer shadow-lg"
+          title="Show Options (H or hover top edge)"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span>Options (H)</span>
+        </button>
+      )}
+
+      {/* Invisible top edge hover trigger zone */}
+      {!showHeader && viewMode === 'slides' && (
+        <div 
+          onMouseEnter={() => setShowHeader(true)}
+          className="absolute top-0 left-0 right-0 h-4 z-30 pointer-events-auto"
+        />
+      )}
 
 
       {viewMode === 'scroll' ? (

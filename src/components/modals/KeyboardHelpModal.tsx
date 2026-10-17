@@ -46,7 +46,8 @@ export default function KeyboardHelpModal({ isOpen, onClose }: KeyboardHelpModal
       title: 'Stage & Projection Mode',
       description: 'Full-screen projection, clicker remotes & pedals',
       items: [
-        { keys: ['F'], desc: 'Toggle Fullscreen / Stage Mode' },
+        { keys: ['F'], desc: 'Toggle Fullscreen (covers entire screen)' },
+        { keys: ['H'], desc: 'Hide / Show all options (Clean Screen)' },
         { keys: ['B', '.'], desc: 'Blackout / Blank Stage Screen toggle' },
         { keys: ['Space'], desc: 'Toggle Auto-scroll (Play / Pause)' },
         { keys: ['PageDown', 'PageUp'], desc: 'Next / Previous Slide' },
