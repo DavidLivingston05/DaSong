@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio, Paintbrush, Palette, EyeOff, Keyboard } from 'lucide-react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio, Paintbrush, Palette, EyeOff, Keyboard, Maximize2, Minimize2 } from 'lucide-react';
 import { Song, PresentationConfig } from '../types';
 import { stripChords, parseSongSections } from '../utils/chordTransposer';
 import { getBroadcastState } from '../lib/db';
@@ -51,10 +51,71 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
   }, [config]);
 
   // View mode, screen size, and slide presentation states
-  const [viewMode, setViewMode] = useState<'scroll' | 'slides'>('scroll');
+  const [viewMode, setViewMode] = useState<'scroll' | 'slides'>(() => {
+    return (localStorage.getItem('dasong_stage_view_mode') as 'scroll' | 'slides') || 'slides';
+  });
+
+  const handleSetViewMode = (mode: 'scroll' | 'slides') => {
+    setViewMode(mode);
+    setScrolling(false);
+    localStorage.setItem('dasong_stage_view_mode', mode);
+  };
+
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   const [showDesktopCustomizer, setShowDesktopCustomizer] = useState<boolean>(false);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState<boolean>(() => !!document.fullscreenElement);
+
+  // Sync native fullscreen changes (e.g. user pressed F11, Esc, or browser exit)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsNativeFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleNativeFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if ((document.documentElement as any).webkitRequestFullscreen) {
+          await (document.documentElement as any).webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document.exitFullscreen as any).webkitExitFullscreen) {
+          await (document.exitFullscreen as any).webkitExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Native fullscreen error:', err);
+    }
+  }, []);
+
+  // When stage mode is closed, safely exit native fullscreen
+  const handleExitStage = useCallback(() => {
+    if (document.fullscreenElement) {
+      try {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if ((document.exitFullscreen as any).webkitExitFullscreen) (document.exitFullscreen as any).webkitExitFullscreen();
+      } catch {}
+    }
+    onClose();
+  }, [onClose]);
+
+  // Request native fullscreen automatically when entering Stage Mode if supported
+  useEffect(() => {
+    if (!document.fullscreenElement) {
+      toggleNativeFullscreen().catch(() => {});
+    }
+  }, [toggleNativeFullscreen]);
 
   const touchStartRef = useRef<number | null>(null);
 
@@ -287,7 +348,14 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
           setShowKeyboardHelp(false);
           return;
         }
-        onClose();
+        handleExitStage();
+        return;
+      }
+
+      // Native Fullscreen Toggle (F)
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleNativeFullscreen();
         return;
       }
 
@@ -334,10 +402,10 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
         return;
       }
 
-      // Fast font scaling
+      // Fast font scaling (up to 120px for massive auditorium displays)
       if (e.key === '+' || e.key === '=') {
         e.preventDefault();
-        setConfig((prev) => ({ ...prev, fontSize: Math.min(80, prev.fontSize + 3) }));
+        setConfig((prev) => ({ ...prev, fontSize: Math.min(120, prev.fontSize + 3) }));
         return;
       }
       if (e.key === '-' || e.key === '_') {
@@ -446,7 +514,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
     const section = sections[currentSlideIndex];
     if (!section) return null;
 
-    const isChorus = section.toLowerCase().startsWith('chorus:');
+    const isChorus = section.toLowerCase().startsWith('chorus:') || /^(?:chorus|பல்லவி)/i.test(section.trim());
     const lines = section.split('\n');
 
     // Compute lines offset for slide highlighting
@@ -458,47 +526,60 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
     const slideLineCount = lines.length;
     const hasActiveLineOnSlide = highlightedLineIndex >= activeSlideLineOffset && highlightedLineIndex < activeSlideLineOffset + slideLineCount;
 
+    // Calculate dynamic screen-filling font size so lyrics cover the entire screen
+    const cleanLines = lines.filter(l => !l.endsWith(':') && l.trim().length > 0 && !(isChorus && l.toLowerCase().startsWith('chorus:')));
+    const lineCount = cleanLines.length || 1;
+    const baseScale = (config.fontSize || 28) / 28;
+
+    // Scale dynamically to fill the whole screen:
+    // 1 line: 1.6x, 2 lines: 1.4x, 3-4 lines: 1.18x, 5-6 lines: 0.98x, 7+ lines: 0.82x
+    const lineScaleFactor = lineCount <= 1 ? 1.6 : lineCount <= 2 ? 1.4 : lineCount <= 4 ? 1.18 : lineCount <= 6 ? 0.98 : 0.82;
+    const responsivePx = Math.round(48 * baseScale * lineScaleFactor);
+
     return (
-      <div className="w-full max-w-5xl px-6 py-6 text-center select-none animate-fadeIn">
+      <div className="w-full h-full max-w-none flex flex-col justify-center items-center text-center select-none px-4 sm:px-8 md:px-14 animate-in fade-in duration-200">
         {isChorus && (
-          <span className="text-[11px] font-mono tracking-widest text-amber-500/80 uppercase font-bold select-none mb-6 block">
-            Chorus
+          <span className="text-xs sm:text-sm font-mono tracking-widest text-amber-500/90 uppercase font-black select-none mb-3 sm:mb-6 block">
+            Chorus • பல்லவி
           </span>
         )}
         
-        <div className="space-y-6 md:space-y-8 flex flex-col justify-center min-h-[40vh] py-4">
+        <div className="w-full flex flex-col justify-center items-center gap-4 sm:gap-6 md:gap-8 lg:gap-10 py-2">
           {lines.map((line, lIdx) => {
             const currentLineIndex = activeSlideLineOffset + lIdx;
             const isHighlighted = currentLineIndex === highlightedLineIndex;
             
             const highlightClass = hasActiveLineOnSlide
-              ? 'scale-[1.01] opacity-100 transition-all duration-300 origin-center text-white font-black drop-shadow-md'
-              : 'opacity-100 transition-all duration-300 origin-center';
+              ? (isHighlighted ? 'scale-[1.02] opacity-100 text-white font-black drop-shadow-xl' : 'opacity-85')
+              : 'opacity-100';
 
             if (isChorus && line.toLowerCase().startsWith('chorus:')) {
               const remaining = line.slice(7).trim();
               if (!remaining) return null;
             }
 
-
-
             const isLightTheme = config.theme === 'parchment' || config.theme === 'classic';
             const headingColor = isLightTheme ? 'text-amber-800 font-bold' : 'text-amber-500 font-black';
             const slideTextStyle: React.CSSProperties = {
-              fontSize: line.endsWith(':') ? '14px' : `${config.fontSize * 1.3}px`,
+              fontSize: line.endsWith(':')
+                ? '14px'
+                : `clamp(24px, ${responsivePx}px, 6.5vw)`,
+              lineHeight: 1.35,
               color: line.endsWith(':')
                 ? undefined
-                : config.theme === 'custom'
-                  ? config.customTextColor
-                  : undefined,
+                : isHighlighted
+                  ? '#ffffff'
+                  : config.theme === 'custom'
+                    ? config.customTextColor
+                    : undefined,
             };
 
             return (
               <div
                 key={lIdx}
-                className={`leading-relaxed p-1 ${highlightClass} ${
+                className={`leading-tight p-1 w-full max-w-full break-words transition-all duration-200 ${highlightClass} ${
                   line.endsWith(':')
-                    ? `text-sm uppercase tracking-widest ${headingColor} mb-4`
+                    ? `text-sm uppercase tracking-widest ${headingColor} mb-2`
                     : 'font-extrabold tracking-wide'
                 }`}
                 style={slideTextStyle}
@@ -773,10 +854,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
               {/* Scroll vs Slides View Toggles */}
               <div className="flex gap-1 bg-zinc-900/60 p-1 rounded border border-[#1E202B] shrink-0 select-none">
                 <button
-                  onClick={() => {
-                    setViewMode('scroll');
-                    setScrolling(false);
-                  }}
+                  onClick={() => handleSetViewMode('scroll')}
                   className={`flex items-center gap-1.5 px-3 py-1 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
                     viewMode === 'scroll'
                       ? 'bg-amber-500 text-black font-black'
@@ -787,10 +865,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                   <FileText className="h-3 w-3" aria-hidden={true} /> Scroll
                 </button>
                 <button
-                  onClick={() => {
-                    setViewMode('slides');
-                    setScrolling(false);
-                  }}
+                  onClick={() => handleSetViewMode('slides')}
                   className={`flex items-center gap-1.5 px-3 py-1 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
                     viewMode === 'slides'
                       ? 'bg-amber-500 text-black font-black'
@@ -807,7 +882,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                 <button
                   onClick={() => setConfig((p) => ({ ...p, fontSize: Math.max(16, p.fontSize - 3) }))}
                   className="p-3 min-w-[44px] min-h-[44px] text-slate-400 hover:text-white rounded cursor-pointer"
-                  title="Decrease font size"
+                  title="Decrease font size (-)"
                   aria-label="Decrease font size"
                 >
                   <ZoomOut className="h-3.5 w-3.5" />
@@ -816,9 +891,9 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                   {config.fontSize}px
                 </span>
                 <button
-                  onClick={() => setConfig((p) => ({ ...p, fontSize: Math.min(50, p.fontSize + 3) }))}
+                  onClick={() => setConfig((p) => ({ ...p, fontSize: Math.min(120, p.fontSize + 3) }))}
                   className="p-3 min-w-[44px] min-h-[44px] text-slate-400 hover:text-white rounded cursor-pointer"
-                  title="Increase font size"
+                  title="Increase font size (+)"
                   aria-label="Increase font size"
                 >
                   <ZoomIn className="h-3.5 w-3.5" />
@@ -837,6 +912,19 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                 <Columns className="h-3.5 w-3.5" />
               </button>
 
+              {/* Native Browser Full Screen Toggle */}
+              <button
+                onClick={toggleNativeFullscreen}
+                className={`p-2 rounded cursor-pointer transition-all border ${
+                  isNativeFullscreen
+                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                    : 'bg-zinc-900/60 border-[#1E202B] text-slate-400 hover:text-white'
+                }`}
+                title={isNativeFullscreen ? "Exit Fullscreen (F)" : "Cover Full Screen (F)"}
+                aria-label="Toggle Fullscreen"
+              >
+                {isNativeFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              </button>
 
               {/* Blackout Toggle Button */}
               <button
@@ -883,7 +971,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
               {/* Exit Presentation */}
               <button
                 id="close-stage-btn"
-                onClick={onClose}
+                onClick={handleExitStage}
                 className="cursor-pointer p-2 hover:bg-rose-500/15 text-slate-400 hover:text-rose-455 rounded transition-all"
                 title="Exit Presentation (Esc)"
                 aria-label="Exit presentation"
@@ -895,7 +983,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
         ) : (
           <div className="flex items-center justify-between w-full gap-2 select-none">
             <button 
-              onClick={onClose} 
+              onClick={handleExitStage} 
               className="p-2 bg-zinc-900/60 border border-[#1E202B] text-zinc-400 hover:text-white rounded active-touch"
               aria-label="Exit presentation"
             >
@@ -909,6 +997,19 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
               </div>
             </div>
             <div className="flex items-center gap-1.5">
+              {/* Native Fullscreen Button Mobile */}
+              <button
+                onClick={toggleNativeFullscreen}
+                className={`p-2 rounded border active-touch transition-all ${
+                  isNativeFullscreen
+                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                    : 'bg-zinc-900/60 border border-[#1E202B] text-zinc-400'
+                }`}
+                title={isNativeFullscreen ? "Exit Fullscreen (F)" : "Cover Full Screen (F)"}
+                aria-label="Toggle Fullscreen"
+              >
+                {isNativeFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
               <button
                 onClick={() => setIsBlackout((p) => !p)}
                 className={`p-2 rounded border active-touch transition-all ${
@@ -1025,58 +1126,53 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
           )}
         </div>
       ) : (
-        /* Immersive Slides Presentation Stage */
+        /* Immersive Slides Presentation Stage — Covers 100% of Entire Screen */
         <div 
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="flex-1 flex flex-col justify-between items-center relative py-8 px-12 md:px-24 select-none"
+          className="flex-1 w-full h-full flex flex-col justify-center items-center relative p-0 select-none overflow-hidden"
         >
-          
           {/* Edge Left Navigation Arrow */}
-          {currentSlideIndex > 0 ? (
+          {currentSlideIndex > 0 && (
             <button
               onClick={() => setCurrentSlideIndex(prev => Math.max(0, prev - 1))}
-              className={`absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded bg-[#12131A] border border-[#1E202B] hover:bg-zinc-800 transition-all text-slate-400 hover:text-white cursor-pointer active-touch z-25 duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-              title="Previous Slide"
+              className={`absolute left-3 md:left-6 top-1/2 -translate-y-1/2 p-3 sm:p-4 rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 hover:bg-black/90 transition-all text-slate-300 hover:text-white cursor-pointer active-touch z-25 duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+              title="Previous Slide (← / ↑)"
               aria-label="Previous slide"
             >
-              <ChevronLeft className="h-6 w-6 stroke-[3]" />
+              <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8 stroke-[3]" />
             </button>
-          ) : (
-            <div className="absolute left-4 w-14 h-14" />
           )}
 
           {/* Edge Right Navigation Arrow */}
-          {currentSlideIndex < sections.length - 1 ? (
+          {currentSlideIndex < sections.length - 1 && (
             <button
               onClick={() => setCurrentSlideIndex(prev => Math.min(sections.length - 1, prev + 1))}
-              className={`absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded bg-[#12131A] border border-[#1E202B] hover:bg-zinc-800 transition-all text-slate-400 hover:text-white cursor-pointer active-touch z-25 duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-              title="Next Slide"
+              className={`absolute right-3 md:right-6 top-1/2 -translate-y-1/2 p-3 sm:p-4 rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 hover:bg-black/90 transition-all text-slate-300 hover:text-white cursor-pointer active-touch z-25 duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+              title="Next Slide (→ / ↓ / Space)"
               aria-label="Next slide"
             >
-              <ChevronRight className="h-6 w-6 stroke-[3]" />
+              <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8 stroke-[3]" />
             </button>
-          ) : (
-            <div className="absolute right-4 w-14 h-14" />
           )}
 
-          {/* Active slide container */}
-          <div className="flex-1 flex items-center justify-center w-full my-auto animate-in fade-in duration-300">
+          {/* Active slide container — Takes 100% full screen edge-to-edge */}
+          <div className="w-full h-full flex items-center justify-center p-2 sm:p-6 md:p-10 my-auto">
             {renderActiveSlide()}
           </div>
 
-          {/* Bottom Slides progress navigation bar */}
-          <div className={`w-full max-w-xl flex flex-col items-center gap-2.5 z-20 mt-6 select-none transition-all duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          {/* Bottom Slides progress navigation bar overlay */}
+          <div className={`absolute bottom-3 left-0 right-0 flex flex-col items-center gap-1.5 z-20 select-none transition-all duration-300 ${showHeader ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none translate-y-3'}`}>
             {/* Jump Dots Rack */}
-            <div className="flex flex-wrap items-center justify-center gap-2 max-w-full">
+            <div className="flex flex-wrap items-center justify-center gap-2 max-w-[85vw] bg-black/50 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10">
               {sections.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentSlideIndex(idx)}
-                  className={`w-1.5 h-1.5 rounded-full transition-all cursor-pointer ${
+                  className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
                     currentSlideIndex === idx
-                      ? 'bg-amber-500 scale-125'
-                      : 'bg-white/20 hover:bg-white/40'
+                      ? 'bg-amber-400 scale-150 ring-2 ring-amber-400/40'
+                      : 'bg-white/30 hover:bg-white/60'
                   }`}
                   title={`Go to Slide ${idx + 1}`}
                 />
@@ -1084,8 +1180,8 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
             </div>
             
             {/* Slide Index Summary */}
-            <div className="text-[9px] font-mono tracking-widest text-zinc-500 uppercase">
-              Slide <span className="text-amber-500 font-bold">{currentSlideIndex + 1}</span> of {sections.length}
+            <div className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase bg-black/50 backdrop-blur-md px-2.5 py-0.5 rounded-md border border-white/10">
+              Slide <span className="text-amber-400 font-bold">{currentSlideIndex + 1}</span> of {sections.length}
             </div>
           </div>
 
