@@ -413,17 +413,33 @@ export default function SongDetail({
         (activeEl as HTMLElement).isContentEditable
       );
 
-      // Disable keyboard shortcuts when editing or typing
-      if (isTyping || isEditing) return;
+      // When typing or editing
+      if (isTyping) return;
+      if (isEditing) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsEditing(false);
+        }
+        return;
+      }
 
       switch (e.key) {
         case 'Escape':
           e.preventDefault();
           if (showKeyboardHelp) {
             setShowKeyboardHelp(false);
-          } else if (onBack) {
-            onBack();
+          } else if (showAddToSetlist) {
+            setShowAddToSetlist(false);
+          } else if (showFontControl) {
+            setShowFontControl(false);
+          } else if (showShareDropdown) {
+            setShowShareDropdown(false);
+          } else if (showMobileDrawer) {
+            setShowMobileDrawer(false);
           } else {
+            if (isBroadcasting) {
+              broadcastState(null, -1).catch(() => {});
+            }
             onClose();
           }
           break;
@@ -769,41 +785,27 @@ export default function SongDetail({
       {/* Detail Header Strip - Masterfully designed for both Desktop and Mobile */}
       <div className="px-3 sm:px-5 py-2.5 sm:py-3.5 border-b border-[#1E202B] bg-[#12131A] flex items-center justify-between gap-2">
         
-        {/* Left Side: Back Trigger & Direct Search Return */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Left Side: Single Unified Back Button */}
+        <div className="flex items-center shrink-0">
           <button
             onClick={() => {
               if (isBroadcasting) {
                 broadcastState(null, -1).catch(() => {});
               }
-              if (onBack) {
-                onBack();
-              } else {
-                onClose();
-              }
+              onClose();
             }}
-            className="h-9 px-3 bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active-touch shrink-0"
-            title="Go back to previous song or search results"
+            className="h-9 px-3 bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-200 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer active:scale-95 shrink-0 shadow-sm group"
+            title={searchQuery ? `Back to search results for "${searchQuery}" (Esc)` : "Back to Songs Library (Esc)"}
+            aria-label="Back to Library"
           >
-            <ChevronLeft className="w-4 h-4 text-amber-500" />
-            <span className="text-xs font-bold font-sans">Back</span>
+            <ChevronLeft className="w-4 h-4 text-amber-500 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back</span>
+            {searchQuery && (
+              <span className="hidden sm:inline font-normal text-zinc-400 max-w-[140px] truncate text-[11px] pl-1 border-l border-zinc-700">
+                "{searchQuery}"
+              </span>
+            )}
           </button>
-
-          {searchQuery && (
-            <button
-              onClick={() => {
-                if (isBroadcasting) {
-                  broadcastState(null, -1).catch(() => {});
-                }
-                onClose();
-              }}
-              className="h-9 px-2.5 sm:px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer active-touch shrink-0 max-w-[150px] sm:max-w-[240px]"
-              title={`Return directly to search results for "${searchQuery}"`}
-            >
-              <Search className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-              <span className="truncate text-[11px] sm:text-xs">"{searchQuery}"</span>
-            </button>
-          )}
         </div>
 
         {/* Right Side: Primary Responsive Actions Control Panel */}

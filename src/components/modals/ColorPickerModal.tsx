@@ -70,6 +70,20 @@ export default function ColorPickerModal({
     }
   }, [currentColorHex]);
 
+  // Handle Escape key to close modal cleanly
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const currentRgb: RGB = hsvToRgb(hsv.h, hsv.s, hsv.v);
   const currentHex: string = rgbToHex(currentRgb.r, currentRgb.g, currentRgb.b);
   const currentHsl: HSL = rgbToHsl(currentRgb.r, currentRgb.g, currentRgb.b);

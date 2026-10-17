@@ -39,7 +39,7 @@ export default function KeyboardHelpModal({ isOpen, onClose }: KeyboardHelpModal
       items: [
         { keys: ['→', 'D', 'N'], desc: 'Next Song in queue' },
         { keys: ['←', 'A', 'P'], desc: 'Previous Song in queue' },
-        { keys: ['Esc'], desc: 'Back to previous song or search results' },
+        { keys: ['Esc'], desc: 'Back to Library or close open modal/view' },
       ],
     },
     {

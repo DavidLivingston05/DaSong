@@ -215,13 +215,9 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Back button handler: traverses back through song history or returns to library
+  // Back button handler: cleanly exits current song view back to library
   const handleBack = useCallback(() => {
-    if (window.history.length > 1 && currentStackIndexRef.current > 0) {
-      window.history.back();
-    } else {
-      setSelectedSongId(null);
-    }
+    setSelectedSongId(null);
   }, []);
 
   // Update history state on navigation
@@ -249,11 +245,19 @@ export default function App() {
         searchQuery: searchQuery
       };
 
+      // If switching from one song to another, replace current state so going Back goes straight to library
+      const isSongSwitch = topState && topState.songId && selectedSongId && topState.songId !== selectedSongId;
+
       if (historyStackRef.current.length > 0) {
-        historyStackRef.current = historyStackRef.current.slice(0, currentStackIndexRef.current + 1);
-        historyStackRef.current.push(newState);
-        currentStackIndexRef.current = historyStackRef.current.length - 1;
-        history.pushState(newState, '', window.location.pathname + window.location.search);
+        if (isSongSwitch) {
+          historyStackRef.current[currentStackIndexRef.current] = newState;
+          history.replaceState(newState, '', window.location.pathname + window.location.search);
+        } else {
+          historyStackRef.current = historyStackRef.current.slice(0, currentStackIndexRef.current + 1);
+          historyStackRef.current.push(newState);
+          currentStackIndexRef.current = historyStackRef.current.length - 1;
+          history.pushState(newState, '', window.location.pathname + window.location.search);
+        }
       }
     }
   }, [
@@ -265,6 +269,45 @@ export default function App() {
     showAdminLoginModal,
     searchQuery
   ]);
+
+  // Global Escape Key Hierarchy
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+
+      // Close open modals in priority order
+      if (showAdminLoginModal) {
+        e.preventDefault();
+        setShowAdminLoginModal(false);
+        return;
+      }
+      if (showAddModal) {
+        e.preventDefault();
+        setShowAddModal(false);
+        return;
+      }
+      if (showUploadModal) {
+        e.preventDefault();
+        setShowUploadModal(false);
+        return;
+      }
+      if (showIOSInstructions) {
+        e.preventDefault();
+        setShowIOSInstructions(false);
+        return;
+      }
+      // If Stage Mode is active, StageMode component itself handles Escape.
+      // If SongDetail is active and no modals are open:
+      if (!stageModeSong && selectedSongId) {
+        e.preventDefault();
+        setSelectedSongId(null);
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showAdminLoginModal, showAddModal, showUploadModal, showIOSInstructions, stageModeSong, selectedSongId]);
 
   // Load & sync songs metadata
   const syncSongsList = useCallback(async () => {
