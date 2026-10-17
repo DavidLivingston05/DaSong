@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer, X, Calendar, Search, Keyboard } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer, X, Calendar, Search, Keyboard, Maximize2 } from 'lucide-react';
 import { Song, UserRole, Setlist } from '../types';
 import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, broadcastState, getBroadcastState, getSetlists, fetchSetlistsFromCloud } from '../lib/db';
 import { stripChords, parseSongSections } from '../utils/chordTransposer';
@@ -719,8 +719,34 @@ export default function SongDetail({
     };
   }, [scrolling, autoScrollSpeed]);
 
+  const handleEnterFullscreen = useCallback(async () => {
+    try {
+      const doc = document as any;
+      const docEl = document.documentElement as any;
+      const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+      if (!isFull) {
+        if (docEl.requestFullscreen) {
+          await docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+          await docEl.webkitRequestFullscreen();
+        } else if (docEl.mozRequestFullScreen) {
+          await docEl.mozRequestFullScreen();
+        } else if (docEl.msRequestFullscreen) {
+          await docEl.msRequestFullscreen();
+        }
+      }
+    } catch {
+      // Ignored if browser policy blocks gesture
+    }
+    onEnterStageMode();
+  }, [onEnterStageMode]);
+
   const handleSaveEdit = async () => {
     if (!song) return;
+    if (currentRole !== 'admin') {
+      alert('Only administrators can edit song lyrics.');
+      return;
+    }
 
     const updatedSong: Song = {
       ...song,
@@ -893,28 +919,32 @@ export default function SongDetail({
             )}
           </div>
 
-          {/* Add To Setlist Action Button */}
-          <button
-            onClick={() => setShowAddToSetlist(true)}
-            className="h-9 px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-300 hover:text-white"
-            title="Add song to service setlist"
-          >
-            <Calendar className="h-3.5 w-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Setlist</span>
-          </button>
+          {/* Add To Setlist Action Button - Admin Only */}
+          {currentRole === 'admin' && (
+            <button
+              onClick={() => setShowAddToSetlist(true)}
+              className="h-9 px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-300 hover:text-white"
+              title="Add song to service setlist"
+            >
+              <Calendar className="h-3.5 w-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Setlist</span>
+            </button>
+          )}
 
-          {/* Edit Lyrics Trigger */}
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className={`h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
-              isEditing
-                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                : 'bg-zinc-900/80 border border-[#1E202B] text-zinc-400 hover:text-white'
-            }`}
-            title="Edit Lyrics"
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-          </button>
+          {/* Edit Lyrics Trigger - Admin Only */}
+          {currentRole === 'admin' && (
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                isEditing
+                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                  : 'bg-zinc-900/80 border border-[#1E202B] text-zinc-400 hover:text-white'
+              }`}
+              title="Edit Lyrics"
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+            </button>
+          )}
 
           {/* Font Scale Control Toggle */}
           <button
@@ -929,24 +959,25 @@ export default function SongDetail({
             <ZoomIn className="h-4 w-4" />
           </button>
 
-          {/* Keyboard Shortcuts Guide */}
+          {/* Keyboard Shortcuts Guide - Desktop / Laptop Only */}
           <button
             onClick={() => setShowKeyboardHelp(true)}
-            className="h-9 w-9 rounded-xl flex items-center justify-center cursor-pointer transition-all shrink-0 bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-400 hover:text-amber-400"
+            className="hidden md:flex h-9 w-9 rounded-xl items-center justify-center cursor-pointer transition-all shrink-0 bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-400 hover:text-amber-400"
             title="Worship Leader Hotkeys (?)"
           >
             <Keyboard className="h-4 w-4" />
           </button>
 
-          {/* Present Fullscreen */}
+          {/* Full Screen Presentation */}
           <button
             id="stage-presentation-trigger"
-            onClick={() => onEnterStageMode()}
-            className="h-9 px-3 sm:px-4 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0 shadow-md"
-            title="Present Fullscreen"
+            onClick={handleEnterFullscreen}
+            className="h-9 px-3 sm:px-3.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0 shadow-md shadow-amber-500/20"
+            title="Cover Full Screen"
+            aria-label="Cover Full Screen"
           >
-            <ArrowUpRight className="h-4 w-4 stroke-[3]" />
-            <span className="hidden sm:inline">Stage</span>
+            <Maximize2 className="h-3.5 w-3.5 stroke-[2.5]" />
+            <span className="font-extrabold">Full Screen</span>
           </button>
         </div>
       </div>
@@ -984,8 +1015,8 @@ export default function SongDetail({
         </div>
       )}
 
-      {/* Editing panel state */}
-      {isEditing ? (
+      {/* Editing panel state - Admin Only */}
+      {isEditing && currentRole === 'admin' ? (
         <div className="p-6 flex-1 overflow-y-auto space-y-5 bg-[#12131A]">
           <h4 className="font-bold text-sm text-white uppercase tracking-wider font-mono">Manual Lyrics Editor</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

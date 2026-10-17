@@ -227,10 +227,10 @@ export default function Header({
                 <RefreshCw className="h-4 w-4" />
               </button>
             )}
-            {/* Keyboard Shortcuts Guide */}
+            {/* Keyboard Shortcuts Guide - Desktop / Laptop Only */}
             <button
               onClick={() => setShowKeyboardHelp(true)}
-              className="p-2 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/30 text-zinc-400 hover:text-amber-400 rounded-xl transition-all cursor-pointer active-touch"
+              className="hidden md:flex p-2 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/30 text-zinc-400 hover:text-amber-400 rounded-xl transition-all cursor-pointer active-touch items-center justify-center"
               title="Worship Leader Hotkeys (?)"
               aria-label="Worship Leader Hotkeys"
             >

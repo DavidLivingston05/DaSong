@@ -144,7 +144,7 @@ function SongList({
               setSearchQuery(e.target.value);
               setVisibleLimit(80);
             }}
-            placeholder="Search song title, lyrics, or author... ('/' to focus)"
+            placeholder="Search song title, lyrics, or author..."
             className="w-full bg-[#12131A] text-white text-sm pl-10 pr-20 py-3 rounded-xl border border-[#1E202B] focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 outline-none transition-all placeholder:text-zinc-500 font-medium shadow-sm"
           />
 

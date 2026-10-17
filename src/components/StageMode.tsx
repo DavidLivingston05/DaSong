@@ -81,21 +81,36 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
 
   const toggleNativeFullscreen = useCallback(async () => {
     try {
-      if (!document.fullscreenElement) {
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen();
-        } else if ((document.documentElement as any).webkitRequestFullscreen) {
-          await (document.documentElement as any).webkitRequestFullscreen();
+      const doc = document as any;
+      const docEl = document.documentElement as any;
+      const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+      if (!isFull) {
+        if (docEl.requestFullscreen) {
+          await docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+          await docEl.webkitRequestFullscreen();
+        } else if (docEl.mozRequestFullScreen) {
+          await docEl.mozRequestFullScreen();
+        } else if (docEl.msRequestFullscreen) {
+          await docEl.msRequestFullscreen();
+        } else {
+          // Fallback for iOS / devices without element fullscreen: hide header for maximum immersion
+          setShowHeader(false);
         }
       } else {
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
-        } else if ((document.exitFullscreen as any).webkitExitFullscreen) {
-          await (document.exitFullscreen as any).webkitExitFullscreen();
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
+        } else if (doc.mozCancelFullScreen) {
+          await doc.mozCancelFullScreen();
+        } else if (doc.msExitFullscreen) {
+          await doc.msExitFullscreen();
         }
       }
     } catch (err) {
       console.warn('Native fullscreen error:', err);
+      setShowHeader(false);
     }
   }, []);
 
@@ -964,10 +979,10 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                 <EyeOff className="h-3.5 w-3.5" />
               </button>
 
-              {/* Keyboard Shortcuts Guide */}
+              {/* Keyboard Shortcuts Guide - Desktop Only */}
               <button
                 onClick={() => setShowKeyboardHelp(true)}
-                className="p-2 rounded cursor-pointer transition-all border bg-zinc-900/60 border-[#1E202B] text-slate-400 hover:text-amber-400 hover:border-amber-500/40"
+                className="hidden md:flex p-2 rounded cursor-pointer transition-all border bg-zinc-900/60 border-[#1E202B] text-slate-400 hover:text-amber-400 hover:border-amber-500/40 items-center justify-center"
                 title="Worship Leader Hotkeys (?)"
                 aria-label="Worship Leader Hotkeys"
               >
@@ -1024,20 +1039,21 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
               {/* Native Fullscreen Button Mobile */}
               <button
                 onClick={toggleNativeFullscreen}
-                className={`p-2 rounded border active-touch transition-all ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border active-touch transition-all ${
                   isNativeFullscreen
                     ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                    : 'bg-zinc-900/60 border border-[#1E202B] text-zinc-400'
+                    : 'bg-zinc-900/60 border border-[#1E202B] text-zinc-200'
                 }`}
-                title={isNativeFullscreen ? "Exit Fullscreen (F)" : "Cover Full Screen (F)"}
+                title={isNativeFullscreen ? "Exit Fullscreen" : "Cover Full Screen"}
                 aria-label="Toggle Fullscreen"
               >
-                {isNativeFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                {isNativeFullscreen ? <Minimize2 className="h-4 w-4 text-amber-400" /> : <Maximize2 className="h-4 w-4 text-amber-400" />}
+                <span className="text-[11px] font-bold font-mono text-amber-400">Full</span>
               </button>
               <button
                 onClick={() => setShowHeader(false)}
                 className="p-2 rounded border active-touch transition-all bg-amber-500/10 border-amber-500/30 text-amber-400"
-                title="Hide Options (H)"
+                title="Hide Options"
                 aria-label="Hide Options"
               >
                 <EyeOff className="h-4 w-4" />
@@ -1049,18 +1065,10 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                     ? 'bg-rose-500 border-rose-500 text-white'
                     : 'bg-zinc-900/60 border border-[#1E202B] text-zinc-400'
                 }`}
-                title="Blackout Stage (B)"
+                title="Blackout Stage"
                 aria-label="Toggle Blackout"
               >
                 <EyeOff className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setShowKeyboardHelp(true)}
-                className="p-2 bg-zinc-900/60 border border-[#1E202B] text-zinc-400 hover:text-amber-400 rounded active-touch"
-                title="Shortcuts (?)"
-                aria-label="Keyboard Shortcuts"
-              >
-                <Keyboard className="h-4 w-4" />
               </button>
               <button
                 onClick={() => {
