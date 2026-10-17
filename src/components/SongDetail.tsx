@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer, X, Calendar } from 'lucide-react';
+import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer, X, Calendar, Search } from 'lucide-react';
 import { Song, UserRole, Setlist } from '../types';
 import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, broadcastState, getBroadcastState, getSetlists, fetchSetlistsFromCloud } from '../lib/db';
 import { stripChords, parseSongSections } from '../utils/chordTransposer';
@@ -11,6 +11,7 @@ import AddToSetlistModal from './modals/AddToSetlistModal';
 interface SongDetailProps {
   songId: string;
   onClose: () => void;
+  onBack?: () => void;
   onEnterStageMode: () => void;
   onToggleFavorite: (id: string, currentVal: boolean) => void;
   onLyricsUpdated: () => void; // Trigger list metadata refresh if changed
@@ -22,11 +23,13 @@ interface SongDetailProps {
   songsMetadata?: SongMetadata[];
   isFavorite?: boolean;
   onExportSong?: (song: Song) => void;
+  searchQuery?: string;
 }
 
 export default function SongDetail({
   songId,
   onClose,
+  onBack,
   onEnterStageMode,
   onToggleFavorite,
   onLyricsUpdated,
@@ -38,6 +41,7 @@ export default function SongDetail({
   songsMetadata,
   isFavorite = false,
   onExportSong,
+  searchQuery,
 }: SongDetailProps) {
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -397,7 +401,11 @@ export default function SongDetail({
       switch (e.key) {
         case 'Escape':
           e.preventDefault();
-          onClose();
+          if (onBack) {
+            onBack();
+          } else {
+            onClose();
+          }
           break;
         case '[':
         case '{':
@@ -621,20 +629,42 @@ export default function SongDetail({
       {/* Detail Header Strip - Masterfully designed for both Desktop and Mobile */}
       <div className="px-3 sm:px-5 py-2.5 sm:py-3.5 border-b border-[#1E202B] bg-[#12131A] flex items-center justify-between gap-2">
         
-        {/* Left Side: Back Trigger */}
-        <button
-          onClick={() => {
-            if (isBroadcasting) {
-              broadcastState(null, -1).catch(() => {});
-            }
-            onClose();
-          }}
-          className="h-9 px-3 bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active-touch shrink-0"
-          title={backLabel || "Back"}
-        >
-          <ChevronLeft className="w-4 h-4 text-amber-500" />
-          <span className="text-xs font-bold font-sans">{backLabel || "Back"}</span>
-        </button>
+        {/* Left Side: Back Trigger & Direct Search Return */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <button
+            onClick={() => {
+              if (isBroadcasting) {
+                broadcastState(null, -1).catch(() => {});
+              }
+              if (onBack) {
+                onBack();
+              } else {
+                onClose();
+              }
+            }}
+            className="h-9 px-3 bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active-touch shrink-0"
+            title="Go back to previous song or search results"
+          >
+            <ChevronLeft className="w-4 h-4 text-amber-500" />
+            <span className="text-xs font-bold font-sans">Back</span>
+          </button>
+
+          {searchQuery && (
+            <button
+              onClick={() => {
+                if (isBroadcasting) {
+                  broadcastState(null, -1).catch(() => {});
+                }
+                onClose();
+              }}
+              className="h-9 px-2.5 sm:px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer active-touch shrink-0 max-w-[150px] sm:max-w-[240px]"
+              title={`Return directly to search results for "${searchQuery}"`}
+            >
+              <Search className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+              <span className="truncate text-[11px] sm:text-xs">"{searchQuery}"</span>
+            </button>
+          )}
+        </div>
 
         {/* Right Side: Primary Responsive Actions Control Panel */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">

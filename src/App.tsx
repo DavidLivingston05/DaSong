@@ -45,6 +45,7 @@ interface AppHistoryState {
   songId: string | null;
   stageMode: boolean;
   modal: 'add' | 'upload' | 'admin' | null;
+  searchQuery?: string;
 }
 
 export default function App() {
@@ -52,6 +53,24 @@ export default function App() {
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [recentSongIds, setRecentSongIds] = useState<string[]>([]);
   const [mongoStatus, setMongoStatus] = useState<'connecting' | 'connected' | 'error' | 'offline'>('connecting');
+
+  // Persisted search query & filter states
+  const [searchQuery, setSearchQuery] = useState<string>(() => {
+    return sessionStorage.getItem('dasong_search_query') || '';
+  });
+  const [filterFavorites, setFilterFavorites] = useState<boolean>(() => {
+    return sessionStorage.getItem('dasong_search_favorites') === 'true';
+  });
+
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+    sessionStorage.setItem('dasong_search_query', query);
+  }, []);
+
+  const handleFilterFavoritesChange = useCallback((filter: boolean) => {
+    setFilterFavorites(filter);
+    sessionStorage.setItem('dasong_search_favorites', filter ? 'true' : 'false');
+  }, []);
 
   // Authentication session tracking (Admin vs User only)
   interface UserSession {
@@ -144,7 +163,8 @@ export default function App() {
       stageMode: stageModeSong !== null,
       modal: showAddModal ? 'add' :
              showUploadModal ? 'upload' :
-             showAdminLoginModal ? 'admin' : null
+             showAdminLoginModal ? 'admin' : null,
+      searchQuery: searchQuery
     };
 
     history.replaceState(initialState, '', window.location.pathname + window.location.search);
@@ -162,6 +182,11 @@ export default function App() {
 
         setActiveTab(state.tab);
         setSelectedSongId(state.songId);
+
+        if (state.searchQuery !== undefined) {
+          setSearchQuery(state.searchQuery);
+          sessionStorage.setItem('dasong_search_query', state.searchQuery);
+        }
 
         if (state.stageMode && state.songId) {
           getSongById(state.songId).then(fullSong => {
@@ -190,6 +215,15 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Back button handler: traverses back through song history or returns to library
+  const handleBack = useCallback(() => {
+    if (window.history.length > 1 && currentStackIndexRef.current > 0) {
+      window.history.back();
+    } else {
+      setSelectedSongId(null);
+    }
+  }, []);
+
   // Update history state on navigation
   useEffect(() => {
     if (isPoppingStateRef.current) return;
@@ -211,7 +245,8 @@ export default function App() {
         tab: activeTab,
         songId: selectedSongId,
         stageMode: stageModeSong !== null,
-        modal: currentModal
+        modal: currentModal,
+        searchQuery: searchQuery
       };
 
       if (historyStackRef.current.length > 0) {
@@ -227,7 +262,8 @@ export default function App() {
     stageModeSong,
     showAddModal,
     showUploadModal,
-    showAdminLoginModal
+    showAdminLoginModal,
+    searchQuery
   ]);
 
   // Load & sync songs metadata
@@ -724,6 +760,11 @@ export default function App() {
               handleClearLibrary={handleClearLibrary}
               mongoStatus={mongoStatus}
               setlistSongIds={activeSetlistQueue}
+              handleBack={handleBack}
+              searchQuery={searchQuery}
+              onSearchChange={handleSearchChange}
+              filterFavorites={filterFavorites}
+              onFilterFavoritesChange={handleFilterFavoritesChange}
             />
           )}
 

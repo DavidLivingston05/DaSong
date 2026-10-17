@@ -13,6 +13,10 @@ interface SongListProps {
   onOpenUploadModal: () => void;
   onClearLibrary?: () => void;
   currentRole: UserRole;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  filterFavorites?: boolean;
+  onFilterFavoritesChange?: (filter: boolean) => void;
 }
 
 function SongList({
@@ -24,9 +28,20 @@ function SongList({
   onOpenAddModal,
   onOpenUploadModal,
   currentRole,
+  searchQuery: controlledSearchQuery,
+  onSearchChange,
+  filterFavorites: controlledFilterFavorites,
+  onFilterFavoritesChange,
 }: SongListProps) {
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filterFavorites, setFilterFavorites] = useState<boolean>(false);
+  const [internalSearchQuery, setInternalSearchQuery] = useState<string>('');
+  const [internalFilterFavorites, setInternalFilterFavorites] = useState<boolean>(false);
+
+  const searchQuery = controlledSearchQuery !== undefined ? controlledSearchQuery : internalSearchQuery;
+  const setSearchQuery = onSearchChange || setInternalSearchQuery;
+
+  const filterFavorites = controlledFilterFavorites !== undefined ? controlledFilterFavorites : internalFilterFavorites;
+  const setFilterFavorites = onFilterFavoritesChange || setInternalFilterFavorites;
+
   const [visibleLimit, setVisibleLimit] = useState<number>(80);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 

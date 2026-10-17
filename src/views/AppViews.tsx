@@ -59,6 +59,11 @@ interface SongSearchViewProps {
   mongoStatus: 'connecting' | 'connected' | 'error' | 'offline';
   onExportSong?: (song: Song) => void;
   setlistSongIds?: string[] | null;
+  handleBack?: () => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  filterFavorites?: boolean;
+  onFilterFavoritesChange?: (filter: boolean) => void;
 }
 
 export function DashboardView({
@@ -334,6 +339,11 @@ export function SongSearchView({
   mongoStatus,
   onExportSong,
   setlistSongIds,
+  handleBack,
+  searchQuery,
+  onSearchChange,
+  filterFavorites,
+  onFilterFavoritesChange,
 }: SongSearchViewProps) {
   return (
     <motion.div
@@ -351,16 +361,18 @@ export function SongSearchView({
             onClose={() => {
               handleSelectSong(null);
             }}
+            onBack={handleBack}
             onEnterStageMode={handleEnterStageMode}
             onToggleFavorite={handleToggleFavorite}
             onLyricsUpdated={handleSongUpdateOrReview}
             onSelectSong={handleSelectSong}
             currentRole={currentRole}
-            backLabel="Back to Library"
+            backLabel="Back"
             setlistSongIds={setlistSongIds || undefined}
             songsMetadata={songs}
             isFavorite={selectedSongId ? favoriteSongIds.has(selectedSongId) : false}
             onExportSong={onExportSong}
+            searchQuery={searchQuery}
           />
         </div>
       ) : (
@@ -397,6 +409,10 @@ export function SongSearchView({
             onOpenUploadModal={() => setShowUploadModal(true)}
             onClearLibrary={handleClearLibrary}
             currentRole={currentRole}
+            searchQuery={searchQuery}
+            onSearchChange={onSearchChange}
+            filterFavorites={filterFavorites}
+            onFilterFavoritesChange={onFilterFavoritesChange}
           />
         </div>
       )}
