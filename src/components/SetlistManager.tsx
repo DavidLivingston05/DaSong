@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import {
   Calendar, Music, Play, Plus, Trash2, Edit3, Share2, Copy, Check,
   ChevronUp, ChevronDown, Search, X, Sparkles, ArrowRight, Clock,
-  RefreshCw, ArrowUp, ArrowDown
+  RefreshCw, ArrowUp, ArrowDown, Maximize2
 } from 'lucide-react';
 import { Setlist, SetlistSong, UserRole } from '../types';
 import { SongMetadata, saveSetlist, deleteSetlist, fetchSetlistsFromCloud } from '../lib/db';
@@ -81,10 +81,20 @@ export default function SetlistManager({
   };
 
   // Launch entire setlist playback starting at first song
-  const handlePlaySetlist = (setlist: Setlist) => {
+  const handlePlaySetlist = (setlist: Setlist, fullScreen: boolean = false) => {
     if (setlist.songs.length === 0) return;
     const songIds = setlist.songs.map(s => s.id);
     onSelectSong(songIds[0], songIds);
+    if (fullScreen && onEnterStageMode) {
+      try {
+        if (!document.fullscreenElement) {
+          const docEl = document.documentElement as any;
+          if (docEl.requestFullscreen) docEl.requestFullscreen();
+          else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+        }
+      } catch {}
+      onEnterStageMode();
+    }
   };
 
   // Delete setlist confirm (Admin only)
@@ -342,13 +352,24 @@ export default function SetlistManager({
                   )}
 
                   {setlist.songs.length > 0 && (
-                    <button
-                      onClick={() => handlePlaySetlist(setlist)}
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold rounded-xl text-xs transition-all shadow-md shadow-amber-500/20 cursor-pointer active-touch ml-auto"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-black" />
-                      <span>Start Worship Service</span>
-                    </button>
+                    <div className="flex items-center gap-2 ml-auto flex-wrap sm:flex-nowrap">
+                      <button
+                        onClick={() => handlePlaySetlist(setlist, true)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all shadow-md shadow-amber-500/20 cursor-pointer active-touch"
+                        title="Present Setlist in Full Screen"
+                      >
+                        <Maximize2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Full Screen</span>
+                      </button>
+                      <button
+                        onClick={() => handlePlaySetlist(setlist, false)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-[#12131A] hover:bg-[#1A1C26] text-zinc-200 hover:text-white border border-[#1E202B] font-bold rounded-xl text-xs transition-all cursor-pointer active-touch"
+                        title="Open Setlist in Song View"
+                      >
+                        <Play className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Open Setlist</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

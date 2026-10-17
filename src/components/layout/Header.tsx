@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Music, Home, BookOpen, Calendar, Plus, Database, Download,
-  RefreshCw, LogOut, Palette, ShieldCheck, Keyboard
+  RefreshCw, LogOut, Palette, ShieldCheck, Keyboard, Maximize2, Minimize2
 } from 'lucide-react';
 import { UserRole } from '../../types';
 import ColorPickerModal from '../modals/ColorPickerModal';
@@ -46,8 +46,40 @@ export default function Header({
   const [currentColorHex, setCurrentColorHex] = useState<string>(() => {
     return localStorage.getItem('dasong_custom_accent_color') || '#F59E0B';
   });
+  const [isAppFullscreen, setIsAppFullscreen] = useState<boolean>(() => {
+    if (typeof document === 'undefined') return false;
+    return !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+  });
 
   const isAdmin = session?.role === 'admin';
+
+  useEffect(() => {
+    const handleFs = () => {
+      setIsAppFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFs);
+    document.addEventListener('webkitfullscreenchange', handleFs);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFs);
+      document.removeEventListener('webkitfullscreenchange', handleFs);
+    };
+  }, []);
+
+  const toggleNativeFullscreen = async () => {
+    try {
+      const doc = document as any;
+      const docEl = document.documentElement as any;
+      if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+        if (docEl.requestFullscreen) await docEl.requestFullscreen();
+        else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
+      } else {
+        if (doc.exitFullscreen) await doc.exitFullscreen();
+        else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
+      }
+    } catch (e) {
+      console.warn('Native fullscreen toggle error:', e);
+    }
+  };
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -248,6 +280,16 @@ export default function Header({
                 style={{ backgroundColor: currentColorHex }}
               />
               <Palette className="h-4 w-4 text-amber-400 group-hover:rotate-12 transition-transform" />
+            </button>
+
+            {/* Global Native Full Screen Toggle Button */}
+            <button
+              onClick={toggleNativeFullscreen}
+              className="p-2 bg-[#12131A] hover:bg-[#1A1C26] border border-[#1E202B] hover:border-amber-500/30 text-amber-400 rounded-xl transition-all cursor-pointer active-touch flex items-center justify-center"
+              title={isAppFullscreen ? "Exit Fullscreen" : "Cover Full Screen"}
+              aria-label="Toggle Fullscreen"
+            >
+              {isAppFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
           </div>
         </div>

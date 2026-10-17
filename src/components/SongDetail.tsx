@@ -835,7 +835,19 @@ export default function SongDetail({
         </div>
 
         {/* Right Side: Primary Responsive Actions Control Panel */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 overflow-x-auto no-scrollbar py-0.5 max-w-[calc(100vw-90px)]">
+          {/* Full Screen Presentation — Always Priority #1 for Admin & Users */}
+          <button
+            id="stage-presentation-trigger"
+            onClick={handleEnterFullscreen}
+            className="h-9 px-3 sm:px-3.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0 shadow-md shadow-amber-500/20"
+            title="Cover Full Screen"
+            aria-label="Cover Full Screen"
+          >
+            <Maximize2 className="h-3.5 w-3.5 stroke-[2.5]" />
+            <span className="font-extrabold">Full Screen</span>
+          </button>
+
           {/* Follow Live Service (For all users) */}
           <button
             onClick={() => handleToggleFollow(!isFollowing)}
@@ -968,17 +980,6 @@ export default function SongDetail({
             <Keyboard className="h-4 w-4" />
           </button>
 
-          {/* Full Screen Presentation */}
-          <button
-            id="stage-presentation-trigger"
-            onClick={handleEnterFullscreen}
-            className="h-9 px-3 sm:px-3.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0 shadow-md shadow-amber-500/20"
-            title="Cover Full Screen"
-            aria-label="Cover Full Screen"
-          >
-            <Maximize2 className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span className="font-extrabold">Full Screen</span>
-          </button>
         </div>
       </div>
 
@@ -1217,8 +1218,17 @@ export default function SongDetail({
                 )}
               </div>
               
-              {/* Previous & Next controls */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto md:justify-end">
+              {/* Previous & Next controls + Full Screen */}
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full md:w-auto md:justify-end">
+                <button
+                  onClick={handleEnterFullscreen}
+                  className="w-full sm:w-auto h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shadow-md shadow-amber-500/20 shrink-0"
+                  title="Present Full Screen"
+                >
+                  <Maximize2 className="h-4 w-4 stroke-[2.5]" />
+                  <span>Full Screen</span>
+                </button>
+
                 {hasPrevSong && (
                   <button
                     onClick={() => onSelectSong(prevSongId!, setlistSongIds)}
@@ -1233,7 +1243,7 @@ export default function SongDetail({
                 {hasNextSong && (
                   <button
                     onClick={() => onSelectSong(nextSongId!, setlistSongIds)}
-                    className="w-full sm:w-auto h-10 px-6 rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 premium-btn-primary"
+                    className="w-full sm:w-auto h-10 px-6 rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 premium-btn-primary shrink-0"
                     title={`Next up: ${nextSongTitle}`}
                   >
                     <span>NEXT: {nextSongTitle}</span>
