@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, BookOpen, Calendar, Plus, Smartphone } from 'lucide-react';
+import { Home, BookOpen, Calendar, Plus } from 'lucide-react';
 import { UserRole } from '../../types';
 
 interface MobileBottomNavProps {
@@ -25,8 +25,11 @@ export default function MobileBottomNav({
   setShowAddModal,
   setSelectedSongId,
 }: MobileBottomNavProps) {
+  const isAdmin = session?.role === 'admin';
+
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#090A0F]/95 border-t border-[#1E202B] backdrop-blur-xl grid grid-cols-3 items-center shadow-[0_-8px_30px_rgba(0,0,0,0.8)] pb-safe select-none"
+    <div
+      className={`md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#090A0F]/95 border-t border-[#1E202B] backdrop-blur-xl grid ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'} items-center shadow-[0_-8px_30px_rgba(0,0,0,0.8)] pb-safe select-none`}
       style={{ paddingTop: '8px', paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))' }}
     >
       <button
@@ -73,6 +76,18 @@ export default function MobileBottomNav({
         <Calendar className={`w-5 h-5 transition-transform duration-200 ${activeTab === 'setlists' ? 'drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] scale-110' : ''}`} />
         <span className={`text-[10px] font-bold uppercase tracking-wider ${activeTab === 'setlists' ? 'font-black' : ''}`}>Setlists</span>
       </button>
+
+      {isAdmin && (
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex flex-col items-center gap-1 py-1 text-xs text-amber-400 hover:text-amber-300 transition-all active-touch cursor-pointer"
+        >
+          <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider">Add</span>
+        </button>
+      )}
     </div>
   );
 }

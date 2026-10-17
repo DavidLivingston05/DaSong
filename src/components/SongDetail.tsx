@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer, X } from 'lucide-react';
-import { Song, UserRole } from '../types';
-import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, broadcastState, getBroadcastState } from '../lib/db';
+import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer, X, Calendar } from 'lucide-react';
+import { Song, UserRole, Setlist } from '../types';
+import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, broadcastState, getBroadcastState, getSetlists, fetchSetlistsFromCloud } from '../lib/db';
 import { stripChords } from '../utils/chordTransposer';
 import { parseTwoLineChords } from '../utils/lyricsParser';
 import FocusTrap from './FocusTrap';
 import { getRecommendedSongs } from '../lib/recommendations';
-
-
+import AddToSetlistModal from './modals/AddToSetlistModal';
 
 interface SongDetailProps {
   songId: string;
@@ -34,7 +33,7 @@ export default function SongDetail({
   onSelectSong,
   currentRole,
   backLabel,
-  setlistSongIds = [],
+  setlistSongIds,
   tempBroadcastSong = null,
   songsMetadata,
   isFavorite = false,
@@ -43,18 +42,21 @@ export default function SongDetail({
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [showFontControl, setShowFontControl] = useState<boolean>(false);
+  const [showAddToSetlist, setShowAddToSetlist] = useState<boolean>(false);
+  const [localSetlists, setLocalSetlists] = useState<Setlist[]>(() => getSetlists());
   const [allMetadataState, setAllMetadataState] = useState<SongMetadata[]>([]);
   const allMetadata = songsMetadata || allMetadataState;
 
+  useEffect(() => {
+    if (showAddToSetlist) {
+      setLocalSetlists(getSetlists());
+      fetchSetlistsFromCloud().then(res => setLocalSetlists(res)).catch(() => {});
+    }
+  }, [showAddToSetlist]);
 
-  // Setup active worship set sequence helpers based on passed array
-  const worshipSetList = useMemo(() => {
-    return setlistSongIds || [];
-  }, [setlistSongIds]);
-
-  const setlistIndex = useMemo(() => {
-    return worshipSetList.indexOf(songId);
-  }, [worshipSetList, songId]);
+  const libraryIndex = useMemo(() => {
+    return allMetadata.findIndex(s => s.id === songId);
+  }, [allMetadata, songId]);
 
   // --- LIVE SERVICE LYRICS SYNC STATE & LOGIC ---
   const [isBroadcasting, setIsBroadcasting] = useState<boolean>(() => localStorage.getItem('dasong_live_broadcast') === 'true');
@@ -95,7 +97,7 @@ export default function SongDetail({
         if (state) {
           // If song changed
           if (state.songId && state.songId !== songId) {
-            onSelectSong(state.songId, setlistSongIds);
+            onSelectSong(state.songId);
             return;
           }
 
@@ -121,13 +123,13 @@ export default function SongDetail({
     };
 
     checkBroadcast();
-    const intervalId = setInterval(checkBroadcast, 400);
+    const intervalId = setInterval(checkBroadcast, 1200);
 
     return () => {
       active = false;
       clearInterval(intervalId);
     };
-  }, [isFollowing, songId, onSelectSong, setlistSongIds]);
+  }, [isFollowing, songId, onSelectSong]);
 
   // Broadcast song changes if leader
   useEffect(() => {
@@ -140,7 +142,13 @@ export default function SongDetail({
   const handleLineSelect = async (lineIdx: number) => {
     setHighlightedLineIndex(lineIdx);
     
-    if (isBroadcasting && song) {
+    if (currentRole === 'admin' && song) {
+      if (!isBroadcasting) {
+        setIsBroadcasting(true);
+        localStorage.setItem('dasong_live_broadcast', 'true');
+        setIsFollowing(false);
+        localStorage.setItem('dasong_live_follow', 'false');
+      }
       try {
         await broadcastState(song.id, lineIdx);
       } catch (err) {
@@ -157,8 +165,9 @@ export default function SongDetail({
       localStorage.setItem('dasong_live_follow', 'false');
       if (song) {
         try {
-          await broadcastState(song.id, 0);
-          setHighlightedLineIndex(0);
+          const initialLine = highlightedLineIndex >= 0 ? highlightedLineIndex : 0;
+          await broadcastState(song.id, initialLine);
+          setHighlightedLineIndex(initialLine);
         } catch (err) {
           console.error('Failed to start broadcast:', err);
         }
@@ -172,20 +181,49 @@ export default function SongDetail({
     }
   };
 
-  const handleToggleFollow = (val: boolean) => {
+  const handleToggleFollow = async (val: boolean) => {
     setIsFollowing(val);
     localStorage.setItem('dasong_live_follow', val ? 'true' : 'false');
     if (val) {
       setIsBroadcasting(false);
       localStorage.setItem('dasong_live_broadcast', 'false');
+      try {
+        const state = await getBroadcastState();
+        if (state) {
+          if (state.songId && state.songId !== songId) {
+            onSelectSong(state.songId);
+            return;
+          }
+          if (typeof state.activeLineIndex === 'number' && state.activeLineIndex >= 0) {
+            setHighlightedLineIndex(state.activeLineIndex);
+            setTimeout(() => {
+              const el = document.getElementById(`lyric-line-${state.activeLineIndex}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+          }
+        }
+      } catch (err) {
+        console.warn('Initial follow check error:', err);
+      }
     }
   };
 
-  const hasNextSong = setlistIndex >= 0 && setlistIndex < worshipSetList.length - 1;
-  const hasPrevSong = setlistIndex > 0;
+  const isSetlistMode = Array.isArray(setlistSongIds) && setlistSongIds.length > 0;
+  const setlistIdx = isSetlistMode ? setlistSongIds.indexOf(songId) : -1;
 
-  const nextSongId = hasNextSong ? worshipSetList[setlistIndex + 1] : null;
-  const prevSongId = hasPrevSong ? worshipSetList[setlistIndex - 1] : null;
+  const hasNextSong = isSetlistMode
+    ? setlistIdx >= 0 && setlistIdx < setlistSongIds.length - 1
+    : libraryIndex >= 0 && libraryIndex < allMetadata.length - 1;
+  const hasPrevSong = isSetlistMode
+    ? setlistIdx > 0
+    : libraryIndex > 0;
+
+  const nextSongId = isSetlistMode
+    ? (hasNextSong ? setlistSongIds[setlistIdx + 1] : null)
+    : (hasNextSong ? allMetadata[libraryIndex + 1]?.id : null);
+  const prevSongId = isSetlistMode
+    ? (hasPrevSong ? setlistSongIds[setlistIdx - 1] : null)
+    : (hasPrevSong ? allMetadata[libraryIndex - 1]?.id : null);
 
   const nextSongTitle = useMemo(() => {
     if (!nextSongId) return null;
@@ -396,7 +434,7 @@ export default function SongDetail({
         case 'D':
           if (nextSongId) {
             e.preventDefault();
-            onSelectSong(nextSongId, worshipSetList);
+            onSelectSong(nextSongId, setlistSongIds);
           }
           break;
         case 'ArrowLeft':
@@ -404,7 +442,7 @@ export default function SongDetail({
         case 'A':
           if (prevSongId) {
             e.preventDefault();
-            onSelectSong(prevSongId, worshipSetList);
+            onSelectSong(prevSongId, setlistSongIds);
           }
           break;
         default:
@@ -416,7 +454,7 @@ export default function SongDetail({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [songId, nextSongId, prevSongId, worshipSetList, autoScrollSpeed, isEditing, onClose, onSelectSong]);
+  }, [songId, nextSongId, prevSongId, setlistSongIds, autoScrollSpeed, isEditing, onClose, onSelectSong]);
 
 
 
@@ -627,30 +665,32 @@ export default function SongDetail({
         {/* Right Side: Primary Responsive Actions Control Panel */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Follow Live Service (For all users) */}
-          {isFollowing && (
-            <button
-              onClick={() => handleToggleFollow(!isFollowing)}
-              className="h-9 px-2.5 rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all shrink-0 text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 animate-pulse"
-              title="Following active live service broadcast"
-            >
-              <Radio className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Live</span>
-            </button>
-          )}
+          <button
+            onClick={() => handleToggleFollow(!isFollowing)}
+            className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold ${
+              isFollowing
+                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm shadow-emerald-500/20 animate-pulse'
+                : 'bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-400 hover:text-white'
+            }`}
+            title={isFollowing ? "Following active live stage broadcast (Click to leave)" : "Join live stage broadcast follow stream"}
+          >
+            <Radio className={`h-3.5 w-3.5 ${isFollowing ? 'text-emerald-400' : 'text-zinc-400'}`} />
+            <span className="hidden sm:inline">{isFollowing ? 'Following' : 'Follow'}</span>
+          </button>
 
           {/* Broadcast Live Service (For admin role only) */}
           {currentRole === 'admin' && (
             <button
               onClick={() => handleToggleBroadcast(!isBroadcasting)}
-              className={`h-9 px-2.5 rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all shrink-0 text-xs font-bold ${
+              className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold ${
                 isBroadcasting
-                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
-                  : 'bg-zinc-900/80 border border-[#1E202B] text-zinc-400'
+                  ? 'bg-amber-500 text-black font-black border border-amber-400 shadow-md shadow-amber-500/30'
+                  : 'bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-amber-400 hover:text-amber-300'
               }`}
-              title="Broadcast live screen state"
+              title={isBroadcasting ? "Broadcasting live screen state (Click to stop)" : "Start broadcasting screen to all followers"}
             >
-              <Radio className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Broadcast</span>
+              <Radio className={`h-3.5 w-3.5 ${isBroadcasting ? 'text-black stroke-[3]' : 'text-amber-400'}`} />
+              <span className="hidden sm:inline">{isBroadcasting ? 'Broadcasting' : 'Broadcast'}</span>
             </button>
           )}
 
@@ -706,6 +746,16 @@ export default function SongDetail({
               </div>
             )}
           </div>
+
+          {/* Add To Setlist Action Button */}
+          <button
+            onClick={() => setShowAddToSetlist(true)}
+            className="h-9 px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0 text-xs font-bold bg-zinc-900/80 hover:bg-zinc-800 border border-[#1E202B] text-zinc-300 hover:text-white"
+            title="Add song to service setlist"
+          >
+            <Calendar className="h-3.5 w-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Setlist</span>
+          </button>
 
           {/* Edit Lyrics Trigger */}
           <button
@@ -909,39 +959,67 @@ export default function SongDetail({
                     const endIdx = globalLineCounter + lines.length - 1;
                     const isSectionHighlighted = highlightedLineIndex >= startIdx && highlightedLineIndex <= endIdx;
 
+                    const handleSelectSection = () => {
+                      handleLineSelect(startIdx);
+                    };
+
+                    const hasHeading = lines.some(l => l.endsWith(':'));
+
                     return (
                       <div
                         key={idx}
-                        className={`mb-6 p-4 rounded transition-all duration-300 ${
+                        id={`lyric-section-${idx}`}
+                        onClick={handleSelectSection}
+                        className={`mb-6 p-4 rounded-xl transition-all duration-300 cursor-pointer relative ${
                           isSectionHighlighted
-                            ? 'bg-amber-500/10 border border-amber-500/30'
-                            : (isChorus
-                                ? 'border-l-4 border-amber-500 bg-amber-500/5 pl-4 text-slate-350'
-                                : 'border border-transparent text-slate-350')
+                            ? isChorus
+                              ? 'border-l-4 border-amber-400 bg-amber-500/20 shadow-xl shadow-amber-500/10 ring-2 ring-amber-500/40 pl-4'
+                              : 'border-2 border-amber-400 bg-amber-500/15 shadow-xl shadow-amber-500/10 ring-2 ring-amber-500/30'
+                            : isChorus
+                              ? 'border-l-4 border-amber-500 bg-amber-500/5 hover:bg-amber-500/10 border-t border-r border-b border-[#1E202B]/60 pl-4'
+                              : 'bg-zinc-900/20 border border-[#1E202B]/60 hover:border-zinc-700 hover:bg-zinc-900/40'
                         }`}
                       >
+                        {isSectionHighlighted && !hasHeading && (
+                          <div className="flex justify-end mb-2 select-none">
+                            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/30 text-amber-200 border border-amber-400/50 text-[10px] font-bold tracking-widest font-mono">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                              SELECTED
+                            </span>
+                          </div>
+                        )}
+
                         {lines.map((line, lIdx) => {
                           const currentLineIndex = globalLineCounter++;
                           const lineId = `lyric-line-${currentLineIndex}`;
-                          
-                          const clickHandler = () => {
-                            handleLineSelect(currentLineIndex);
-                          };
-                          
-                          const highlightClass = 'transition-all duration-200';
 
-                          // Normal lyric block
+                          if (line.endsWith(':')) {
+                            return (
+                              <div
+                                key={lIdx}
+                                id={lineId}
+                                className="font-bold text-amber-500 mt-1 mb-2 text-[11px] uppercase tracking-widest font-mono select-none flex items-center justify-between"
+                              >
+                                <span>{line}</span>
+                                {isSectionHighlighted && (
+                                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/30 text-amber-200 border border-amber-400/50 text-[10px] font-bold tracking-widest font-mono">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                    SELECTED
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+
                           return (
                             <div
                               key={lIdx}
                               id={lineId}
-                              onClick={clickHandler}
-                              className={`leading-relaxed p-1 cursor-pointer hover:bg-white/5 rounded ${highlightClass} ${
-                                line.endsWith(':')
-                                  ? 'font-bold text-amber-500 mt-2 text-[11px] uppercase tracking-widest'
-                                  : (isSectionHighlighted ? 'text-white font-semibold' : 'text-slate-200 font-medium')
+                              className={`leading-relaxed p-2 my-1 rounded-lg transition-all duration-200 select-text ${
+                                isSectionHighlighted
+                                  ? 'bg-amber-500/25 text-amber-200 font-bold border-l-4 border-amber-400 pl-3 shadow-md'
+                                  : 'text-zinc-200 hover:bg-white/5 hover:text-white'
                               }`}
-                              style={{ fontSize: `${line.endsWith(':') ? '11px' : 'inherit'}` }}
                             >
                               {line}
                             </div>
@@ -958,55 +1036,45 @@ export default function SongDetail({
               {/* Bottom scroll padding spacer */}
               <div className="h-24" />
             </div>
-            {/* Bottom Worship Setlist Navigation Bar */}
-            {worshipSetList.length > 0 && setlistIndex >= 0 ? (
-              <div className="p-4 border-t border-[#1E202B] bg-[#12131A] flex flex-col md:flex-row items-center justify-between gap-4 select-none relative">
-                
-                {/* Progress metadata */}
-                <div className="flex items-center gap-2 font-mono text-[10px] md:text-xs text-zinc-400">
-                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                  <span>SETLIST STATUS: <span className="font-black text-amber-500 font-sans">SONG {setlistIndex + 1} OF {worshipSetList.length}</span></span>
-                </div>
-                
-                {/* Previous & Next controls */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto md:justify-end">
-                  {hasPrevSong && (
-                    <button
-                      onClick={() => onSelectSong(prevSongId!, worshipSetList)}
-                      className="w-full sm:w-auto h-10 px-5 rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 premium-btn-secondary shrink-0"
-                      title={`Previous: ${prevSongTitle}`}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span>PREV: {prevSongTitle}</span>
-                    </button>
-                  )}
+            {/* Bottom Library / Setlist Navigation Bar */}
+            <div className="p-4 border-t border-[#1E202B] bg-[#12131A] flex flex-col md:flex-row items-center justify-between gap-4 select-none relative">
+              {/* Progress metadata */}
+              <div className="flex items-center gap-2 font-mono text-[10px] md:text-xs text-zinc-400">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                {isSetlistMode ? (
+                  <span>SETLIST: <span className="font-black text-amber-500 font-sans">SONG {setlistIdx + 1} OF {setlistSongIds.length}</span></span>
+                ) : libraryIndex >= 0 && allMetadata.length > 0 ? (
+                  <span>LIBRARY: <span className="font-black text-amber-500 font-sans">SONG {libraryIndex + 1} OF {allMetadata.length}</span></span>
+                ) : (
+                  <span>SONG VIEW</span>
+                )}
+              </div>
+              
+              {/* Previous & Next controls */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto md:justify-end">
+                {hasPrevSong && (
+                  <button
+                    onClick={() => onSelectSong(prevSongId!, setlistSongIds)}
+                    className="w-full sm:w-auto h-10 px-5 rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 premium-btn-secondary shrink-0"
+                    title={`Previous: ${prevSongTitle}`}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>PREV: {prevSongTitle}</span>
+                  </button>
+                )}
 
-                  {hasNextSong ? (
-                    <button
-                      onClick={() => onSelectSong(nextSongId!, worshipSetList)}
-                      className="w-full sm:w-auto h-10 px-6 rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 premium-btn-primary"
-                      title={`Next up: ${nextSongTitle}`}
-                    >
-                      <span>NEXT: {nextSongTitle}</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  ) : (
-                    <div className="w-full sm:w-auto h-10 px-5 rounded bg-zinc-900/40 border border-[#1E202B] text-zinc-500 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                      <Sparkles className="h-4 w-4 text-amber-550" />
-                      <span>LAST SONG IN SETLIST</span>
-                    </div>
-                  )}
-                </div>
+                {hasNextSong && (
+                  <button
+                    onClick={() => onSelectSong(nextSongId!, setlistSongIds)}
+                    className="w-full sm:w-auto h-10 px-6 rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 premium-btn-primary"
+                    title={`Next up: ${nextSongTitle}`}
+                  >
+                    <span>NEXT: {nextSongTitle}</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                )}
               </div>
-            ) : (
-              /* Simple general catalog bottom bar */
-              <div className="p-4 border-t border-[#1E202B] bg-[#12131A] flex flex-col sm:flex-row items-center justify-between gap-4 select-none relative">
-                <div className="flex items-center gap-2 font-mono text-[10px] uppercase text-zinc-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
-                  <span>Library Song View</span>
-                </div>
-              </div>
-            )}
+            </div>
 
           </div>
 
@@ -1042,9 +1110,14 @@ export default function SongDetail({
         </div>
       )}
 
-
-
-
+      {/* Add To Setlist Modal */}
+      <AddToSetlistModal
+        isOpen={showAddToSetlist}
+        onClose={() => setShowAddToSetlist(false)}
+        song={song}
+        setlists={localSetlists}
+        onRefreshSetlists={() => setLocalSetlists(getSetlists())}
+      />
     </div>
   );
 }

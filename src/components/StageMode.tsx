@@ -3,26 +3,7 @@ import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLe
 import { Song, PresentationConfig } from '../types';
 import { stripChords } from '../utils/chordTransposer';
 import { getBroadcastState } from '../lib/db';
-
-const PRESET_BG_COLORS = [
-  '#090A0F',
-  '#12131A',
-  '#0A0F1D',
-  '#04140E',
-  '#1F1A24',
-  '#FFFFFF',
-  '#F7F4EA',
-];
-
-const PRESET_TEXT_COLORS = [
-  '#f59e0b',
-  '#f4f4f5',
-  '#EBE6D8',
-  '#10b981',
-  '#06b6d4',
-  '#fb7185',
-  '#c084fc',
-];
+import ColorPickerModal from './modals/ColorPickerModal';
 
 interface StageModeProps {
   song: Song;
@@ -33,6 +14,7 @@ interface StageModeProps {
 
 export default React.memo(function StageMode({ song, onClose, broadcastSlideIndex, onSelectSong }: StageModeProps) {
   const [lyrics, setLyrics] = useState<string>('');
+  const [activeColorPicker, setActiveColorPicker] = useState<'bg' | 'text' | null>(null);
   const [config, setConfig] = useState<PresentationConfig>(() => {
     const saved = localStorage.getItem('dasong_stage_config');
     if (saved) {
@@ -172,7 +154,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
     };
 
     checkBroadcast();
-    const intervalId = setInterval(checkBroadcast, 400);
+    const intervalId = setInterval(checkBroadcast, 1200);
 
     return () => {
       active = false;
@@ -415,9 +397,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
             const isHighlighted = currentLineIndex === highlightedLineIndex;
             
             const highlightClass = hasActiveLineOnSlide
-              ? (isHighlighted
-                  ? 'scale-[1.03] opacity-100 transition-all duration-300 origin-center'
-                  : 'opacity-35 transition-all duration-300 origin-center')
+              ? 'scale-[1.01] opacity-100 transition-all duration-300 origin-center text-amber-300 font-extrabold'
               : 'opacity-100 transition-all duration-300 origin-center';
 
             if (isChorus && line.toLowerCase().startsWith('chorus:')) {
@@ -492,6 +472,181 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
     }
     lastTapRef.current = now;
   };
+
+  const renderCustomizerPopover = () => (
+    <div
+      className="absolute right-0 top-12 z-50 w-[calc(100vw-24px)] max-w-xs sm:w-80 bg-[#0E0F14] border border-white/8 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.9)] font-sans overflow-hidden max-h-[85vh] flex flex-col"
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/6 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center">
+            <Paintbrush className="h-3 w-3 text-amber-400" />
+          </div>
+          <span className="text-xs font-bold text-white tracking-wide">Appearance</span>
+        </div>
+        <button
+          onClick={() => setShowDesktopCustomizer(false)}
+          className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-500 hover:text-white transition-all cursor-pointer text-xs"
+        >✕</button>
+      </div>
+
+      <div className="p-5 space-y-5 overflow-y-auto">
+        {/* Theme Section */}
+        <div className="space-y-2.5">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Theme</p>
+          <div className="grid grid-cols-5 gap-2">
+            {([
+              { id: 'dark',           label: 'Dark',     bg: '#000000', text: '#e4e4e7', ring: 'border-zinc-700' },
+              { id: 'parchment',      label: 'Parch',    bg: '#F9F6EE', text: '#1C1A17', ring: 'border-stone-300' },
+              { id: 'classic',        label: 'White',    bg: '#ffffff', text: '#111111', ring: 'border-slate-200' },
+              { id: 'retro-terminal', label: 'Term',     bg: '#000000', text: '#00FF66', ring: 'border-emerald-700' },
+              { id: 'custom',         label: 'Custom',   bg: config.customBg, text: config.customTextColor, ring: 'border-amber-500/40' },
+            ] as const).map(({ id, label, bg, text, ring }) => (
+              <button
+                key={id}
+                onClick={() => changeTheme(id)}
+                className={`flex flex-col items-center gap-1.5 p-0 rounded-lg border-2 transition-all cursor-pointer overflow-hidden ${
+                  config.theme === id
+                    ? 'border-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.3)]'
+                    : `${ring} opacity-70 hover:opacity-100`
+                }`}
+                title={label}
+              >
+                {/* Color swatch */}
+                <div
+                  className="w-full h-9 flex items-center justify-center text-[10px] font-black"
+                  style={{ backgroundColor: bg, color: text }}
+                >
+                  Aa
+                </div>
+                <span className={`text-[8px] font-bold pb-1 uppercase tracking-wide ${config.theme === id ? 'text-amber-400' : 'text-zinc-500'}`}>
+                  {label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="h-px bg-white/5" />
+
+        {/* Font Style Section */}
+        <div className="space-y-2.5">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Font Style</p>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { id: 'serif', label: 'Elegant', sample: 'Aa', cls: 'font-serif' },
+              { id: 'sans',  label: 'Clean',   sample: 'Aa', cls: 'font-sans'  },
+              { id: 'baloo', label: 'Bold',    sample: 'Aa', cls: 'font-baloo' },
+            ] as const).map(({ id, label, sample, cls }) => {
+              const isSelected = config.fontFamily === id || (id === 'baloo' && (config.fontFamily === 'bold' || config.fontFamily === 'mono'));
+              return (
+                <button
+                  key={id}
+                  onClick={() => setConfig(p => ({ ...p, fontFamily: id }))}
+                  className={`flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'border-amber-500 bg-amber-500/8 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
+                      : 'border-white/6 bg-white/2 hover:bg-white/5 hover:border-white/12'
+                  }`}
+                >
+                  <span className={`text-xl font-bold ${cls} ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
+                    {sample}
+                  </span>
+                  <span className={`text-[9px] font-bold uppercase tracking-wide ${isSelected ? 'text-amber-400' : 'text-zinc-600'}`}>
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="h-px bg-white/5" />
+
+        {/* Font Size Section */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Font Size</p>
+            <span className="text-[11px] font-mono font-bold text-amber-400">{config.fontSize}px</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setConfig(p => ({ ...p, fontSize: Math.max(16, p.fontSize - 4) }))}
+              className="flex-1 py-2 rounded-lg border border-white/8 bg-white/4 hover:bg-white/10 active:scale-95 transition-all text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+              title="Decrease font size"
+              aria-label="Decrease font size"
+            >
+              <ZoomOut className="h-3.5 w-3.5 text-zinc-400" /> A-
+            </button>
+            <div className="px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono font-bold text-xs text-center min-w-[56px]">
+              {config.fontSize}px
+            </div>
+            <button
+              onClick={() => setConfig(p => ({ ...p, fontSize: Math.min(80, p.fontSize + 4) }))}
+              className="flex-1 py-2 rounded-lg border border-white/8 bg-white/4 hover:bg-white/10 active:scale-95 transition-all text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+              title="Increase font size"
+              aria-label="Increase font size"
+            >
+              <ZoomIn className="h-3.5 w-3.5 text-amber-400" /> A+
+            </button>
+          </div>
+        </div>
+
+        {/* Custom Colors — Interactive Draggable Color Pickers */}
+        {config.theme === 'custom' && (
+          <>
+            <div className="h-px bg-white/5" />
+            <div className="space-y-3">
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Custom Colors</p>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Background color trigger */}
+                <button
+                  type="button"
+                  onClick={() => setActiveColorPicker('bg')}
+                  className="block cursor-pointer group text-left w-full"
+                >
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider block mb-1.5 font-semibold">Background</span>
+                  <div className="flex items-center gap-2.5 bg-white/4 border border-white/10 rounded-xl p-2.5 group-hover:border-amber-500/40 transition-all shadow-sm">
+                    <div
+                      className="w-8 h-8 rounded-lg border border-white/20 shrink-0 shadow-inner"
+                      style={{ backgroundColor: config.customBg }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-mono text-white font-bold truncate">{config.customBg}</p>
+                      <p className="text-[9px] text-amber-400 font-medium">Open Color Picker</p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Text color trigger */}
+                <button
+                  type="button"
+                  onClick={() => setActiveColorPicker('text')}
+                  className="block cursor-pointer group text-left w-full"
+                >
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider block mb-1.5 font-semibold">Text Color</span>
+                  <div className="flex items-center gap-2.5 bg-white/4 border border-white/10 rounded-xl p-2.5 group-hover:border-amber-500/40 transition-all shadow-sm">
+                    <div
+                      className="w-8 h-8 rounded-lg border border-white/20 shrink-0 shadow-inner"
+                      style={{ backgroundColor: config.customTextColor }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-mono text-white font-bold truncate">{config.customTextColor}</p>
+                      <p className="text-[9px] text-amber-400 font-medium">Open Color Picker</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
 
 
   return (
@@ -623,217 +778,8 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                   <Paintbrush className="h-3.5 w-3.5" />
                 </button>
 
-                {showDesktopCustomizer && (
-                  <div
-                    className="absolute right-0 sm:right-0 top-12 z-50 w-[calc(100vw-24px)] max-w-xs sm:w-80 bg-[#0E0F14] border border-white/8 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.9)] font-sans overflow-hidden"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-white/6">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center">
-                          <Paintbrush className="h-3 w-3 text-amber-400" />
-                        </div>
-                        <span className="text-xs font-bold text-white tracking-wide">Appearance</span>
-                      </div>
-                      <button
-                        onClick={() => setShowDesktopCustomizer(false)}
-                        className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-500 hover:text-white transition-all cursor-pointer text-xs"
-                      >✕</button>
-                    </div>
-
-                    <div className="p-5 space-y-5">
-
-                      {/* Theme Section */}
-                      <div className="space-y-2.5">
-                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Theme</p>
-                        <div className="grid grid-cols-5 gap-2">
-                          {([
-                            { id: 'dark',           label: 'Dark',     bg: '#000000', text: '#e4e4e7', ring: 'border-zinc-700' },
-                            { id: 'parchment',      label: 'Parch',    bg: '#F9F6EE', text: '#1C1A17', ring: 'border-stone-300' },
-                            { id: 'classic',        label: 'White',    bg: '#ffffff', text: '#111111', ring: 'border-slate-200' },
-                            { id: 'retro-terminal', label: 'Term',     bg: '#000000', text: '#00FF66', ring: 'border-emerald-700' },
-                            { id: 'custom',         label: 'Custom',   bg: config.customBg, text: config.customTextColor, ring: 'border-amber-500/40' },
-                          ] as const).map(({ id, label, bg, text, ring }) => (
-                            <button
-                              key={id}
-                              onClick={() => changeTheme(id)}
-                              className={`flex flex-col items-center gap-1.5 p-0 rounded-lg border-2 transition-all cursor-pointer overflow-hidden ${
-                                config.theme === id
-                                  ? 'border-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.3)]'
-                                  : `${ring} opacity-70 hover:opacity-100`
-                              }`}
-                              title={label}
-                            >
-                              {/* Color swatch */}
-                              <div
-                                className="w-full h-9 flex items-center justify-center text-[10px] font-black"
-                                style={{ backgroundColor: bg, color: text }}
-                              >
-                                Aa
-                              </div>
-                              <span className={`text-[8px] font-bold pb-1 uppercase tracking-wide ${config.theme === id ? 'text-amber-400' : 'text-zinc-500'}`}>
-                                {label}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-white/5" />
-
-                      {/* Font Style Section */}
-                      <div className="space-y-2.5">
-                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Font Style</p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {([
-                            { id: 'serif', label: 'Elegant', sample: 'Aa', cls: 'font-serif' },
-                            { id: 'sans',  label: 'Clean',   sample: 'Aa', cls: 'font-sans'  },
-                            { id: 'baloo', label: 'Bold',    sample: 'Aa', cls: 'font-baloo' },
-                          ] as const).map(({ id, label, sample, cls }) => {
-                            const isSelected = config.fontFamily === id || (id === 'baloo' && (config.fontFamily === 'bold' || config.fontFamily === 'mono'));
-                            return (
-                              <button
-                                key={id}
-                                onClick={() => setConfig(p => ({ ...p, fontFamily: id }))}
-                                className={`flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-all cursor-pointer ${
-                                  isSelected
-                                    ? 'border-amber-500 bg-amber-500/8 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
-                                    : 'border-white/6 bg-white/2 hover:bg-white/5 hover:border-white/12'
-                                }`}
-                              >
-                                <span className={`text-xl font-bold ${cls} ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
-                                  {sample}
-                                </span>
-                                <span className={`text-[9px] font-bold uppercase tracking-wide ${isSelected ? 'text-amber-400' : 'text-zinc-600'}`}>
-                                  {label}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-white/5" />
-
-                      {/* Font Size Section */}
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Font Size</p>
-                          <span className="text-[11px] font-mono font-bold text-amber-400">{config.fontSize}px</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setConfig(p => ({ ...p, fontSize: Math.max(16, p.fontSize - 4) }))}
-                            className="flex-1 py-2 rounded-lg border border-white/8 bg-white/4 hover:bg-white/10 active:scale-95 transition-all text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
-                            title="Decrease font size"
-                            aria-label="Decrease font size"
-                          >
-                            <ZoomOut className="h-3.5 w-3.5 text-zinc-400" /> A-
-                          </button>
-                          <div className="px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono font-bold text-xs text-center min-w-[56px]">
-                            {config.fontSize}px
-                          </div>
-                          <button
-                            onClick={() => setConfig(p => ({ ...p, fontSize: Math.min(80, p.fontSize + 4) }))}
-                            className="flex-1 py-2 rounded-lg border border-white/8 bg-white/4 hover:bg-white/10 active:scale-95 transition-all text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
-                            title="Increase font size"
-                            aria-label="Increase font size"
-                          >
-                            <ZoomIn className="h-3.5 w-3.5 text-amber-400" /> A+
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Custom Colors — 1-Tap Swatch Palette */}
-                      {config.theme === 'custom' && (
-                        <>
-                          <div className="h-px bg-white/5" />
-                          <div className="space-y-4">
-                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Custom Colors</p>
-                            
-                            {/* Background Color Swatches */}
-                            <div className="space-y-1.5">
-                              <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold block">Background Color</span>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {PRESET_BG_COLORS.map(color => (
-                                  <button
-                                    key={color}
-                                    type="button"
-                                    onClick={() => setConfig(p => ({ ...p, customBg: color }))}
-                                    className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${
-                                      config.customBg.toLowerCase() === color.toLowerCase()
-                                        ? 'border-amber-500 scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
-                                        : 'border-white/20 hover:scale-105'
-                                    }`}
-                                    style={{ backgroundColor: color }}
-                                    title={color}
-                                  />
-                                ))}
-                                <div className="relative w-7 h-7 rounded-full border-2 border-white/20 overflow-hidden flex items-center justify-center bg-white/5 cursor-pointer shrink-0" title="Custom Hex Picker">
-                                  <Palette className="w-3.5 h-3.5 text-zinc-400" />
-                                  <input
-                                    type="color"
-                                    value={config.customBg}
-                                    onChange={(e) => setConfig(p => ({ ...p, customBg: e.target.value }))}
-                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Text Color Swatches */}
-                            <div className="space-y-1.5">
-                              <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold block">Text Color</span>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {PRESET_TEXT_COLORS.map(color => (
-                                  <button
-                                    key={color}
-                                    type="button"
-                                    onClick={() => setConfig(p => ({ ...p, customTextColor: color }))}
-                                    className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${
-                                      config.customTextColor.toLowerCase() === color.toLowerCase()
-                                        ? 'border-amber-500 scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
-                                        : 'border-white/20 hover:scale-105'
-                                    }`}
-                                    style={{ backgroundColor: color }}
-                                    title={color}
-                                  />
-                                ))}
-                                <div className="relative w-7 h-7 rounded-full border-2 border-white/20 overflow-hidden flex items-center justify-center bg-white/5 cursor-pointer shrink-0" title="Custom Hex Picker">
-                                  <Palette className="w-3.5 h-3.5 text-zinc-400" />
-                                  <input
-                                    type="color"
-                                    value={config.customTextColor}
-                                    onChange={(e) => setConfig(p => ({ ...p, customTextColor: e.target.value }))}
-                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            {/* Live preview */}
-                            <div
-                              className="w-full rounded-xl px-4 py-3 flex items-center justify-between border border-white/6"
-                              style={{ backgroundColor: config.customBg }}
-                            >
-                              <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Preview</span>
-                              <span
-                                className="text-sm font-bold"
-                                style={{ color: config.customTextColor }}
-                              >
-                                உம்மை போல யாருண்டு
-                              </span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
+                {showDesktopCustomizer && renderCustomizerPopover()}
               </div>
-
 
               {/* Exit Presentation */}
               <button
@@ -895,212 +841,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
                   <Paintbrush className="h-4 w-4" />
                 </button>
 
-                {showDesktopCustomizer && (
-                  <div
-                    className="absolute right-0 top-12 z-50 w-[calc(100vw-24px)] max-w-xs sm:w-80 bg-[#0E0F14] border border-white/8 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.9)] font-sans overflow-hidden"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-white/6">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center">
-                          <Paintbrush className="h-3 w-3 text-amber-400" />
-                        </div>
-                        <span className="text-xs font-bold text-white tracking-wide">Appearance</span>
-                      </div>
-                      <button
-                        onClick={() => setShowDesktopCustomizer(false)}
-                        className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-500 hover:text-white transition-all cursor-pointer text-xs"
-                      >✕</button>
-                    </div>
-
-                    <div className="p-5 space-y-5">
-                      {/* Theme Section */}
-                      <div className="space-y-2.5">
-                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Theme</p>
-                        <div className="grid grid-cols-5 gap-2">
-                          {([
-                            { id: 'dark',           label: 'Dark',     bg: '#000000', text: '#e4e4e7', ring: 'border-zinc-700' },
-                            { id: 'parchment',      label: 'Parch',    bg: '#F9F6EE', text: '#1C1A17', ring: 'border-stone-300' },
-                            { id: 'classic',        label: 'White',    bg: '#ffffff', text: '#111111', ring: 'border-slate-200' },
-                            { id: 'retro-terminal', label: 'Term',     bg: '#000000', text: '#00FF66', ring: 'border-emerald-700' },
-                            { id: 'custom',         label: 'Custom',   bg: config.customBg, text: config.customTextColor, ring: 'border-amber-500/40' },
-                          ] as const).map(({ id, label, bg, text, ring }) => (
-                            <button
-                              key={id}
-                              onClick={() => changeTheme(id)}
-                              className={`flex flex-col items-center gap-1.5 p-0 rounded-lg border-2 transition-all cursor-pointer overflow-hidden ${
-                                config.theme === id
-                                  ? 'border-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.3)]'
-                                  : `${ring} opacity-70 hover:opacity-100`
-                              }`}
-                              title={label}
-                            >
-                              <div
-                                className="w-full h-9 flex items-center justify-center text-[10px] font-black"
-                                style={{ backgroundColor: bg, color: text }}
-                              >
-                                Aa
-                              </div>
-                              <span className={`text-[8px] font-bold pb-1 uppercase tracking-wide ${config.theme === id ? 'text-amber-400' : 'text-zinc-500'}`}>
-                                {label}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-white/5" />
-
-                      {/* Font Style Section */}
-                      <div className="space-y-2.5">
-                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Font Style</p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {([
-                            { id: 'serif', label: 'Elegant', sample: 'Aa', cls: 'font-serif' },
-                            { id: 'sans',  label: 'Clean',   sample: 'Aa', cls: 'font-sans'  },
-                            { id: 'baloo', label: 'Bold',    sample: 'Aa', cls: 'font-baloo' },
-                          ] as const).map(({ id, label, sample, cls }) => {
-                            const isSelected = config.fontFamily === id || (id === 'baloo' && (config.fontFamily === 'bold' || config.fontFamily === 'mono'));
-                            return (
-                              <button
-                                key={id}
-                                onClick={() => setConfig(p => ({ ...p, fontFamily: id }))}
-                                className={`flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-all cursor-pointer ${
-                                  isSelected
-                                    ? 'border-amber-500 bg-amber-500/8 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
-                                    : 'border-white/6 bg-white/2 hover:bg-white/5 hover:border-white/12'
-                                }`}
-                              >
-                                <span className={`text-xl font-bold ${cls} ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
-                                  {sample}
-                                </span>
-                                <span className={`text-[9px] font-bold uppercase tracking-wide ${isSelected ? 'text-amber-400' : 'text-zinc-600'}`}>
-                                  {label}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-white/5" />
-
-                      {/* Font Size Section */}
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Font Size</p>
-                          <span className="text-[11px] font-mono font-bold text-amber-400">{config.fontSize}px</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setConfig(p => ({ ...p, fontSize: Math.max(16, p.fontSize - 4) }))}
-                            className="flex-1 py-2 rounded-lg border border-white/8 bg-white/4 hover:bg-white/10 active:scale-95 transition-all text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
-                            title="Decrease font size"
-                            aria-label="Decrease font size"
-                          >
-                            <ZoomOut className="h-3.5 w-3.5 text-zinc-400" /> A-
-                          </button>
-                          <div className="px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono font-bold text-xs text-center min-w-[56px]">
-                            {config.fontSize}px
-                          </div>
-                          <button
-                            onClick={() => setConfig(p => ({ ...p, fontSize: Math.min(80, p.fontSize + 4) }))}
-                            className="flex-1 py-2 rounded-lg border border-white/8 bg-white/4 hover:bg-white/10 active:scale-95 transition-all text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer text-xs"
-                            title="Increase font size"
-                            aria-label="Increase font size"
-                          >
-                            <ZoomIn className="h-3.5 w-3.5 text-amber-400" /> A+
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Custom Colors — 1-Tap Swatch Palette */}
-                      {config.theme === 'custom' && (
-                        <>
-                          <div className="h-px bg-white/5" />
-                          <div className="space-y-4">
-                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em]">Custom Colors</p>
-                            
-                            {/* Background Color Swatches */}
-                            <div className="space-y-1.5">
-                              <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold block">Background Color</span>
-                              <div className="flex items-center gap-2.5 flex-wrap">
-                                {PRESET_BG_COLORS.map(color => (
-                                  <button
-                                    key={color}
-                                    type="button"
-                                    onClick={() => setConfig(p => ({ ...p, customBg: color }))}
-                                    className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer ${
-                                      config.customBg.toLowerCase() === color.toLowerCase()
-                                        ? 'border-amber-500 scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
-                                        : 'border-white/20 active:scale-95'
-                                    }`}
-                                    style={{ backgroundColor: color }}
-                                    title={color}
-                                  />
-                                ))}
-                                <div className="relative w-8 h-8 rounded-full border-2 border-white/20 overflow-hidden flex items-center justify-center bg-white/5 cursor-pointer shrink-0" title="Custom Hex Picker">
-                                  <Palette className="w-4 h-4 text-zinc-400" />
-                                  <input
-                                    type="color"
-                                    value={config.customBg}
-                                    onChange={(e) => setConfig(p => ({ ...p, customBg: e.target.value }))}
-                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Text Color Swatches */}
-                            <div className="space-y-1.5">
-                              <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold block">Text Color</span>
-                              <div className="flex items-center gap-2.5 flex-wrap">
-                                {PRESET_TEXT_COLORS.map(color => (
-                                  <button
-                                    key={color}
-                                    type="button"
-                                    onClick={() => setConfig(p => ({ ...p, customTextColor: color }))}
-                                    className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer ${
-                                      config.customTextColor.toLowerCase() === color.toLowerCase()
-                                        ? 'border-amber-500 scale-110 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
-                                        : 'border-white/20 active:scale-95'
-                                    }`}
-                                    style={{ backgroundColor: color }}
-                                    title={color}
-                                  />
-                                ))}
-                                <div className="relative w-8 h-8 rounded-full border-2 border-white/20 overflow-hidden flex items-center justify-center bg-white/5 cursor-pointer shrink-0" title="Custom Hex Picker">
-                                  <Palette className="w-4 h-4 text-zinc-400" />
-                                  <input
-                                    type="color"
-                                    value={config.customTextColor}
-                                    onChange={(e) => setConfig(p => ({ ...p, customTextColor: e.target.value }))}
-                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <div
-                              className="w-full rounded-xl px-4 py-3 flex items-center justify-between border border-white/6"
-                              style={{ backgroundColor: config.customBg }}
-                            >
-                              <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Preview</span>
-                              <span
-                                className="text-sm font-bold"
-                                style={{ color: config.customTextColor }}
-                              >
-                                உம்மை போல யாருண்டு
-                              </span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
+                {showDesktopCustomizer && renderCustomizerPopover()}
               </div>
             </div>
           </div>
@@ -1237,6 +978,23 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
         </div>
       )}
 
+      {/* Precision 2D Color Picker Modal for Stage Mode */}
+      <ColorPickerModal
+        isOpen={activeColorPicker !== null}
+        onClose={() => setActiveColorPicker(null)}
+        title={activeColorPicker === 'bg' ? 'Stage Background Color' : 'Stage Text Color'}
+        currentColorHex={activeColorPicker === 'bg' ? config.customBg : config.customTextColor}
+        defaultColor={activeColorPicker === 'bg' ? '#0d0d0d' : '#f4f4f5'}
+        resetLabel={activeColorPicker === 'bg' ? 'Reset to Dark' : 'Reset to White'}
+        disableGlobalThemeAccent={true}
+        onColorChange={(hex) => {
+          if (activeColorPicker === 'bg') {
+            setConfig(p => ({ ...p, customBg: hex }));
+          } else if (activeColorPicker === 'text') {
+            setConfig(p => ({ ...p, customTextColor: hex }));
+          }
+        }}
+      />
 
     </div>
   );

@@ -1,24 +1,29 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import {
-  RefreshCw, X, Smartphone, Download, Music, BookOpen, Plus, Database, LogOut, Sparkles
+  RefreshCw, X, Smartphone, Download, Music, BookOpen, Plus, Database, LogOut, Sparkles, ArrowRight
 } from 'lucide-react';
-import { UserRole, Song } from '../types';
+import { UserRole, Song, Setlist } from '../types';
 import { SongMetadata } from '../lib/db';
 import { motion } from 'motion/react';
-import SongDetail from '../components/SongDetail';
 import SongList from '../components/SongList';
 
+const SongDetail = lazy(() => import('../components/SongDetail'));
+const SetlistManager = lazy(() => import('../components/SetlistManager'));
 
-import SetlistManager from '../components/SetlistManager';
-import { WorshipEvent } from '../types';
+const ViewFallback = () => (
+  <div className="flex items-center justify-center min-h-[200px] w-full p-6">
+    <div className="flex flex-col items-center gap-3 text-zinc-400">
+      <div className="w-7 h-7 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      <span className="text-xs tracking-wider uppercase font-medium">Loading View...</span>
+    </div>
+  </div>
+);
 
 interface DashboardViewProps {
-  activeServerId: string;
   session: { role: UserRole; name?: string } | null;
   songs: SongMetadata[];
   mongoStatus: 'connecting' | 'connected' | 'error' | 'offline';
   currentRole: UserRole;
-  renderGuestWelcome: () => React.ReactNode;
   isFollowing: boolean;
   handleToggleFollow: (val: boolean) => void;
   showInstallBanner: boolean;
@@ -26,9 +31,8 @@ interface DashboardViewProps {
   dismissedInstall: boolean;
   handleDismissInstall: () => void;
   handleInstallApp: () => void;
-  handleLogout: () => void;
   setSongSourceTab: (tab: 'search' | 'dashboard') => void;
-  setActiveTab: (tab: 'dashboard' | 'search') => void;
+  setActiveTab: (tab: 'dashboard' | 'search' | 'setlists') => void;
   handleSelectSong: (id: string | null) => void;
   stats: { total: number; favorites: number; categories: number };
   recentSongs: SongMetadata[];
@@ -38,9 +42,9 @@ interface DashboardViewProps {
 
 interface SongSearchViewProps {
   selectedSongId: string | null;
-  handleSelectSong: (id: string | null) => void;
+  handleSelectSong: (id: string | null, setlistSongIds?: string[]) => void;
   songSourceTab: 'search' | 'dashboard';
-  setActiveTab: (tab: 'dashboard' | 'search') => void;
+  setActiveTab: (tab: 'dashboard' | 'search' | 'setlists') => void;
   handleEnterStageMode: () => void;
   handleToggleFavorite: (id: string, currentFav: boolean) => void;
   handleSongUpdateOrReview: () => void;
@@ -54,15 +58,14 @@ interface SongSearchViewProps {
   handleClearLibrary: () => void;
   mongoStatus: 'connecting' | 'connected' | 'error' | 'offline';
   onExportSong?: (song: Song) => void;
+  setlistSongIds?: string[] | null;
 }
 
 export function DashboardView({
-  activeServerId,
   session,
   songs,
   mongoStatus,
   currentRole,
-  renderGuestWelcome,
   isFollowing,
   handleToggleFollow,
   showInstallBanner,
@@ -70,7 +73,6 @@ export function DashboardView({
   dismissedInstall,
   handleDismissInstall,
   handleInstallApp,
-  handleLogout,
   setSongSourceTab,
   setActiveTab,
   handleSelectSong,
@@ -98,29 +100,26 @@ export function DashboardView({
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 text-left">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-1 text-xs font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-md uppercase tracking-wider">
-                SERVER: {activeServerId ? activeServerId.toUpperCase() : 'LOCAL-ONLY'}
-              </span>
               <span className={`px-2.5 py-1 text-xs font-mono font-bold rounded-md border uppercase tracking-wider ${
                 isAdmin 
                   ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
-                  : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
               }`}>
-                ROLE: {isAdmin ? 'ADMINISTRATOR' : currentRole === 'choir' ? 'CHOIR MEMBER' : 'GUEST'}
+                ROLE: {isAdmin ? 'ADMINISTRATOR' : 'USER'}
               </span>
               <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md uppercase tracking-wider">
                 <span className={`w-2 h-2 rounded-full ${mongoStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                {mongoStatus === 'connected' ? 'CLOUD SYNCED' : mongoStatus === 'connecting' ? 'SYNCING...' : 'LOCAL WORKSPACE'}
+                {mongoStatus === 'connected' ? 'CLOUD SYNCED' : mongoStatus === 'connecting' ? 'SYNCING...' : 'LOCAL LIBRARY'}
               </span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white pt-1">
-              Welcome back, <span className="text-amber-400">{session?.name || (isAdmin ? 'Administrator' : currentRole === 'choir' ? 'Choir Vocalist' : 'Worshipper')}</span>
+              Welcome back, <span className="text-amber-400">{session?.name || (isAdmin ? 'Administrator' : 'User')}</span>
             </h1>
             <p className="text-zinc-400 text-sm max-w-2xl leading-relaxed">
               {isAdmin 
                 ? 'Manage worship song catalog, compose lyrics, and broadcast stage projections.' 
-                : 'Access assigned worship lyrics, review musical keys, and join live display sync.'}
+                : 'Access worship lyrics, view chord charts, transpose keys, and follow live stage prompter.'}
             </p>
           </div>
 
@@ -159,9 +158,6 @@ export function DashboardView({
           </div>
         </div>
       </div>
-
-      {/* Guest Role Welcome Callout */}
-      {currentRole === 'guest' && renderGuestWelcome()}
 
       {/* App Install Banner */}
       {showInstallBanner && !isInstalled && !dismissedInstall && (
@@ -234,15 +230,18 @@ export function DashboardView({
           </div>
         </div>
 
-        <div className="p-5 rounded-xl bg-[#12131A] border border-[#1E202B] flex justify-between items-center shadow-lg sm:col-span-2 lg:col-span-1">
+        <div 
+          onClick={() => setActiveTab('search')}
+          className="p-5 rounded-xl bg-[#12131A] border border-[#1E202B] hover:border-amber-500/35 transition-all flex justify-between items-center shadow-lg sm:col-span-2 lg:col-span-1 cursor-pointer group active-touch"
+        >
           <div>
-            <p className="text-xs font-mono uppercase text-zinc-400 tracking-wider font-bold">Workspace Server</p>
-            <h3 className="text-xl font-bold text-amber-400 mt-1 uppercase font-mono">
-              {activeServerId || 'LOCAL MODE'}
+            <p className="text-xs font-mono uppercase text-zinc-400 tracking-wider font-bold">Favorite Songs</p>
+            <h3 className="text-3xl font-bold text-amber-400 mt-1 font-mono">
+              {stats.favorites.toLocaleString()}
             </h3>
-            <p className="text-xs text-zinc-500 mt-1">Active Network Workspace Node</p>
+            <p className="text-xs text-zinc-500 mt-1">Starred for Quick Access</p>
           </div>
-          <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400">
+          <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform">
             <Music className="w-6 h-6" />
           </div>
         </div>
@@ -270,13 +269,13 @@ export function DashboardView({
         </button>
       </div>
 
-      {/* 🎵 RECENTLY PREPARED LYRICS SECTION */}
+      {/* 🎵 RECENT SONG LYRICS SECTION */}
       {displaySongs.length > 0 && (
         <div className="space-y-4 text-left select-none">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-white flex items-center gap-2 tracking-tight">
               <Sparkles className="w-4 h-4 text-amber-400" />
-              Recently Prepared Lyrics
+              Recent Song Lyrics
             </h2>
             <button
               onClick={() => setActiveTab('search')}
@@ -286,7 +285,7 @@ export function DashboardView({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {displaySongs.map(song => (
               <div 
                 key={song.id}
@@ -295,34 +294,17 @@ export function DashboardView({
                   setSongSourceTab('search');
                   handleSelectSong(song.id);
                 }}
-                className="p-5 rounded-xl bg-[#12131A] border border-[#1E202B] hover:border-amber-500/40 transition-all space-y-3 cursor-pointer group shadow-lg flex flex-col justify-between"
+                className="p-4 rounded-xl bg-[#12131A] border border-[#1E202B] hover:border-amber-500/40 hover:bg-[#1A1C26] transition-all cursor-pointer group shadow-lg flex items-center justify-between gap-3 active-touch"
               >
-                <div className="space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-sm text-zinc-100 group-hover:text-amber-400 transition-colors truncate">
-                        {song.title}
-                      </h4>
-                      <p className="text-xs text-zinc-400 mt-0.5 truncate font-mono">
-                        {song.author || 'Traditional'} • Key: <span className="text-amber-400 font-bold">{song.key || 'G'}</span>
-                      </p>
-                    </div>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Music className="w-4 h-4" />
                   </div>
-
-                  {song.lyricsSnippet && (
-                    <div className="p-3 bg-[#090A0F] rounded-lg border border-[#1E202B] font-mono text-[11px] text-zinc-300 italic line-clamp-2 leading-relaxed">
-                      "{song.lyricsSnippet}"
-                    </div>
-                  )}
+                  <h4 className="font-bold text-sm text-zinc-100 group-hover:text-amber-400 transition-colors truncate">
+                    {song.title}
+                  </h4>
                 </div>
-
-                <div className="flex items-center justify-between text-xs text-zinc-500 pt-2 border-t border-[#1E202B]/60">
-                  <span className="font-mono text-[10px] uppercase">Songsheet View</span>
-                  <div className="flex items-center gap-1 text-amber-400 font-mono text-[11px] font-bold group-hover:translate-x-0.5 transition-transform">
-                    <span>Open Sheet</span>
-                    <span>→</span>
-                  </div>
-                </div>
+                <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all shrink-0" />
               </div>
             ))}
           </div>
@@ -351,6 +333,7 @@ export function SongSearchView({
   handleClearLibrary,
   mongoStatus,
   onExportSong,
+  setlistSongIds,
 }: SongSearchViewProps) {
   return (
     <motion.div
@@ -374,6 +357,7 @@ export function SongSearchView({
             onSelectSong={handleSelectSong}
             currentRole={currentRole}
             backLabel="Back to Library"
+            setlistSongIds={setlistSongIds || undefined}
             songsMetadata={songs}
             isFavorite={selectedSongId ? favoriteSongIds.has(selectedSongId) : false}
             onExportSong={onExportSong}
@@ -422,32 +406,20 @@ export function SongSearchView({
 
 interface SetlistManagerViewProps {
   currentRole: UserRole;
-  events: WorshipEvent[];
+  setlists: Setlist[];
   songsCatalog: SongMetadata[];
-  onRefreshEvents: () => void;
-  onSelectSong: (id: string) => void;
+  onRefreshSetlists: () => void;
+  onSelectSong: (songId: string, setlistSongIds?: string[]) => void;
   onEnterStageMode?: () => void;
-  selectedSongId: string | null;
-  handleSelectSong: (id: string | null) => void;
-  handleToggleFavorite: (id: string, currentFav: boolean) => void;
-  handleSongUpdateOrReview: () => void;
-  favoriteSongIds: Set<string>;
-  onExportSong?: (song: Song) => void;
 }
 
 export function SetlistManagerView({
   currentRole,
-  events,
+  setlists,
   songsCatalog,
-  onRefreshEvents,
+  onRefreshSetlists,
   onSelectSong,
   onEnterStageMode,
-  selectedSongId,
-  handleSelectSong,
-  handleToggleFavorite,
-  handleSongUpdateOrReview,
-  favoriteSongIds,
-  onExportSong,
 }: SetlistManagerViewProps) {
   return (
     <motion.div
@@ -458,32 +430,16 @@ export function SetlistManagerView({
       transition={{ duration: 0.18 }}
       className="w-full min-h-0"
     >
-      {selectedSongId ? (
-        <div className="w-full flex flex-col">
-          <SongDetail
-            songId={selectedSongId}
-            onClose={() => handleSelectSong(null)}
-            onEnterStageMode={onEnterStageMode || (() => {})}
-            onToggleFavorite={handleToggleFavorite}
-            onLyricsUpdated={handleSongUpdateOrReview}
-            onSelectSong={onSelectSong}
-            currentRole={currentRole}
-            backLabel="Back to Setlists"
-            songsMetadata={songsCatalog}
-            isFavorite={favoriteSongIds.has(selectedSongId)}
-            onExportSong={onExportSong}
-          />
-        </div>
-      ) : (
+      <Suspense fallback={<ViewFallback />}>
         <SetlistManager
           currentRole={currentRole}
-          events={events}
+          setlists={setlists}
           songsCatalog={songsCatalog}
-          onRefreshEvents={onRefreshEvents}
+          onRefreshSetlists={onRefreshSetlists}
           onSelectSong={onSelectSong}
           onEnterStageMode={onEnterStageMode}
         />
-      )}
+      </Suspense>
     </motion.div>
   );
 }

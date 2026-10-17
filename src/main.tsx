@@ -2,6 +2,16 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { applyAccentThemeColor } from './utils/colorUtils';
+
+// Immediate early theme application to prevent any initial color flash
+const savedCustomColor = localStorage.getItem('dasong_custom_accent_color');
+const savedTheme = localStorage.getItem('dasong_visual_theme');
+if (savedCustomColor) {
+  applyAccentThemeColor(savedCustomColor);
+} else if (savedTheme) {
+  document.documentElement.setAttribute('data-theme', savedTheme);
+}
 
 import React, { Component, ReactNode } from 'react';
 
@@ -51,14 +61,14 @@ createRoot(document.getElementById('root')!).render(
 // Register active Service Worker for PWA offline support & auto-updates
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=10').then(reg => {
+    navigator.serviceWorker.register('/sw.js?v=12').then(reg => {
       reg.update();
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              window.location.reload();
+              console.log('New content available; please refresh when convenient.');
             }
           });
         }

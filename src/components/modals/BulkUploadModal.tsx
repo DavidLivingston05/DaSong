@@ -6,17 +6,13 @@ import BulkUpload from '../BulkUpload';
 interface BulkUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  targetEventIdForAdd: string | null;
   syncSongsList: () => Promise<void>;
-  linkSongsToEvent: (eventId: string, songIds: string[]) => Promise<void>;
 }
 
 export default function BulkUploadModal({
   isOpen,
   onClose,
-  targetEventIdForAdd,
   syncSongsList,
-  linkSongsToEvent,
 }: BulkUploadModalProps) {
   return (
     <AnimatePresence>
@@ -51,11 +47,8 @@ export default function BulkUploadModal({
               </button>
             </div>
 
-            <BulkUpload onSuccess={async (importedSongIds) => {
+            <BulkUpload onSuccess={async () => {
               await syncSongsList();
-              if (targetEventIdForAdd && importedSongIds && importedSongIds.length > 0) {
-                await linkSongsToEvent(targetEventIdForAdd, importedSongIds);
-              }
             }} />
 
             <div className="flex gap-2 justify-end pt-3 border-t border-[#1E202B] pb-6 md:pb-0">

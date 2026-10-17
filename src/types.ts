@@ -21,32 +21,24 @@ export interface PresentationConfig {
   fontFamily?: 'serif' | 'sans' | 'mono' | 'baloo' | 'bold';
 }
 
-export type UserRole = 'admin' | 'guest' | 'choir';
+export type UserRole = 'admin' | 'user';
 
-export interface ServerInfo {
+export interface SetlistSong {
   id: string;
-  name: string;
-  showOnPublicList: boolean;
-  createdAt: number;
-}
-
-export interface SetlistSongItem {
-  songId: string;
   title: string;
+  author?: string;
+  key?: string;
   customKey?: string;
-  leadVocalist?: string;
   notes?: string;
 }
 
-export interface WorshipEvent {
+export interface Setlist {
   id: string;
   name: string;
-  date: string; // ISO format e.g., "2026-08-16"
-  time?: string; // e.g., "09:30 AM"
-  venue?: string; // e.g., "Main Sanctuary"
+  date: string; // YYYY-MM-DD
+  time?: string; // e.g. "09:00 AM"
   notes?: string;
-  published: boolean; // Only published setlists are visible to Choir Members & Guests
-  songs: SetlistSongItem[];
+  songs: SetlistSong[];
   createdAt: number;
   updatedAt: number;
 }

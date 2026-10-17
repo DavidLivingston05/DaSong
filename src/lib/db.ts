@@ -1,51 +1,18 @@
-import { Song, ServerInfo, WorshipEvent, SetlistSongItem } from '../types';
+import { Song, Setlist, SetlistSong } from '../types';
 
 const DB_NAME = 'ChristianLyricsDB';
 const STORE_NAME = 'songs';
 const DB_VERSION = 1;
 
-export function getActiveServerId(): string {
-  return localStorage.getItem('dasong_active_server_id') || 'default';
-}
-
 export function canMutateCloud(): boolean {
   if (typeof window === 'undefined') return false;
-  const serverId = localStorage.getItem('dasong_active_server_id') || 'default';
-  const savedRole = localStorage.getItem(`lyrasync_user_role_${serverId}`) || 'guest';
+  const savedRole = localStorage.getItem('dasong_user_role') || 'user';
   return savedRole === 'admin';
 }
 
 export function shouldSkipSync(): boolean {
-  // Read & fetch operations are never skipped so Guests get 100% of all songs from MongoDB
   return false;
 }
-
-export function switchActiveServer(serverId: string): void {
-  localStorage.setItem('dasong_active_server_id', serverId);
-  if (_cachedDB) {
-    _cachedDB.close();
-    _cachedDB = null;
-  }
-}
-
-function getServerStorageKey(key: string): string {
-  // If the key is related to songs catalog syncing, return it unpartitioned (global)
-  if (
-    key === 'dasong_unsynced_song_ids' || 
-    key === 'dasong_local_max_updated_at' ||
-    key === 'dasong_has_seeded'
-  ) {
-    return key;
-  }
-  const serverId = getActiveServerId();
-  return `${key}_${serverId}`;
-}
-
-const serverLocalStorage = {
-  getItem: (key: string) => localStorage.getItem(getServerStorageKey(key)),
-  setItem: (key: string, value: string) => localStorage.setItem(getServerStorageKey(key), value),
-  removeItem: (key: string) => localStorage.removeItem(getServerStorageKey(key))
-};
 
 // Module-level IDB connection cache — opened once, reused for all operations (#14)
 let _cachedDB: IDBDatabase | null = null;
@@ -162,7 +129,7 @@ async function cleanupCorruptedLocalSongs(): Promise<void> {
 // -------------------------------------------------------------------------
 
 function getUnsyncedSongIds(): string[] {
-  const saved = serverLocalStorage.getItem('dasong_unsynced_song_ids');
+  const saved = localStorage.getItem('dasong_unsynced_song_ids');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -177,15 +144,14 @@ function getUnsyncedSongIds(): string[] {
 function addUnsyncedSongIds(ids: string[]): void {
   const current = new Set(getUnsyncedSongIds());
   ids.forEach(id => current.add(id));
-  serverLocalStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
+  localStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
 }
 
 function removeUnsyncedSongIds(ids: string[]): void {
   const current = new Set(getUnsyncedSongIds());
   ids.forEach(id => current.delete(id));
-  serverLocalStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
+  localStorage.setItem('dasong_unsynced_song_ids', JSON.stringify(Array.from(current)));
 }
-
 
 function stripMongoId<T extends { _id?: string }>(obj: T): Omit<T, '_id'> {
   const { _id, ...rest } = obj;
@@ -199,14 +165,15 @@ async function apiRequest(path: string, options?: RequestInit): Promise<any> {
     const buster = `t=${Date.now()}`;
     url = url.includes('?') ? `${url}&${buster}` : `${url}?${buster}`;
   }
-  const serverId = getActiveServerId();
+  const token = typeof window !== 'undefined' ? localStorage.getItem('dasong_admin_token') : null;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...((options?.headers as Record<string, string>) || {})
+  };
   const response = await fetch(url, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-server-id': serverId,
-      ...(options?.headers || {})
-    }
+    headers
   });
   if (!response.ok) {
     const errText = await response.text();
@@ -228,14 +195,12 @@ async function getLocalSongsCountAndMaxTimestamp(): Promise<{ count: number, las
     countRequest.onerror = () => reject(countRequest.error);
     countRequest.onsuccess = () => {
       const count = countRequest.result;
-      const cachedTimeStr = serverLocalStorage.getItem('dasong_local_max_updated_at');
+      const cachedTimeStr = localStorage.getItem('dasong_local_max_updated_at');
       const lastUpdated = cachedTimeStr ? parseInt(cachedTimeStr, 10) : 0;
       resolve({ count, lastUpdated });
     };
   });
 }
-
-
 
 // Synchronizes the cloud MongoDB state back to local IndexedDB and localStorage using Delta/Timestamp Sync
 export async function syncWithMongoDB(): Promise<void> {
@@ -246,26 +211,29 @@ export async function syncWithMongoDB(): Promise<void> {
     console.warn('Cleanup of corrupted local songs failed:', err);
   }
 
-  // 0. Sync unsynced songs to cloud first (Admin only)
-  if (canMutateCloud()) {
-    const unsyncedIds = getUnsyncedSongIds();
-    if (unsyncedIds.length > 0) {
-      const songsToSync: Song[] = [];
-      for (const id of unsyncedIds) {
-        const song = await getSongById(id);
-        if (song) {
-          songsToSync.push(song);
-        }
+  // 0. Sync unsynced songs to cloud first in bulk-sync batches of 50
+  const unsyncedIds = getUnsyncedSongIds();
+  if (unsyncedIds.length > 0) {
+    const songsToSync: Song[] = [];
+    for (const id of unsyncedIds) {
+      const song = await getSongById(id);
+      if (song) {
+        songsToSync.push(song);
       }
-      if (songsToSync.length > 0) {
+    }
+    if (songsToSync.length > 0) {
+      const batchSize = 50;
+      for (let i = 0; i < songsToSync.length; i += batchSize) {
+        const batch = songsToSync.slice(i, i + batchSize);
+        const batchIds = batch.map(s => s.id);
         try {
-          await apiRequest('/api/songs', {
+          await apiRequest('/api/songs/bulk-sync', {
             method: 'POST',
-            body: JSON.stringify(songsToSync)
+            body: JSON.stringify(batch)
           });
-          removeUnsyncedSongIds(unsyncedIds);
+          removeUnsyncedSongIds(batchIds);
         } catch (err) {
-          console.error('Failed to sync queued unsynced songs to MongoDB:', err);
+          console.error('Failed to sync queued unsynced songs batch to MongoDB:', err);
         }
       }
     }
@@ -365,7 +333,8 @@ export async function syncWithMongoDB(): Promise<void> {
   }
 
   // Save the new max timestamp to localStorage so future checks can hit the cache!
-  serverLocalStorage.setItem('dasong_local_max_updated_at', String(maxCloudTime));
+  localStorage.setItem('dasong_local_max_updated_at', String(maxCloudTime));
+  invalidateMetadataCache();
 }
 
 // -------------------------------------------------------------------------
@@ -375,42 +344,49 @@ export async function syncWithMongoDB(): Promise<void> {
 // Bulk insert songs in unified single transaction
 export async function saveSongsBatch(songs: Song[]): Promise<void> {
   await saveSongsBatchIndexedDB(songs);
+  invalidateMetadataCache();
   let maxTime = 0;
   for (const s of songs) {
     const t = s.updatedAt || s.createdAt || 0;
     if (t > maxTime) maxTime = t;
   }
   if (maxTime > 0) {
-    serverLocalStorage.setItem('dasong_local_max_updated_at', String(maxTime));
+    localStorage.setItem('dasong_local_max_updated_at', String(maxTime));
   }
 
   // Everyone can upload/add songs to MongoDB Cloud
   const ids = songs.map(s => s.id);
   addUnsyncedSongIds(ids);
   
-  // Background cloud sync
-  apiRequest('/api/songs', {
-    method: 'POST',
-    body: JSON.stringify(songs)
-  }).then(() => {
-    removeUnsyncedSongIds(ids);
-  }).catch(err => {
-    console.warn('Failed to sync batch to MongoDB, queued for background sync:', err);
-  });
+  // Background cloud sync in 50-item batches to prevent server payload bottlenecks
+  const batchSize = 50;
+  for (let i = 0; i < songs.length; i += batchSize) {
+    const chunk = songs.slice(i, i + batchSize);
+    const chunkIds = chunk.map(s => s.id);
+    apiRequest('/api/songs/bulk-sync', {
+      method: 'POST',
+      body: JSON.stringify(chunk)
+    }).then(() => {
+      removeUnsyncedSongIds(chunkIds);
+    }).catch(err => {
+      console.warn('Failed to sync batch chunk to MongoDB, queued for background sync:', err);
+    });
+  }
 }
 
 export async function saveSong(song: Song): Promise<void> {
   await saveSongIndexedDB(song);
+  invalidateMetadataCache();
   const now = song.updatedAt || song.createdAt || Date.now();
-  serverLocalStorage.setItem('dasong_local_max_updated_at', String(now));
+  localStorage.setItem('dasong_local_max_updated_at', String(now));
 
   // Everyone can upload/add songs to MongoDB Cloud
   addUnsyncedSongIds([song.id]);
   
-  // Background cloud sync
-  apiRequest('/api/songs', {
+  // Background cloud sync via bulk-sync endpoint
+  apiRequest('/api/songs/bulk-sync', {
     method: 'POST',
-    body: JSON.stringify(song)
+    body: JSON.stringify([song])
   }).then(() => {
     removeUnsyncedSongIds([song.id]);
   }).catch(err => {
@@ -420,8 +396,9 @@ export async function saveSong(song: Song): Promise<void> {
 
 export async function deleteSong(id: string): Promise<void> {
   await deleteSongIndexedDB(id);
+  invalidateMetadataCache();
   // Remove last updated cache to force recalculation on next sync check
-  serverLocalStorage.removeItem('dasong_local_max_updated_at');
+  localStorage.removeItem('dasong_local_max_updated_at');
   
   if (!canMutateCloud()) {
     return;
@@ -439,8 +416,9 @@ export async function deleteSong(id: string): Promise<void> {
 
 export async function clearAllSongs(): Promise<void> {
   await clearAllSongsIndexedDB();
-  serverLocalStorage.removeItem('dasong_local_max_updated_at');
-  serverLocalStorage.removeItem('dasong_unsynced_song_ids');
+  invalidateMetadataCache();
+  localStorage.removeItem('dasong_local_max_updated_at');
+  localStorage.removeItem('dasong_unsynced_song_ids');
   
   if (!canMutateCloud()) {
     return;
@@ -489,10 +467,20 @@ export interface SongMetadata {
   favorite?: boolean;
   createdAt?: number;
   updatedAt?: number;
-  lyricsSnippet?: string; // First 300 chars of lyrics for full-text search (#2)
+  lyricsSnippet?: string; // First 1500 chars of lyrics for full-text search (#2)
 }
 
-export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
+let _cachedMetadata: SongMetadata[] | null = null;
+
+export function invalidateMetadataCache(): void {
+  _cachedMetadata = null;
+}
+
+export async function getAllSongsMetadata(forceRefresh = false): Promise<SongMetadata[]> {
+  if (!forceRefresh && _cachedMetadata) {
+    return _cachedMetadata;
+  }
+
   const db = await initDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readonly');
@@ -518,6 +506,7 @@ export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
         });
         cursor.continue();
       } else {
+        _cachedMetadata = metadataList;
         resolve(metadataList);
       }
     };
@@ -527,110 +516,24 @@ export async function getAllSongsMetadata(): Promise<SongMetadata[]> {
 }
 
 // -------------------------------------------------------------------------
-// WORSHIP EVENTS LOCAL SYSTEM + MONGO CLOUD
+// AUTHENTICATION API ACTIONS
 // -------------------------------------------------------------------------
 
-export function getWorshipEvents(): WorshipEvent[] {
-  const serverId = getActiveServerId();
-  const saved = localStorage.getItem(`dasong_events_${serverId}`);
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (err) {
-      console.error('Failed to parse worship events:', err);
-    }
-  }
-  return [];
-}
-
-export async function fetchWorshipEventsFromCloud(): Promise<WorshipEvent[]> {
+export async function authAdmin(password: string): Promise<{ success: boolean; token?: string; error?: string }> {
   try {
-    const serverEvents: WorshipEvent[] = await apiRequest('/api/events');
-    if (Array.isArray(serverEvents)) {
-      const serverId = getActiveServerId();
-      serverEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      localStorage.setItem(`dasong_events_${serverId}`, JSON.stringify(serverEvents));
-      return serverEvents;
-    }
-  } catch (err) {
-    console.error('Failed to fetch worship events from cloud:', err);
-  }
-  return getWorshipEvents();
-}
-
-export function saveWorshipEvent(event: WorshipEvent): WorshipEvent[] {
-  const serverId = getActiveServerId();
-  const events = getWorshipEvents();
-  const index = events.findIndex(e => e.id === event.id);
-  
-  const updatedEvent = { ...event, updatedAt: Date.now() };
-  if (index >= 0) {
-    events[index] = updatedEvent;
-  } else {
-    events.push(updatedEvent);
-  }
-
-  events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  localStorage.setItem(`dasong_events_${serverId}`, JSON.stringify(events));
-
-  // Sync to MongoDB Cloud ONLY if logged in as Admin
-  if (canMutateCloud()) {
-    apiRequest('/api/events', {
+    const res = await apiRequest('/api/auth', {
       method: 'POST',
-      body: JSON.stringify(updatedEvent)
-    }).catch(err => {
-      console.error('Failed to sync worship event to cloud:', err);
+      body: JSON.stringify({ password })
     });
+    return res;
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Authentication failed' };
   }
-
-  return events;
-}
-
-export function deleteWorshipEvent(eventId: string): WorshipEvent[] {
-  const serverId = getActiveServerId();
-  const events = getWorshipEvents().filter(e => e.id !== eventId);
-  localStorage.setItem(`dasong_events_${serverId}`, JSON.stringify(events));
-
-  // Delete from MongoDB Cloud ONLY if logged in as Admin
-  if (canMutateCloud()) {
-    apiRequest(`/api/events/${eventId}`, {
-      method: 'DELETE'
-    }).catch(err => {
-      console.error('Failed to delete worship event from cloud:', err);
-    });
-  }
-
-  return events;
-}
-
-
-
-// -------------------------------------------------------------------------
-// SERVER/TENANT API ACTIONS
-// -------------------------------------------------------------------------
-
-export async function getPublicServers(): Promise<ServerInfo[]> {
-  return apiRequest('/api/servers');
-}
-
-export async function createServer(serverData: { id: string; name: string; adminPassword?: string; showOnPublicList: boolean }): Promise<{ success: boolean; server: ServerInfo }> {
-  return apiRequest('/api/servers', {
-    method: 'POST',
-    body: JSON.stringify(serverData)
-  });
-}
-
-export async function authServerAdmin(serverId: string, password?: string): Promise<{ success: boolean }> {
-  return apiRequest(`/api/servers/${serverId}/auth`, {
-    method: 'POST',
-    body: JSON.stringify({ password })
-  });
 }
 
 // --- LIVE SERVICE LYRICS SYNC SYNCING ACTIONS ---
 
 export interface BroadcastState {
-  serverId: string;
   songId: string | null;
   activeLineIndex: number;
   updatedAt: number;
@@ -650,5 +553,155 @@ export async function getBroadcastState(): Promise<BroadcastState | null> {
     console.error('Failed to get broadcast state:', err);
     return null;
   }
+}
+
+// -------------------------------------------------------------------------
+// SETLISTS MANAGEMENT & CLOUD ACTIONS
+// -------------------------------------------------------------------------
+
+const SETLISTS_STORAGE_KEY = 'dasong_setlists';
+
+export function getSetlists(): Setlist[] {
+  try {
+    const raw = localStorage.getItem(SETLISTS_STORAGE_KEY);
+    if (!raw) return [];
+    const list: Setlist[] = JSON.parse(raw);
+    return list.sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt - a.updatedAt);
+  } catch (err) {
+    console.error('Failed to load local setlists:', err);
+    return [];
+  }
+}
+
+export function saveLocalSetlists(setlists: Setlist[]): void {
+  localStorage.setItem(SETLISTS_STORAGE_KEY, JSON.stringify(setlists));
+}
+
+export async function saveSetlist(setlist: Setlist): Promise<void> {
+  const current = getSetlists();
+  const existingIdx = current.findIndex(s => s.id === setlist.id);
+  const updatedSetlist: Setlist = {
+    ...setlist,
+    updatedAt: Date.now()
+  };
+
+  let updatedList: Setlist[];
+  if (existingIdx >= 0) {
+    updatedList = current.map(s => s.id === setlist.id ? updatedSetlist : s);
+  } else {
+    updatedList = [updatedSetlist, ...current];
+  }
+
+  saveLocalSetlists(updatedList);
+
+  // Sync to MongoDB Cloud
+  try {
+    await apiRequest('/api/setlists', {
+      method: 'POST',
+      body: JSON.stringify(updatedSetlist)
+    });
+  } catch (err) {
+    console.warn('Setlist cloud sync notice:', err);
+  }
+}
+
+export async function deleteSetlist(id: string): Promise<void> {
+  const current = getSetlists();
+  const updatedList = current.filter(s => s.id !== id);
+  saveLocalSetlists(updatedList);
+
+  try {
+    await apiRequest(`/api/setlists/${id}`, {
+      method: 'DELETE'
+    });
+  } catch (err) {
+    console.warn('Setlist cloud delete notice:', err);
+  }
+}
+
+export async function addSongToSetlist(
+  setlistId: string,
+  song: { id: string; title: string; author?: string; key?: string },
+  customKey?: string
+): Promise<{ success: boolean; setlist?: Setlist; message?: string }> {
+  const current = getSetlists();
+  const target = current.find(s => s.id === setlistId);
+  if (!target) {
+    return { success: false, message: 'Setlist not found' };
+  }
+
+  // Check if song already in setlist
+  if (target.songs.some(s => s.id === song.id)) {
+    return { success: false, message: `"${song.title}" is already in this setlist.` };
+  }
+
+  const newSongItem: SetlistSong = {
+    id: song.id,
+    title: song.title,
+    author: song.author,
+    key: song.key,
+    customKey: customKey || song.key
+  };
+
+  const updatedSetlist: Setlist = {
+    ...target,
+    songs: [...target.songs, newSongItem],
+    updatedAt: Date.now()
+  };
+
+  await saveSetlist(updatedSetlist);
+  return { success: true, setlist: updatedSetlist };
+}
+
+export async function fetchSetlistsFromCloud(): Promise<Setlist[]> {
+  try {
+    const cloudSetlists: Setlist[] = await apiRequest('/api/setlists');
+    if (Array.isArray(cloudSetlists)) {
+      const local = getSetlists();
+      const localMap = new Map(local.map(s => [s.id, s]));
+      const cloudMap = new Map(cloudSetlists.map(s => [s.id, s]));
+
+      const merged: Setlist[] = [];
+      const allIds = new Set([...localMap.keys(), ...cloudMap.keys()]);
+
+      let needsCloudUpload = false;
+      const toUpload: Setlist[] = [];
+
+      for (const id of allIds) {
+        const l = localMap.get(id);
+        const c = cloudMap.get(id);
+        if (l && c) {
+          if ((l.updatedAt || 0) > (c.updatedAt || 0)) {
+            merged.push(l);
+            toUpload.push(l);
+            needsCloudUpload = true;
+          } else {
+            merged.push(c);
+          }
+        } else if (c) {
+          merged.push(c);
+        } else if (l) {
+          merged.push(l);
+          toUpload.push(l);
+          needsCloudUpload = true;
+        }
+      }
+
+      merged.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.updatedAt || 0) - (a.updatedAt || 0));
+      saveLocalSetlists(merged);
+
+      if (needsCloudUpload && toUpload.length > 0) {
+        apiRequest('/api/setlists/bulk-sync', {
+          method: 'POST',
+          body: JSON.stringify(toUpload)
+        }).catch(err => console.warn('Setlist auto-sync push error:', err));
+      }
+
+      return merged;
+    }
+  } catch (err) {
+    console.warn('Failed to fetch setlists from cloud:', err);
+  }
+  return getSetlists();
 }
 
