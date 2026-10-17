@@ -62,6 +62,22 @@ export default function SongDetail({
     return allMetadata.findIndex(s => s.id === songId);
   }, [allMetadata, songId]);
 
+  // Pre-process and parse sheet lyrics into natural worship stanzas
+  const sections = useMemo(() => {
+    return parseSongSections(song?.lyrics || '');
+  }, [song?.lyrics]);
+
+  // Pre-calculate line index offsets for each stanza section
+  const sectionStartIndices = useMemo(() => {
+    let count = 0;
+    return sections.map(section => {
+      const start = count;
+      const lines = section.split('\n').filter(l => l.trim().length > 0);
+      count += lines.length;
+      return start;
+    });
+  }, [sections]);
+
   // --- LIVE SERVICE LYRICS SYNC STATE & LOGIC ---
   const [isBroadcasting, setIsBroadcasting] = useState<boolean>(() => localStorage.getItem('dasong_live_broadcast') === 'true');
   const [isFollowing, setIsFollowing] = useState<boolean>(() => localStorage.getItem('dasong_live_follow') === 'true');
@@ -427,7 +443,28 @@ export default function SongDetail({
           break;
         case 'ArrowDown':
           e.preventDefault();
-          if (lyricContainerRef.current) {
+          if (sections.length > 0) {
+            let activeSec = -1;
+            let count = 0;
+            for (let i = 0; i < sections.length; i++) {
+              const lines = sections[i].split('\n').filter(l => l.trim().length > 0);
+              const start = count;
+              const end = count + lines.length - 1;
+              if (highlightedLineRef.current >= start && highlightedLineRef.current <= end) {
+                activeSec = i;
+                break;
+              }
+              count += lines.length;
+            }
+
+            const nextSec = activeSec < sections.length - 1 ? activeSec + 1 : 0;
+            const targetLine = sectionStartIndices[nextSec] ?? 0;
+            handleLineSelect(targetLine);
+            setTimeout(() => {
+              const el = document.getElementById(`lyric-section-${nextSec}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 30);
+          } else if (lyricContainerRef.current) {
             lyricContainerRef.current.scrollBy({ top: 160, behavior: 'smooth' });
           } else {
             window.scrollBy({ top: 160, behavior: 'smooth' });
@@ -443,7 +480,28 @@ export default function SongDetail({
           break;
         case 'ArrowUp':
           e.preventDefault();
-          if (lyricContainerRef.current) {
+          if (sections.length > 0) {
+            let activeSec = -1;
+            let count = 0;
+            for (let i = 0; i < sections.length; i++) {
+              const lines = sections[i].split('\n').filter(l => l.trim().length > 0);
+              const start = count;
+              const end = count + lines.length - 1;
+              if (highlightedLineRef.current >= start && highlightedLineRef.current <= end) {
+                activeSec = i;
+                break;
+              }
+              count += lines.length;
+            }
+
+            const prevSec = activeSec > 0 ? activeSec - 1 : (activeSec === 0 ? 0 : sections.length - 1);
+            const targetLine = sectionStartIndices[prevSec] ?? 0;
+            handleLineSelect(targetLine);
+            setTimeout(() => {
+              const el = document.getElementById(`lyric-section-${prevSec}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 30);
+          } else if (lyricContainerRef.current) {
             lyricContainerRef.current.scrollBy({ top: -160, behavior: 'smooth' });
           } else {
             window.scrollBy({ top: -160, behavior: 'smooth' });
@@ -482,7 +540,7 @@ export default function SongDetail({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [songId, nextSongId, prevSongId, setlistSongIds, autoScrollSpeed, isEditing, onClose, onSelectSong]);
+  }, [songId, nextSongId, prevSongId, setlistSongIds, autoScrollSpeed, isEditing, onClose, onBack, onSelectSong, sections, sectionStartIndices]);
 
 
 
@@ -607,11 +665,6 @@ export default function SongDetail({
     if (!song || allMetadata.length === 0) return [];
     return getRecommendedSongs(song as any, allMetadata as any, 6).map(item => item.song as SongMetadata);
   }, [song, allMetadata]);
-
-  // Pre-process and parse sheet lyrics into natural worship stanzas
-  const sections = useMemo(() => {
-    return parseSongSections(song?.lyrics || '');
-  }, [song?.lyrics]);
 
   if (loading) {
     return (
