@@ -425,29 +425,25 @@ export default function SongDetail({
           });
           setScrolling(prev => !prev);
           break;
-        case 'ArrowUp':
-          e.preventDefault();
-          // Increase scrolling speed
-          setAutoScrollSpeed(speed => Math.min(speed + 1, 10));
-          setScrolling(true);
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          // Decrease scrolling speed
-          setAutoScrollSpeed(speed => Math.max(speed - 1, 1));
-          setScrolling(true);
-          break;
         case 'ArrowRight':
+        case 'ArrowDown':
         case 'd':
         case 'D':
+        case 's':
+        case 'S':
+        case 'PageDown':
           if (nextSongId) {
             e.preventDefault();
             onSelectSong(nextSongId, setlistSongIds);
           }
           break;
         case 'ArrowLeft':
+        case 'ArrowUp':
         case 'a':
         case 'A':
+        case 'w':
+        case 'W':
+        case 'PageUp':
           if (prevSongId) {
             e.preventDefault();
             onSelectSong(prevSongId, setlistSongIds);

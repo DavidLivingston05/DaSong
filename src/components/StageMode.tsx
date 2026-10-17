@@ -276,10 +276,10 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
         }
       } else {
         // Slides presentation mode navigation
-        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'PageDown') {
           e.preventDefault();
           setCurrentSlideIndex((prev) => Math.min(sections.length - 1, prev + 1));
-        } else if (e.key === 'ArrowLeft' || e.key === 'Backspace') {
+        } else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'ArrowUp' || e.key === 'PageUp') {
           e.preventDefault();
           setCurrentSlideIndex((prev) => Math.max(0, prev - 1));
         }
