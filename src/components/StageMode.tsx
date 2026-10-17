@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Minimize, Play, Pause, ZoomIn, ZoomOut, Columns, Type, Check, ChevronLeft, ChevronRight, Presentation, FileText, Radio, Paintbrush, Palette } from 'lucide-react';
 import { Song, PresentationConfig } from '../types';
-import { stripChords } from '../utils/chordTransposer';
+import { stripChords, parseSongSections } from '../utils/chordTransposer';
 import { getBroadcastState } from '../lib/db';
 import ColorPickerModal from './modals/ColorPickerModal';
 
@@ -15,6 +15,11 @@ interface StageModeProps {
 export default React.memo(function StageMode({ song, onClose, broadcastSlideIndex, onSelectSong }: StageModeProps) {
   const [lyrics, setLyrics] = useState<string>('');
   const [activeColorPicker, setActiveColorPicker] = useState<'bg' | 'text' | null>(null);
+
+  const sections = useMemo(() => {
+    return parseSongSections(song.lyrics || lyrics || '');
+  }, [song.lyrics, lyrics]);
+
   const [config, setConfig] = useState<PresentationConfig>(() => {
     const saved = localStorage.getItem('dasong_stage_config');
     if (saved) {
@@ -61,8 +66,6 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
     
     if (diffX > swipeThreshold) {
       // Swiped left -> next slide
-      const normalizedLyrics = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
       setCurrentSlideIndex((prev) => Math.min(sections.length - 1, prev + 1));
     } else if (diffX < -swipeThreshold) {
       // Swiped right -> prev slide
@@ -131,13 +134,10 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
               }
             } else {
               // If in slides view, compute slide index containing the active line
-              const normalizedLyrics = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-              const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
-
               let lineCount = 0;
               let targetSlideIndex = 0;
               for (let sIdx = 0; sIdx < sections.length; sIdx++) {
-                const sectionLines = sections[sIdx].split('\n').length;
+                const sectionLines = sections[sIdx].split('\n').filter(l => l.trim().length > 0).length;
                 if (state.activeLineIndex >= lineCount && state.activeLineIndex < lineCount + sectionLines) {
                   targetSlideIndex = sIdx;
                   break;
@@ -276,9 +276,6 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
         }
       } else {
         // Slides presentation mode navigation
-        const normalizedLyrics = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
-        
         if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
           e.preventDefault();
           setCurrentSlideIndex((prev) => Math.min(sections.length - 1, prev + 1));
@@ -291,17 +288,15 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [onClose, viewMode, lyrics]);
+  }, [onClose, viewMode, sections]);
 
   // Format the lines beautifully - parse [brackets] into superscript lines or keep inline
   const renderFormattedLyrics = (lyricsOverride?: string) => {
-    // Normalize CRLF to LF and handle spaces/tabs on empty lines separating paragraphs
-    const normalizedLyrics = (lyricsOverride ?? lyrics).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
+    const targetSections = lyricsOverride ? parseSongSections(lyricsOverride) : sections;
 
     let globalLineCounter = 0;
 
-    return sections.map((section, idx) => {
+    return targetSections.map((section, idx) => {
       const isChorus = section.toLowerCase().startsWith('chorus:');
       const lines = section.split('\n');
 
@@ -364,9 +359,6 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
   };
 
   const renderActiveSlide = () => {
-    const normalizedLyrics = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
-    
     if (sections.length === 0) return null;
     const section = sections[currentSlideIndex];
     if (!section) return null;
@@ -860,11 +852,6 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
           <div className={`mx-auto transition-all ${config.twoColumns ? 'max-w-7xl' : 'max-w-3xl'}`}>
             {config.twoColumns ? (
               (() => {
-                const sections = lyrics
-                  .replace(/\r\n/g, '\n')
-                  .replace(/\r/g, '\n')
-                  .split(/\n\s*\n+/)
-                  .filter(Boolean);
                 const mid = Math.ceil(sections.length / 2);
                 const leftSections = sections.slice(0, mid).join('\n\n');
                 const rightSections = sections.slice(mid).join('\n\n');
@@ -933,9 +920,9 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
           )}
 
           {/* Edge Right Navigation Arrow */}
-          {currentSlideIndex < (lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n+/).filter(Boolean).length - 1) ? (
+          {currentSlideIndex < sections.length - 1 ? (
             <button
-              onClick={() => setCurrentSlideIndex(prev => Math.min(lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n+/).filter(Boolean).length - 1, prev + 1))}
+              onClick={() => setCurrentSlideIndex(prev => Math.min(sections.length - 1, prev + 1))}
               className={`absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded bg-[#12131A] border border-[#1E202B] hover:bg-zinc-800 transition-all text-slate-400 hover:text-white cursor-pointer active-touch z-25 duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
               title="Next Slide"
               aria-label="Next slide"
@@ -955,7 +942,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
           <div className={`w-full max-w-xl flex flex-col items-center gap-2.5 z-20 mt-6 select-none transition-all duration-300 ${showHeader ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             {/* Jump Dots Rack */}
             <div className="flex flex-wrap items-center justify-center gap-2 max-w-full">
-              {lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n+/).filter(Boolean).map((_, idx) => (
+              {sections.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentSlideIndex(idx)}
@@ -971,7 +958,7 @@ export default React.memo(function StageMode({ song, onClose, broadcastSlideInde
             
             {/* Slide Index Summary */}
             <div className="text-[9px] font-mono tracking-widest text-zinc-500 uppercase">
-              Slide <span className="text-amber-505 font-bold">{currentSlideIndex + 1}</span> of {lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n+/).filter(Boolean).length}
+              Slide <span className="text-amber-500 font-bold">{currentSlideIndex + 1}</span> of {sections.length}
             </div>
           </div>
 

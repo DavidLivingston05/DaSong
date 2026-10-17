@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Play, Pause, RefreshCw, ZoomIn, ZoomOut, Check, ArrowUpRight, Award, Edit3, Save, Music, Heart, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, Minus, ChevronUp, ChevronDown, Sliders, Share2, Radio, Copy, FileText, Link, Sparkles, Clock, Printer, X, Calendar } from 'lucide-react';
 import { Song, UserRole, Setlist } from '../types';
 import { getSongById, saveSong, getAllSongsMetadata, SongMetadata, broadcastState, getBroadcastState, getSetlists, fetchSetlistsFromCloud } from '../lib/db';
-import { stripChords } from '../utils/chordTransposer';
+import { stripChords, parseSongSections } from '../utils/chordTransposer';
 import { parseTwoLineChords } from '../utils/lyricsParser';
 import FocusTrap from './FocusTrap';
 import { getRecommendedSongs } from '../lib/recommendations';
@@ -597,36 +597,10 @@ export default function SongDetail({
     );
   }
 
-  // Pre-process and render sheet lyrics
-  let processedLyrics = song.lyrics || '';
-
-  // Strip metadata headers from raw lyrics block to prevent duplication
-  const rawLines = processedLyrics.split('\n');
-  const cleanLyricsLines: string[] = [];
-  let lyricsStarted = false;
-  for (const line of rawLines) {
-    const trimmed = line.trim();
-    if (!lyricsStarted) {
-      const isMetadata = 
-        /^(?:Title|Name|Author|Artist|Composer|Writer|Key|Chord\s*Key|Bpm|Tempo|Category|Genre|Theme)\s*:/i.test(trimmed) ||
-        /^lyrics\s*:/i.test(trimmed);
-      if (isMetadata) {
-        continue;
-      }
-      if (trimmed === '') {
-        continue;
-      }
-      lyricsStarted = true;
-    }
-    cleanLyricsLines.push(line);
-  }
-  processedLyrics = cleanLyricsLines.join('\n').trim();
-
-  processedLyrics = stripChords(processedLyrics);
-
-  // Normalize CRLF to LF and handle spaces/tabs on empty lines separating paragraphs
-  const normalizedLyrics = processedLyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const sections = normalizedLyrics.split(/\n\s*\n+/).filter(Boolean);
+  // Pre-process and parse sheet lyrics into natural worship stanzas
+  const sections = useMemo(() => {
+    return parseSongSections(song.lyrics || '');
+  }, [song.lyrics]);
 
   return (
     <div id="lyric-presentation-panel" className="bg-[#12131A] rounded-md border border-[#1E202B] overflow-hidden flex flex-col h-full md:min-h-[550px]">
@@ -952,7 +926,7 @@ export default function SongDetail({
                   let globalLineCounter = 0;
                   return sections.map((section, idx) => {
                     const isChorus = section.toLowerCase().startsWith('chorus:');
-                    const lines = section.split('\n');
+                    const lines = section.split('\n').filter(l => l.trim().length > 0);
 
                     // Calculate index range for this section
                     const startIdx = globalLineCounter;
